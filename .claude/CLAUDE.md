@@ -6,11 +6,11 @@ Số hóa vòng đời nhân sự (hồ sơ, hợp đồng, chấm công, phép,
 
 ## Cấu trúc
 ```
-database/schema.sql   MariaDB 10.4, 24 bảng - nguồn chuẩn, KHÔNG sửa
+database/schema.sql   MariaDB 10.4, 25 bảng (24 gốc + 1 mở rộng) - nguồn chuẩn, KHÔNG sửa
+docs/                 design-system.md, progress.md, phan-quyen.md
 backend/              ExpressJS + mysql2: routes → middlewares → controllers → services → repositories
 frontend/             ReactJS (Vite) + Recharts
 ai-service/           Python FastAPI: rag/, textToSql/, functionCalling/
-docs/                 design-system.md, progress.md
 ```
 Mỗi service có `.env.example` (commit) và `.env` (không commit).
 
@@ -18,6 +18,7 @@ Mỗi service có `.env.example` (commit) và `.env` (không commit).
 - CSDL, khóa ngoại, transaction, Text-to-SQL: @rules/database.md
 - Chuẩn API & tầng mã nguồn: @rules/api-style.md
 - Giao diện: `docs/design-system.md` (chỉ đọc khi làm frontend)
+- Ma trận phân quyền 5 vai trò (căn cứ code `phanQuyen` và test): `docs/phan-quyen.md`
 - Tiến độ & danh sách API: `docs/progress.md`
 
 ## Đặt tên
