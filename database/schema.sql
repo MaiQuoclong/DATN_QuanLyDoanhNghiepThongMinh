@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.19, for Win64 (x86_64)
 --
--- Host: localhost    Database: QuanLyDoanhNghiepThongMinh
+-- Host: localhost    Database: quanlydoanhnghiepthongminh
 -- ------------------------------------------------------
 -- Server version	5.5.5-10.4.32-MariaDB
 
@@ -209,6 +209,48 @@ CREATE TABLE `chucdanhphongban` (
 LOCK TABLES `chucdanhphongban` WRITE;
 /*!40000 ALTER TABLE `chucdanhphongban` DISABLE KEYS */;
 /*!40000 ALTER TABLE `chucdanhphongban` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `dexuatkhenthuongkyluat`
+--
+
+DROP TABLE IF EXISTS `dexuatkhenthuongkyluat`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `dexuatkhenthuongkyluat` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nguoiDeXuatId` int(11) NOT NULL,
+  `nhanVienId` int(11) NOT NULL,
+  `loaiDeXuat` varchar(20) NOT NULL,
+  `tieuDe` varchar(200) NOT NULL,
+  `lyDo` text NOT NULL,
+  `soTienDeXuat` decimal(15,2) DEFAULT 0.00,
+  `trangThai` varchar(30) NOT NULL DEFAULT 'CHO_DUYET',
+  `nguoiXuLyId` int(11) DEFAULT NULL,
+  `ghiChuXuLy` varchar(500) DEFAULT NULL,
+  `quyetDinhId` int(11) DEFAULT NULL,
+  `ngayTao` datetime DEFAULT current_timestamp(),
+  `ngayCapNhat` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `nguoiDeXuatId` (`nguoiDeXuatId`),
+  KEY `nhanVienId` (`nhanVienId`),
+  KEY `nguoiXuLyId` (`nguoiXuLyId`),
+  KEY `quyetDinhId` (`quyetDinhId`),
+  CONSTRAINT `dexuatkhenthuongkyluat_ibfk_1` FOREIGN KEY (`nguoiDeXuatId`) REFERENCES `nhanvien` (`id`),
+  CONSTRAINT `dexuatkhenthuongkyluat_ibfk_2` FOREIGN KEY (`nhanVienId`) REFERENCES `nhanvien` (`id`),
+  CONSTRAINT `dexuatkhenthuongkyluat_ibfk_3` FOREIGN KEY (`nguoiXuLyId`) REFERENCES `nhanvien` (`id`),
+  CONSTRAINT `dexuatkhenthuongkyluat_ibfk_4` FOREIGN KEY (`quyetDinhId`) REFERENCES `quyetdinhkhenthuongkyluat` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `dexuatkhenthuongkyluat`
+--
+
+LOCK TABLES `dexuatkhenthuongkyluat` WRITE;
+/*!40000 ALTER TABLE `dexuatkhenthuongkyluat` DISABLE KEYS */;
+/*!40000 ALTER TABLE `dexuatkhenthuongkyluat` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -818,4 +860,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-29  8:59:00
+-- Dump completed on 2026-10-29 11:33:14
