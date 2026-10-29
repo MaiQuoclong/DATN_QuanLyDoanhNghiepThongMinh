@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "GlobTool",
+      "GrepTool",
+      "ViewTool",
+      "EditTool"
+    ],
+    "deny": []
+  },
+  "autoApprove": false
+}
