@@ -1,0 +1,66 @@
+.boCuc {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--rongSidebar);
+  background: var(--mauChinhDam);
+  color: #cbd5e1;
+  padding: 16px 12px;
+  overflow-y: auto;
+}
+
+.sidebarLogo {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 8px 12px 24px;
+}
+
+.mucMenu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--boGoc);
+  margin-bottom: 2px;
+  font-weight: 500;
+}
+
+.mucMenu:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.mucMenu.dangChon {
+  background: var(--mauChinh);
+  color: #fff;
+}
+
+.bieuTuong {
+  width: 20px;
+  text-align: center;
+}
+
+.noiDung {
+  flex: 1;
+  margin-left: var(--rongSidebar);
+  padding: 24px 32px;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: static;
+    width: 100%;
+  }
+  .boCuc {
+    flex-direction: column;
+  }
+  .noiDung {
+    margin-left: 0;
+    padding: 16px;
+  }
+}

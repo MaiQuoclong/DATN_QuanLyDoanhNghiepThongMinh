@@ -1,0 +1,15 @@
+.tieuDeTrang {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.moTaTrang {
+  color: var(--mauChuPhu);
+  margin: 4px 0 20px;
+}
+
+.luoiThe {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}

@@ -1,0 +1,46 @@
+/* Design system Smart HRM (xem docs/design-system.md) */
+:root {
+  --mauChinh: #1e3a8a;          /* Navy / Royal Blue */
+  --mauChinhDam: #172554;
+  --mauChinhNhat: #dbeafe;
+  --mauNen: #f4f6f9;
+  --mauThe: #ffffff;
+  --mauVien: #e2e8f0;
+  --mauChu: #1e293b;
+  --mauChuPhu: #64748b;
+
+  --mauThanhCong: #16a34a;      /* Hoạt động / Thành công */
+  --mauThanhCongNhat: #dcfce7;
+  --mauCanhBao: #d97706;        /* Chờ duyệt / Cảnh báo */
+  --mauCanhBaoNhat: #fef3c7;
+  --mauLoi: #dc2626;            /* Từ chối / Vi phạm */
+  --mauLoiNhat: #fee2e2;
+
+  --rongSidebar: 240px;
+  --boGoc: 8px;
+  --bong: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: var(--mauChu);
+  background: var(--mauNen);
+  font-variant-numeric: tabular-nums; /* số liệu thẳng hàng, dễ quét */
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+}

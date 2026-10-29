@@ -1,0 +1,38 @@
+.theThongKe {
+  background: var(--mauThe);
+  border: 1px solid var(--mauVien);
+  border-left: 4px solid var(--mauChinh);
+  border-radius: var(--boGoc);
+  box-shadow: var(--bong);
+  padding: 16px 20px;
+}
+
+.theThongKe.thanhCong {
+  border-left-color: var(--mauThanhCong);
+}
+
+.theThongKe.canhBao {
+  border-left-color: var(--mauCanhBao);
+}
+
+.theThongKe.loi {
+  border-left-color: var(--mauLoi);
+}
+
+.theTieuDe {
+  color: var(--mauChuPhu);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.theGiaTri {
+  font-size: 24px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.theMoTa {
+  color: var(--mauChuPhu);
+  font-size: 12px;
+  margin-top: 4px;
+}
