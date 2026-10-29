@@ -22,7 +22,7 @@ Mỗi service có `.env.example` (commit) và `.env` (không commit).
 
 ## Đặt tên
 - Tên tự đặt (biến, hàm, file, route): tiếng Việt không dấu, camelCase. Đúng: `layDanhSachNhanVien`, `kiemTraQuyPhep`. Sai: `lay_danh_sach`, `getEmployees`.
-- Ngoại lệ: React component dùng PascalCase (`BangNhanVien.jsx`); API của thư viện/framework giữ nguyên (`req`, `res`, `useState`, `onClick`).
+- Ngoại lệ: React component dùng PascalCase (`BangNhanVien.jsx`); API của thư viện/framework giữ nguyên (`req`, `res`, `useState`, `onClick`); tên nhánh git dùng gạch ngang (xem Git Workflow).
 - Tên bảng/cột giữ nguyên 100% như `database/schema.sql` (bảng viết thường: `nhanvien`; cột camelCase: `chucDanhPhongBanId`).
 
 ## Quy tắc bắt buộc
@@ -44,7 +44,7 @@ Mỗi service có `.env.example` (commit) và `.env` (không commit).
 - Function Calling tạo bản ghi ở trạng thái `CHO_DUYET`; RAG phải trích dẫn nguồn/số điều khoản.
 
 ## Workflow
-1. Làm theo lát cắt dọc từng tính năng: DB → API → UI, trên nhánh git riêng (`feature/<tenTinhNang>`), commit nhỏ.
+1. Làm theo lát cắt dọc từng tính năng: DB → API → UI, trên nhánh `feature/ten-chuc-nang` (gạch ngang) tách từ `develop`, commit nhỏ theo Conventional Commits.
 2. Thứ tự: Auth/RBAC → Hồ sơ nhân sự & Hợp đồng → Chấm công/Phép → Lương → KPI/Khen thưởng → AI Agent.
 3. Xong một module: gọi sub-agent `reviewer`, sửa lỗi, rồi gọi `qa-tester` (tự cập nhật `docs/progress.md`).
 4. Mỗi lần sửa code: tóm tắt file đã đổi và xác nhận không lệch schema.
