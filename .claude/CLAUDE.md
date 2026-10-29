@@ -68,3 +68,11 @@ Mỗi service có `.env.example` (commit) và `.env` (không commit).
     - `chore:` Cấu hình hệ thống, tài liệu hoặc thư viện.
 - **Quy trình gộp code (Pull Request):**
   - Sau khi hoàn thành tính năng trên nhánh `feature/...`, tạo **Pull Request** trỏ về nhánh `develop` để tiến hành review code, kiểm tra ràng buộc CSDL và đảm bảo không có lỗi trước khi gộp.
+- **Hướng dẫn kết thúc feature (bắt buộc):** người dùng tự commit/push/merge; Claude KHÔNG tự chạy `git commit`, `git push` hay merge. Khi xong một feature (sau reviewer + qa-tester), Claude phải đưa hướng dẫn theo đúng thứ tự, điền sẵn tên nhánh, file và commit message cụ thể:
+  1. Kiểm tra: `git status`, `git diff`.
+  2. Add + commit chia nhỏ theo Conventional Commits (liệt kê từng nhóm file kèm message gợi ý).
+  3. Push: `git push -u origin feature/<ten-chuc-nang>`.
+  4. Tạo PR trên GitHub: link `https://github.com/MaiQuoclong/DATN_QuanLyDoanhNghiepThongMinh/compare/develop...feature/<ten-chuc-nang>`; merge bằng **Create a merge commit** (không Squash/Rebase); có thể xóa nhánh feature trên GitHub.
+  5. **Chỉ sau khi PR đã merge**: `git checkout develop` → `git pull` → `git branch -d feature/<ten-chuc-nang>` → `git log --oneline -3` để xác nhận commit đã vào `develop`.
+  6. Nhắc tên nhánh cho feature tiếp theo: `git checkout -b feature/<ten-tiep-theo>` từ `develop` đã pull.
+- **Phát hành lên `main`:** chỉ khi xong trọn một module/giai đoạn, PR `develop` → `main` (merge commit), sau đó `git checkout develop` → `git merge main` → `git push` để hai nhánh khớp.
