@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import goiApi from '../services/goiApi';
+import { useXacThuc } from '../context/NguCanhXacThuc';
+import { NHAN_VAI_TRO } from '../config/danhSachMenu';
 import TheThongKe from '../components/TheThongKe';
+import ChipTrangThai from '../components/ChipTrangThai';
 import './TrangTongQuan.css';
 
 function TrangTongQuan() {
+  const { nguoiDung } = useXacThuc();
   const [sucKhoe, setSucKhoe] = useState(null);
   const [loi, setLoi] = useState(null);
 
@@ -18,8 +22,16 @@ function TrangTongQuan() {
 
   return (
     <div>
-      <h1 className="tieuDeTrang">Tổng quan</h1>
-      <p className="moTaTrang">Trạng thái hệ thống Smart HRM</p>
+      <div className="dauTrang">
+        <div>
+          <h1 className="tieuDeTrang">Xin chào, {nguoiDung.hoVaTen ?? nguoiDung.tenDangNhap}</h1>
+          <div className="dongVaiTro">
+            {nguoiDung.vaiTro.map((vt) => (
+              <ChipTrangThai key={vt} trangThai="DANG_HOAT_DONG" nhan={NHAN_VAI_TRO[vt] ?? vt} />
+            ))}
+          </div>
+        </div>
+      </div>
 
       <div className="luoiThe">
         <TheThongKe
@@ -35,9 +47,9 @@ function TrangTongQuan() {
           trangThai={!sucKhoe ? undefined : csdlKetNoi ? 'thanhCong' : 'loi'}
         />
         <TheThongKe
-          tieuDe="Lần kiểm tra"
-          giaTri={sucKhoe ? new Date(sucKhoe.thoiGian).toLocaleTimeString('vi-VN') : '—'}
-          moTa="Theo giờ máy chủ"
+          tieuDe="Đăng nhập lần trước"
+          giaTri={nguoiDung.lanDangNhapCuoi ? new Date(nguoiDung.lanDangNhapCuoi.replace(' ', 'T')).toLocaleString('vi-VN') : '—'}
+          moTa={nguoiDung.maNhanVien ? `Mã nhân viên ${nguoiDung.maNhanVien}` : nguoiDung.email}
         />
       </div>
     </div>

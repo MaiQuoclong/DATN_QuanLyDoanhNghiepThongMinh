@@ -1,24 +1,31 @@
 /* Design system Smart HRM (xem docs/design-system.md) */
-:root {
-  --mauChinh: #1e3a8a;          /* Navy / Royal Blue */
-  --mauChinhDam: #172554;
-  --mauChinhNhat: #dbeafe;
-  --mauNen: #f4f6f9;
-  --mauThe: #ffffff;
-  --mauVien: #e2e8f0;
-  --mauChu: #1e293b;
-  --mauChuPhu: #64748b;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-  --mauThanhCong: #16a34a;      /* Hoạt động / Thành công */
+:root {
+  --mauChinh: #1f5f57;          /* Teal đậm - nút chính */
+  --mauChinhDam: #174a44;
+  --mauChinhNhat: #e6f0ee;
+  --mauNhan: #f5c518;           /* Vàng - điểm nhấn */
+  --mauThanhTren: #1f2329;      /* Thanh trên cùng */
+  --mauNen: #f4f5f7;
+  --mauThe: #ffffff;
+  --mauVien: #e8eaed;
+  --mauChu: #1f2329;
+  --mauChuPhu: #6b7280;
+
+  --mauThanhCong: #16a34a;      /* Hoạt động / Đã duyệt */
   --mauThanhCongNhat: #dcfce7;
-  --mauCanhBao: #d97706;        /* Chờ duyệt / Cảnh báo */
+  --mauCanhBao: #ea8a0c;        /* Chờ duyệt / Cảnh báo */
   --mauCanhBaoNhat: #fef3c7;
   --mauLoi: #dc2626;            /* Từ chối / Vi phạm */
   --mauLoiNhat: #fee2e2;
+  --mauTrungTinh: #9ca3af;      /* Bản nháp / Đã hủy */
+  --mauTrungTinhNhat: #f3f4f6;
 
-  --rongSidebar: 240px;
-  --boGoc: 8px;
-  --bong: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --caoThanhTren: 52px;
+  --rongThanhIcon: 60px;
+  --boGoc: 10px;
+  --bong: 0 1px 2px rgba(17, 24, 39, 0.05);
 }
 
 * {
@@ -43,4 +50,35 @@ h1,
 h2,
 h3 {
   margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.tieuDeTrang {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.moTaTrang {
+  color: var(--mauChuPhu);
+  margin: 4px 0 20px;
+  font-size: 13px;
+}
+
+.manHinhCho {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  color: var(--mauChuPhu);
+}
+
+.the {
+  background: var(--mauThe);
+  border: 1px solid var(--mauVien);
+  border-radius: var(--boGoc);
+  box-shadow: var(--bong);
 }
