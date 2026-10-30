@@ -1,0 +1,31 @@
+.trangThai {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.trangThai::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.trangThai.chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.trangThai.xanh { color: var(--mauThanhCong); }
+.trangThai.cam { color: var(--mauCanhBao); }
+.trangThai.do { color: var(--mauLoi); }
+.trangThai.xam { color: var(--mauTrungTinh); }
+
+.trangThai.chip.xanh { background: var(--mauThanhCongNhat); }
+.trangThai.chip.cam { background: var(--mauCanhBaoNhat); }
+.trangThai.chip.do { background: var(--mauLoiNhat); }
+.trangThai.chip.xam { background: var(--mauTrungTinhNhat); }
