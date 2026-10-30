@@ -1,6 +1,15 @@
 const LoiUngDung = require('../utils/LoiUngDung');
 const { thatBai } = require('../utils/phanHoi');
 
+const LOI_MAT_KET_NOI_CSDL = [
+  'ECONNREFUSED',
+  'PROTOCOL_CONNECTION_LOST',
+  'ETIMEDOUT',
+  'ENOTFOUND',
+  'ER_ACCESS_DENIED_ERROR',
+  'ER_BAD_DB_ERROR',
+];
+
 function khongTimThayRoute(req, res) {
   return thatBai(res, 404, `Không tìm thấy đường dẫn ${req.method} ${req.originalUrl}`);
 }
@@ -19,6 +28,10 @@ function xuLyLoi(loi, req, res, next) {
   }
   if (loi.code === 'ER_NO_REFERENCED_ROW_2' || loi.code === 'ER_ROW_IS_REFERENCED_2') {
     return thatBai(res, 409, 'Vi phạm ràng buộc khóa ngoại');
+  }
+  if (LOI_MAT_KET_NOI_CSDL.includes(loi.code)) {
+    console.error('[CSDL] Mất kết nối:', loi.code);
+    return thatBai(res, 503, 'Không kết nối được cơ sở dữ liệu, vui lòng thử lại sau');
   }
   console.error('[LOI]', loi);
   return thatBai(res, 500, 'Lỗi hệ thống, vui lòng thử lại sau');
