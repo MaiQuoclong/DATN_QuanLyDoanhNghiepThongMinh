@@ -1,9 +1,12 @@
 const LoiUngDung = require('../utils/LoiUngDung');
 const { kiemTraPhien } = require('../services/xacThucService');
+const { docCookieToken } = require('../utils/cookieXacThuc');
 
+// Ưu tiên header Bearer (Postman, test, AI service); trình duyệt dùng cookie httpOnly
 async function ganNguoiDung(req) {
-  const [loai, token] = (req.headers.authorization || '').split(' ');
-  if (loai !== 'Bearer' || !token) {
+  const [loai, tokenHeader] = (req.headers.authorization || '').split(' ');
+  const token = loai === 'Bearer' && tokenHeader ? tokenHeader : docCookieToken(req);
+  if (!token) {
     throw new LoiUngDung(401, 'Bạn chưa đăng nhập');
   }
   req.nguoiDung = await kiemTraPhien(token);
@@ -25,4 +28,15 @@ async function xacThucJwtChoMatKhauTam(req, res, next) {
   next();
 }
 
-module.exports = { xacThucJwt, xacThucJwtChoMatKhauTam };
+// Dùng cho /dangXuat: token hỏng/thu hồi vẫn cho qua (req.nguoiDung = null) để luôn xóa được cookie
+async function xacThucJwtTuyChon(req, res, next) {
+  try {
+    await ganNguoiDung(req);
+  } catch (loi) {
+    if (!(loi instanceof LoiUngDung)) throw loi;
+    req.nguoiDung = null;
+  }
+  next();
+}
+
+module.exports = { xacThucJwt, xacThucJwtChoMatKhauTam, xacThucJwtTuyChon };

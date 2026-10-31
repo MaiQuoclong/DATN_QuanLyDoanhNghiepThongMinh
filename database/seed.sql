@@ -1,20 +1,37 @@
 -- =====================================================================
 -- Dữ liệu mẫu Smart HRM (chạy SAU schema.sql)
--- CẢNH BÁO: xóa sạch dữ liệu các bảng bên dưới rồi nạp lại. Chỉ dùng cho môi trường dev.
+-- CẢNH BÁO: xóa sạch dữ liệu toàn bộ 25 bảng rồi nạp lại. Chỉ dùng cho môi trường dev.
 -- Mật khẩu mọi tài khoản mẫu: MatKhau@123 (bcrypt, sinh bằng backend/scripts/taoMatKhauBam.js)
 -- =====================================================================
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
-TRUNCATE TABLE quyngayphep;
+-- Xóa sạch cả 25 bảng để không còn dữ liệu mồ côi trỏ vào nhanvien/nguoidung cũ
+TRUNCATE TABLE banghichamcong;
+TRUNCATE TABLE bangtonghopluong;
+TRUNCATE TABLE chitietdanhgiakpi;
+TRUNCATE TABLE chitieukpi;
+TRUNCATE TABLE chucdanh;
+TRUNCATE TABLE chucdanhphongban;
+TRUNCATE TABLE dexuatkhenthuongkyluat;
+TRUNCATE TABLE dondexuatnghiphep;
+TRUNCATE TABLE hopdonglaodong;
+TRUNCATE TABLE kydanhgiakpi;
+TRUNCATE TABLE lichsuhopdong;
 TRUNCATE TABLE loainghiphep;
+TRUNCATE TABLE nguoidung;
 TRUNCATE TABLE nguoidungvaitro;
 TRUNCATE TABLE nhanvien;
-TRUNCATE TABLE nguoidung;
-TRUNCATE TABLE chucdanhphongban;
-TRUNCATE TABLE chucdanh;
+TRUNCATE TABLE nhatkyhethong;
+TRUNCATE TABLE phientrochuyenai;
+TRUNCATE TABLE phieudanhgiakpi;
+TRUNCATE TABLE phieuluongnhanvien;
 TRUNCATE TABLE phongban;
+TRUNCATE TABLE quyetdinhkhenthuongkyluat;
+TRUNCATE TABLE quyngayphep;
+TRUNCATE TABLE tailieuquyche;
 TRUNCATE TABLE vaitro;
+TRUNCATE TABLE yeucaudieuchinhchamcong;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

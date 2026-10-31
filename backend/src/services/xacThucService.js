@@ -12,9 +12,16 @@ const THUAT_TOAN_JWT = 'HS256';
 // Hash giả: vẫn chạy bcrypt.compare khi không có tài khoản để thời gian phản hồi không lộ tên đăng nhập
 const HASH_GIA = '$2b$10$S2YqVioREd9xLdhLS6LWzeuQmLUNR2cwgZa0wDBc1WwE/C88T8Fbi';
 
+const BI_MAT_MAU = 'thay-bang-chuoi-ngau-nhien-dai'; // giá trị trong .env.example
+const DO_DAI_BI_MAT_TOI_THIEU = 32;
+
+// Chặn chạy với bí mật mẫu/quá ngắn: ai biết bí mật sẽ tự ký được token của bất kỳ tài khoản nào
 function layBiMatJwt() {
   const biMat = process.env.JWT_BI_MAT;
   if (!biMat) throw new Error('Thiếu biến môi trường JWT_BI_MAT');
+  if (biMat === BI_MAT_MAU || biMat.length < DO_DAI_BI_MAT_TOI_THIEU) {
+    throw new Error(`JWT_BI_MAT phải là chuỗi ngẫu nhiên riêng, tối thiểu ${DO_DAI_BI_MAT_TOI_THIEU} ký tự (không dùng giá trị mẫu)`);
+  }
   return biMat;
 }
 
@@ -53,6 +60,9 @@ async function kiemTraPhien(token) {
   }
 
   const { nguoiDungId } = noiDung;
+  if (!Number.isInteger(nguoiDungId) || nguoiDungId <= 0) {
+    throw new LoiUngDung(401, 'Token không hợp lệ');
+  }
   const [thongTin, vaiTro, matKhauTam] = await Promise.all([
     nguoiDungRepository.layThongTin(nguoiDungId),
     nguoiDungRepository.layDanhSachVaiTro(nguoiDungId),
@@ -150,4 +160,5 @@ async function dangXuat(nguoiDungId, diaChiIP) {
   await ghiNhatKy(nguoiDungId, 'DANG_XUAT', diaChiIP);
 }
 
-module.exports = { dangNhap, kiemTraPhien, layThongTinCaNhan, doiMatKhau, dangXuat, kiemTraMatKhauTam };
+module.exports = {
+  layBiMatJwt, dangNhap, kiemTraPhien, layThongTinCaNhan, doiMatKhau, dangXuat, kiemTraMatKhauTam };

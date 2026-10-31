@@ -1,7 +1,17 @@
 const LoiUngDung = require('../utils/LoiUngDung');
 
+const MAU_NGAY = /^\d{4}-\d{2}-\d{2}$/;
+
+// Ngày dạng YYYY-MM-DD và có thật trên lịch (loại 2026-02-30)
+function laNgayHopLe(giaTri) {
+  if (!MAU_NGAY.test(giaTri)) return false;
+  const ngay = new Date(`${giaTri}T00:00:00Z`);
+  return !Number.isNaN(ngay.getTime()) && ngay.toISOString().slice(0, 10) === giaTri;
+}
+
 // Kiểm tra req.body theo luật đơn giản, lỗi đầu tiên trả 400.
-// luat: { tenTruong: { nhan, batBuoc, toiThieu, toiDa, toiDaByte, mauKiemTra: RegExp, thongBaoMau } }
+// luat: { tenTruong: { nhan, batBuoc, toiThieu, toiDa, toiDaByte, mauKiemTra: RegExp, thongBaoMau,
+//                      kieu: 'soNguyenDuong' | 'ngay', cacGiaTri: [...] } }
 function kiemTraDuLieu(luat) {
   return (req, res, next) => {
     const body = req.body ?? {};
@@ -13,10 +23,23 @@ function kiemTraDuLieu(luat) {
         if (quyTac.batBuoc) throw new LoiUngDung(400, `${nhan} không được để trống`);
         continue;
       }
+      if (quyTac.kieu === 'soNguyenDuong') {
+        if (!/^[1-9]\d{0,9}$/.test(String(giaTri)) || (typeof giaTri !== 'number' && typeof giaTri !== 'string')) {
+          throw new LoiUngDung(400, `${nhan} phải là số nguyên dương`);
+        }
+        continue;
+      }
       if (typeof giaTri !== 'string') {
         throw new LoiUngDung(400, `${nhan} phải là chuỗi ký tự`);
       }
-      if (quyTac.toiThieu && giaTri.length < quyTac.toiThieu) {
+      if (quyTac.kieu === 'ngay' && !laNgayHopLe(giaTri)) {
+        throw new LoiUngDung(400, `${nhan} phải là ngày hợp lệ dạng YYYY-MM-DD`);
+      }
+      if (quyTac.cacGiaTri && !quyTac.cacGiaTri.includes(giaTri)) {
+        throw new LoiUngDung(400, `${nhan} chỉ nhận một trong các giá trị: ${quyTac.cacGiaTri.join(', ')}`);
+      }
+      // Đo độ dài sau khi trim vì service lưu giá trị đã trim
+      if (quyTac.toiThieu && giaTri.trim().length < quyTac.toiThieu) {
         throw new LoiUngDung(400, `${nhan} phải có ít nhất ${quyTac.toiThieu} ký tự`);
       }
       if (quyTac.toiDa && giaTri.length > quyTac.toiDa) {
@@ -34,3 +57,4 @@ function kiemTraDuLieu(luat) {
 }
 
 module.exports = kiemTraDuLieu;
+module.exports.laNgayHopLe = laNgayHopLe;
