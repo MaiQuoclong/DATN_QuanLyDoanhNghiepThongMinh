@@ -11,7 +11,7 @@ function laNgayHopLe(giaTri) {
 
 // Kiểm tra req.body theo luật đơn giản, lỗi đầu tiên trả 400.
 // luat: { tenTruong: { nhan, batBuoc, toiThieu, toiDa, toiDaByte, mauKiemTra: RegExp, thongBaoMau,
-//                      kieu: 'soNguyenDuong' | 'ngay', cacGiaTri: [...] } }
+//                      kieu: 'soNguyenDuong' | 'ngay' | 'soTien', cacGiaTri: [...] } }
 function kiemTraDuLieu(luat) {
   return (req, res, next) => {
     const body = req.body ?? {};
@@ -27,6 +27,14 @@ function kiemTraDuLieu(luat) {
         if (!/^[1-9]\d{0,9}$/.test(String(giaTri)) || (typeof giaTri !== 'number' && typeof giaTri !== 'string')) {
           throw new LoiUngDung(400, `${nhan} phải là số nguyên dương`);
         }
+        continue;
+      }
+      // Tiền tệ DECIMAL(15,2): số không âm, tối đa 2 chữ số thập phân, nhận cả number lẫn chuỗi số
+      if (quyTac.kieu === 'soTien') {
+        if ((typeof giaTri !== 'number' && typeof giaTri !== 'string') || !/^\d{1,13}(\.\d{1,2})?$/.test(String(giaTri))) {
+          throw new LoiUngDung(400, `${nhan} phải là số tiền không âm, tối đa 2 chữ số thập phân`);
+        }
+        if (quyTac.duong && Number(giaTri) <= 0) throw new LoiUngDung(400, `${nhan} phải lớn hơn 0`);
         continue;
       }
       if (typeof giaTri !== 'string') {
