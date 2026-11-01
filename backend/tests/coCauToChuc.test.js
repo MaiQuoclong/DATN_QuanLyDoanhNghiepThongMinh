@@ -72,6 +72,20 @@ async function datLaiAutoIncrement() {
 }
 const maxId = (ds) => Math.max(0, ...ds.map((d) => d.id));
 
+// Tính quân số kỳ vọng trực tiếp từ CSDL (không đếm cứng theo seed):
+// soNhanVien = nhân viên chưa nghỉ việc của chính phòng; tongQuanSo = cộng cả cây phòng ban con.
+async function tinhQuanSoKyVong() {
+  const [pb] = await pool.query('SELECT id, maPhongBan, phongBanChaId FROM phongban');
+  const [dem] = await pool.query(
+    `SELECT cdpb.phongBanId AS id, COUNT(*) AS n FROM nhanvien nv
+     JOIN chucdanhphongban cdpb ON cdpb.id = nv.chucDanhPhongBanId
+     WHERE nv.trangThaiLamViec <> 'DA_NGHI_VIEC' GROUP BY cdpb.phongBanId`
+  );
+  const truc = Object.fromEntries(dem.map((d) => [d.id, Number(d.n)]));
+  const tong = (id) => (truc[id] || 0) + pb.filter((p) => p.phongBanChaId === id).reduce((s, p) => s + tong(p.id), 0);
+  return Object.fromEntries(pb.map((p) => [p.maPhongBan, { soNhanVien: truc[p.id] || 0, tongQuanSo: tong(p.id) }]));
+}
+
 beforeAll(async () => {
   const [moc] = await pool.execute('SELECT COALESCE(MAX(id), 0) AS moc FROM nhatkyhethong');
   mocNhatKyDau = moc[0].moc;
@@ -144,19 +158,24 @@ describe('Đọc cơ cấu tổ chức', () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ success: true, code: 200, message: expect.any(String) });
     const theoMa = Object.fromEntries(res.body.data.map((pb) => [pb.maPhongBan, pb]));
-    expect(Object.keys(theoMa).sort()).toEqual(['BGD', 'PKT', 'PKT-PT', 'PNS']);
-    expect(theoMa.BGD).toMatchObject({ soNhanVien: 1, tongQuanSo: 6, truongBoPhanId: 2, maTruongBoPhan: 'NV0002' });
-    expect(theoMa.PNS).toMatchObject({ soNhanVien: 1, tongQuanSo: 1, truongBoPhanId: null });
-    expect(theoMa.PKT).toMatchObject({ soNhanVien: 2, tongQuanSo: 4, truongBoPhanId: 3 });
-    expect(theoMa['PKT-PT']).toMatchObject({ soNhanVien: 2, tongQuanSo: 2, phongBanChaId: 3 });
+    const kyVong = await tinhQuanSoKyVong();
+    expect(Object.keys(theoMa).sort()).toEqual(Object.keys(kyVong).sort());
+    expect(Object.keys(theoMa)).toEqual(expect.arrayContaining(['BGD', 'PKD', 'PKT', 'PKT-PT', 'PNS']));
+    for (const ma of Object.keys(kyVong)) expect(theoMa[ma]).toMatchObject(kyVong[ma]);
+    expect(theoMa.BGD).toMatchObject({ truongBoPhanId: 2, maTruongBoPhan: 'NV0002' });
+    expect(theoMa.PNS).toMatchObject({ truongBoPhanId: null });
+    expect(theoMa.PKT).toMatchObject({ truongBoPhanId: 3 });
+    expect(theoMa.PKD).toMatchObject({ truongBoPhanId: 9, phongBanChaId: 1 });
+    expect(theoMa['PKT-PT']).toMatchObject({ phongBanChaId: 3 });
   });
 
   test('nhân viên đã nghỉ việc không tính vào quân số', async () => {
+    const truoc = await tinhQuanSoKyVong();
     await pool.execute("UPDATE nhanvien SET trangThaiLamViec = 'DA_NGHI_VIEC' WHERE id = 6");
     const res = await goi('get', '/phongBan', token.hr);
     const theoMa = Object.fromEntries(res.body.data.map((pb) => [pb.maPhongBan, pb]));
-    expect(theoMa.BGD.tongQuanSo).toBe(5);
-    expect(theoMa['PKT-PT'].soNhanVien).toBe(1);
+    expect(theoMa.BGD.tongQuanSo).toBe(truoc.BGD.tongQuanSo - 1);
+    expect(theoMa['PKT-PT'].soNhanVien).toBe(truoc['PKT-PT'].soNhanVien - 1);
   });
 
   test('lọc trangThai: sai giá trị 400, NGUNG_HOAT_DONG trả rỗng', async () => {
@@ -194,7 +213,10 @@ describe('Đọc cơ cấu tổ chức', () => {
   test('mọi vai trò xem danh sách chức danh', async () => {
     const res = await goi('get', '/chucDanh', token.nhanvien);
     expect(res.status).toBe(200);
-    expect(res.body.data.map((c) => c.maChucDanh)).toEqual(['CVNS', 'GD', 'LTV', 'QTHT', 'TP']);
+    const [ds] = await pool.query('SELECT maChucDanh FROM chucdanh');
+    const kyVong = ds.map((c) => c.maChucDanh).sort();
+    expect(kyVong).toEqual(expect.arrayContaining(['CVNS', 'GD', 'LTV', 'NVKD', 'PGD', 'QTHT', 'TP']));
+    expect([...res.body.data.map((c) => c.maChucDanh)].sort()).toEqual(kyVong);
     expect((await goi('get', '/chucDanh?trangThai=XYZ', token.nhanvien)).status).toBe(400);
   });
 
@@ -336,6 +358,18 @@ describe('Quản lý phòng ban (HR)', () => {
     expect((await doiTrangThai('phongBan', 1, 'PENDING')).status).toBe(400);
     expect((await goi('post', '/phongBan/1/doiTrangThai', token.hr).send({})).status).toBe(400);
     expect((await doiTrangThai('phongBan', 99999, 'NGUNG_HOAT_DONG')).status).toBe(404);
+  });
+
+  test('phòng con và cha đều ngừng: đổi tên phòng con gửi kèm phongBanChaId cũ vẫn 200', async () => {
+    const cha = await taoPhongBan();
+    const con = await taoPhongBan({ phongBanChaId: cha.id });
+    expect((await doiTrangThai('phongBan', con.id, 'NGUNG_HOAT_DONG')).status).toBe(200);
+    expect((await doiTrangThai('phongBan', cha.id, 'NGUNG_HOAT_DONG')).status).toBe(200);
+    const res = await goi('patch', `/phongBan/${con.id}`, token.hr).send({ tenPhongBan: 'Tên mới phòng con', phongBanChaId: cha.id });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ success: true, code: 200 });
+    expect(res.body.data).toMatchObject({ tenPhongBan: 'Tên mới phòng con', phongBanChaId: cha.id });
+    expect(await demNhatKy('SUA_PHONG_BAN', 4)).toBe(1);
   });
 
   test('không đổi cha sang phòng đang ngừng (409)', async () => {
@@ -584,6 +618,31 @@ describe('Bổ nhiệm / miễn nhiệm trưởng bộ phận (giamDoc)', () => 
     expect((await mienNhiem(4)).status).toBe(200);
     expect(await layVaiTro(5)).toEqual(['nhanVien', 'quanLy']);
     expect(await demNhatKy('TU_DONG_GO_QUAN_LY', 5)).toBe(0);
+  });
+
+  test('Admin chỉ thêm HR cho người được tự gán quanLy: không ghi DUOC_PHAN_QUYEN, miễn nhiệm vẫn tự gỡ quanLy', async () => {
+    expect((await boNhiem(4, 5)).status).toBe(200);
+    expect(await layVaiTro(5)).toEqual(['nhanVien', 'quanLy']);
+    const them = await goi('put', '/nguoiDung/5/vaiTro', token.admin).send({ vaiTro: ['nhanVien', 'quanLy', 'HR'] });
+    expect(them.status).toBe(200);
+    expect(await demNhatKy('DUOC_PHAN_QUYEN', 5)).toBe(0);
+    expect((await mienNhiem(4)).status).toBe(200);
+    expect(await layVaiTro(5)).toEqual(['HR', 'nhanVien']);
+    expect(await demNhatKy('TU_DONG_GO_QUAN_LY', 5)).toBe(1);
+  });
+
+  test('Admin chủ động gán quanLy sau khi được tự gán: miễn nhiệm không gỡ quanLy', async () => {
+    expect((await boNhiem(4, 5)).status).toBe(200);
+    // Sau lần tự gỡ, Admin chủ động gán quanLy (ghi DUOC_PHAN_QUYEN) -> lần miễn nhiệm sau không được gỡ
+    expect((await mienNhiem(4)).status).toBe(200);
+    expect(await layVaiTro(5)).toEqual(['nhanVien']);
+    const gan = await goi('put', '/nguoiDung/5/vaiTro', token.admin).send({ vaiTro: ['nhanVien', 'quanLy'] });
+    expect(gan.status).toBe(200);
+    expect(await demNhatKy('DUOC_PHAN_QUYEN', 5)).toBe(1);
+    expect((await boNhiem(4, 5)).status).toBe(200);
+    expect((await mienNhiem(4)).status).toBe(200);
+    expect(await layVaiTro(5)).toEqual(['nhanVien', 'quanLy']);
+    expect(await demNhatKy('TU_DONG_GO_QUAN_LY', 5)).toBe(1); // chỉ lần miễn nhiệm đầu
   });
 
   test('bổ nhiệm vào phòng ban đang ngừng trả 409', async () => {

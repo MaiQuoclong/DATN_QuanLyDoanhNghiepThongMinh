@@ -55,6 +55,11 @@ async function ganVaiTroDb(nguoiDungId, maVaiTro) {
     [nguoiDungId, maVaiTro]
   );
 }
+// Đếm từ CSDL để không phụ thuộc số lượng bản ghi seed
+async function demSql(sql, thamSo = []) {
+  const [dong] = await pool.execute(sql, thamSo);
+  return Number(dong[0].n);
+}
 function layCookie(res) {
   return (res.headers['set-cookie'] || []).find((c) => c.startsWith('smartHrmToken='));
 }
@@ -98,7 +103,8 @@ describe('GET /api/v1/nguoiDung', () => {
     const res = await goi('get', '/nguoiDung', await layToken('admin'));
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ success: true, code: 200, message: expect.any(String) });
-    expect(res.body.data.phanTrang).toEqual({ trang: 1, kichThuoc: 20, tongSo: 6 });
+    const tongSo = await demSql('SELECT COUNT(*) AS n FROM nguoidung');
+    expect(res.body.data.phanTrang).toEqual({ trang: 1, kichThuoc: 20, tongSo });
     const admin = res.body.data.items.find((x) => x.nguoiDungId === 1);
     expect(admin).toMatchObject({ tenDangNhap: 'admin', trangThai: 'DANG_HOAT_DONG', nhanVienId: 1 });
     expect(admin.vaiTro).toEqual(['Admin', 'nhanVien']);
@@ -125,15 +131,25 @@ describe('GET /api/v1/nguoiDung', () => {
     expect(khoa.body.data.items.map((x) => x.nguoiDungId)).toEqual([6]);
     expect(khoa.body.data.phanTrang.tongSo).toBe(1);
     const hr = await goi('get', '/nguoiDung?vaiTro=HR', token);
-    expect(hr.body.data.items.map((x) => x.nguoiDungId)).toEqual([4]);
+    const [dsHr] = await pool.execute(
+      "SELECT nv.nguoiDungId AS id FROM nguoidungvaitro nv JOIN vaitro v ON v.id = nv.vaiTroId WHERE v.maVaiTro = 'HR'"
+    );
+    const idHr = dsHr.map((d) => d.id).sort((a, b) => a - b);
+    expect(idHr).toEqual(expect.arrayContaining([4, 7]));
+    expect(hr.body.data.items.map((x) => x.nguoiDungId).sort((a, b) => a - b)).toEqual(idHr);
     const ketHop = await goi('get', '/nguoiDung?vaiTro=nhanVien&trangThai=DANG_HOAT_DONG', token);
-    expect(ketHop.body.data.phanTrang.tongSo).toBe(5);
+    const soKetHop = await demSql(
+      `SELECT COUNT(DISTINCT n.id) AS n FROM nguoidung n JOIN nguoidungvaitro nv ON nv.nguoiDungId = n.id
+       JOIN vaitro v ON v.id = nv.vaiTroId WHERE v.maVaiTro = 'nhanVien' AND n.trangThai = 'DANG_HOAT_DONG'`
+    );
+    expect(ketHop.body.data.phanTrang.tongSo).toBe(soKetHop);
   });
 
   test('phân trang trang=2&kichThuoc=2 và kichThuoc vượt 100 bị chặn về 100', async () => {
     const token = await layToken('admin');
     const res = await goi('get', '/nguoiDung?trang=2&kichThuoc=2', token);
-    expect(res.body.data.phanTrang).toEqual({ trang: 2, kichThuoc: 2, tongSo: 6 });
+    const tongSo = await demSql('SELECT COUNT(*) AS n FROM nguoidung');
+    expect(res.body.data.phanTrang).toEqual({ trang: 2, kichThuoc: 2, tongSo });
     expect(res.body.data.items.map((x) => x.nguoiDungId)).toEqual([3, 4]);
     const lon = await goi('get', '/nguoiDung?kichThuoc=500', token);
     expect(lon.body.data.phanTrang.kichThuoc).toBe(100);

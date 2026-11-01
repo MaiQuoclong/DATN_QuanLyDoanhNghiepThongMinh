@@ -109,6 +109,22 @@ describe('POST /api/v1/xacThuc/dangNhap', () => {
     expect(khong.body.message).toBe(sai.body.message);
   });
 
+  test('đăng nhập sai: tên không tồn tại không ghi chuỗi đã gõ, tên tồn tại vẫn ghi tenDangNhap=', async () => {
+    const chuoiLa = 'MatKhauGoNhamO_qa987';
+    expect((await dangNhap(chuoiLa, 'abcXYZ123')).status).toBe(401);
+    expect((await dangNhap('nhanvien2', 'SaiMatKhau1')).status).toBe(401);
+    const [dong] = await pool.execute(
+      "SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = 'DANG_NHAP_THAT_BAI' ORDER BY id",
+      [idNhatKyMoc]
+    );
+    await pool.execute("DELETE FROM nhatkyhethong WHERE id > ? AND hanhDong = 'DANG_NHAP_THAT_BAI'", [idNhatKyMoc]);
+    expect(dong).toHaveLength(2);
+    expect(dong[0].nguoiDungId).toBeNull();
+    expect(dong[0].chiTiet ?? '').not.toContain(chuoiLa);
+    expect(dong[1].nguoiDungId).toBe(ID_NHANVIEN2);
+    expect(dong[1].chiTiet).toContain('tenDangNhap=nhanvien2');
+  });
+
   test.each([
     [{ matKhau: MAT_KHAU }],
     [{ tenDangNhap: 'admin' }],
