@@ -55,6 +55,7 @@ Mỗi service có `.env.example` (commit) và `.env` (không commit).
 4. Mỗi lần sửa code: tóm tắt file đã đổi và xác nhận không lệch schema.
 
 ## Quản lý context
+- Sau mỗi bước hoàn thành (code xong, reviewer xong, qa-tester xong), Claude tự cập nhật `docs/progress.md` (mục "Đang làm & việc tiếp theo", tiến độ, bảng API, số test) mà không đợi nhắc, để clear lịch sử bất cứ lúc nào vẫn làm tiếp được.
 - Khi hội thoại đã dài (nhiều file lớn đã đọc, nhiều vòng sửa) hoặc ngay sau khi xong một module, nhắc người dùng chạy `/context` để kiểm tra mức dùng token.
 - Nếu người dùng báo context ≥ 70%: tóm tắt trạng thái hiện tại (đang làm gì, file đã đổi, việc còn lại), cập nhật `docs/progress.md`, rồi đề xuất `/compact` hoặc mở phiên mới.
 ## Git Workflow & Branching Strategy (Quy trình quản lý mã nguồn Git)
