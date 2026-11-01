@@ -89,7 +89,9 @@ async function dangNhap(tenDangNhap, matKhau, diaChiIP) {
   const taiKhoan = await nguoiDungRepository.timDeDangNhap(tenDangNhap);
   const dungMatKhau = await bcrypt.compare(matKhau, taiKhoan?.matKhauMaHoa ?? HASH_GIA);
   if (!taiKhoan || !dungMatKhau) {
-    await ghiNhatKy(taiKhoan?.id ?? null, 'DANG_NHAP_THAT_BAI', diaChiIP, `tenDangNhap=${tenDangNhap}`);
+    await ghiNhatKy(taiKhoan?.id ?? null, 'DANG_NHAP_THAT_BAI', diaChiIP, 
+      // Chỉ ghi tên khi tài khoản tồn tại: chuỗi lạ có thể là mật khẩu gõ nhầm ô
+      taiKhoan ? `tenDangNhap=${tenDangNhap}` : 'tenDangNhap không tồn tại');
     throw new LoiUngDung(401, 'Tên đăng nhập hoặc mật khẩu không đúng');
   }
   if (taiKhoan.trangThai !== 'DANG_HOAT_DONG') {

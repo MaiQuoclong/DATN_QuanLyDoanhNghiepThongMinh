@@ -85,7 +85,10 @@ const COT_CHE_SO = ['soTaiKhoanNganHang', 'soDienThoai'];
 const COT_CHI_GHI_TEN = ['diaChi', 'tenNganHang'];
 function moTaThayDoi(hoSoCu, truong) {
   const che = (giaTri) => (giaTri ? `****${String(giaTri).slice(-4)}` : 'trống');
-  return Object.keys(truong).map((cot) => {
+  // Bỏ trường gửi lên nhưng giữ nguyên giá trị cũ để nhật ký không ghi sai "đã thay đổi"
+  const cotDoi = Object.keys(truong).filter((cot) => String(hoSoCu[cot] ?? '') !== String(truong[cot] ?? ''));
+  if (cotDoi.length === 0) return 'không có trường nào thay đổi';
+  return cotDoi.map((cot) => {
     if (COT_CHE_SO.includes(cot)) return `${cot}: ${che(hoSoCu[cot])} -> ${che(truong[cot])}`;
     if (COT_CHI_GHI_TEN.includes(cot)) return `${cot}: đã thay đổi`;
     return `${cot}: ${hoSoCu[cot] ?? 'trống'} -> ${truong[cot] ?? 'trống'}`;

@@ -133,8 +133,9 @@ async function capNhatVaiTro(nguoiDung, nguoiDungId, dsVaiTro, diaChiIP) {
     }
     const chiTiet = `${tk.tenDangNhap}: ${vaiTroCu.join(',') || 'trống'} -> ${ds.join(',')}`;
     await themNhatKy(nguoiDung.nguoiDungId, 'PHAN_QUYEN', diaChiIP, chiTiet, ketNoi);
-    // Ghi theo người bị tác động: đánh dấu vai trò do Admin quyết định -> luồng miễn nhiệm không tự gỡ quanLy
-    await themNhatKy(nguoiDungId, 'DUOC_PHAN_QUYEN', diaChiIP, `${ds.join(',')} bởi nguoiDungId=${nguoiDung.nguoiDungId}`, ketNoi);
+    // Ghi theo người bị tác động: đánh dấu vai trò do Admin quyết định -> luồng miễn nhiệm không tự gỡ quanLy.
+    // Chỉ ghi khi Admin thực sự thêm/gỡ quanLy, đổi vai trò khác không làm mất cơ chế tự gỡ khi miễn nhiệm.
+    if (vaiTroCu.includes('quanLy') !== vaiTroMoi.has('quanLy')) await themNhatKy(nguoiDungId, 'DUOC_PHAN_QUYEN', diaChiIP, `${ds.join(',')} bởi nguoiDungId=${nguoiDung.nguoiDungId}`, ketNoi);
   });
   return layTaiKhoan(nguoiDungId);
 }

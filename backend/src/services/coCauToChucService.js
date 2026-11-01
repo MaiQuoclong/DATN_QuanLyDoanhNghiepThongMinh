@@ -106,7 +106,8 @@ async function suaPhongBan(nguoiDung, id, body, diaChiIP) {
 
   await chayTransaction(async (ketNoi) => {
     const phongBan = await khoaPhongBanHoacLoi(id, ketNoi);
-    if (truong.phongBanChaId) {
+    // Chỉ kiểm tra khi thật sự đổi phòng cha (phòng cha cũ có thể đã ngừng hoạt động)
+    if (truong.phongBanChaId && truong.phongBanChaId !== phongBan.phongBanChaId) {
       // Chống vòng: phòng ban cha mới không được là chính nó hoặc con cháu của nó
       const conChau = await phongBanRepository.layPhongBanConChau(id, ketNoi);
       if (truong.phongBanChaId === id || conChau.includes(truong.phongBanChaId)) {
