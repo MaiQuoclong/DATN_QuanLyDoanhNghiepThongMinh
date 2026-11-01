@@ -18,6 +18,8 @@ const BANG_TRANG_THAI = {
   NGUNG_HOAT_DONG: ['Ngừng hoạt động', 'xam'],
   NGUNG_AP_DUNG: ['Ngừng áp dụng', 'xam'],
   BAN_NHAP: ['Bản nháp', 'xam'],
+  HET_HAN: ['Hết hạn', 'cam'],
+  DA_CHAM_DUT: ['Đã chấm dứt', 'xam'],
 };
 
 // kieu: 'cham' (chấm tròn + chữ, dùng trong bảng) | 'chip' (nền nhạt, dùng ở header)

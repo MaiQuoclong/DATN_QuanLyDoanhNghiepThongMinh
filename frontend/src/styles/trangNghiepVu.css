@@ -1,0 +1,205 @@
+/* Lớp dùng chung cho các trang nghiệp vụ: đầu trang, biểu mẫu, lưới thông tin, tab gạch chân */
+textarea {
+  font: inherit;
+}
+
+.dauTrangNghiepVu {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.hangNutPhai {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bieuMau {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+
+.bieuMau .rongHet {
+  grid-column: 1 / -1;
+}
+
+.truongForm {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mauChuPhu);
+}
+
+.truongForm input,
+.truongForm select,
+.truongForm textarea {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--mauVien);
+  border-radius: 8px;
+  background: var(--mauThe);
+  color: var(--mauChu);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.truongForm textarea {
+  height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.truongForm input:focus,
+.truongForm select:focus,
+.truongForm textarea:focus {
+  outline: none;
+  border-color: var(--mauChinh);
+  box-shadow: 0 0 0 3px var(--mauChinhNhat);
+}
+
+.thongBao {
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.thongBao.loi { background: var(--mauLoiNhat); color: var(--mauLoi); }
+.thongBao.thanhCong { background: var(--mauThanhCongNhat); color: var(--mauThanhCong); }
+.thongBao.canhBao { background: var(--mauCanhBaoNhat); color: #92400e; }
+
+.theNoiDung {
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.dauThe {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.dauThe h3 {
+  font-size: 15px;
+}
+
+.luoiThongTin {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px 20px;
+}
+
+.oThongTin span {
+  display: block;
+  font-size: 12px;
+  color: var(--mauChuPhu);
+}
+
+.oThongTin strong {
+  display: block;
+  margin-top: 2px;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.luoiHaiCot {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tabGachChan {
+  display: flex;
+  gap: 18px;
+  border-bottom: 1px solid var(--mauVien);
+  margin-bottom: 16px;
+}
+
+.tabGachChan button {
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--mauChuPhu);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tabGachChan button.dangChon {
+  color: var(--mauChinh);
+  border-bottom-color: var(--mauChinh);
+}
+
+.lienKet {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mauChinh);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+
+.chuPhu {
+  color: var(--mauChuPhu);
+  font-size: 12px;
+}
+
+.matKhauTam {
+  display: inline-block;
+  padding: 6px 12px;
+  margin: 6px 0;
+  border-radius: 8px;
+  background: var(--mauNen);
+  font-family: Consolas, monospace;
+  font-size: 16px;
+  letter-spacing: 1px;
+  user-select: all;
+}
+
+.dauHoSo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.avatarLon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--mauChinhNhat);
+  color: var(--mauChinh);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.danhSachChon {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.danhSachChon label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .bieuMau,
+  .luoiHaiCot {
+    grid-template-columns: 1fr;
+  }
+}
