@@ -2,22 +2,24 @@
 
 ## Tiến độ
 - [x] Khởi tạo CSDL 25 bảng & phân quyền RBAC 5 nhóm (`Admin`, `giamDoc`, `quanLy`, `HR`, `nhanVien`) — đã làm: đăng nhập/đổi mật khẩu/đăng xuất (JWT), middleware `xacThucJwt` + `phanQuyen` + `kiemTraDuLieu`, khung giao diện (đăng nhập, đổi mật khẩu, bố cục, tuyến bảo vệ). Test: `backend/tests/xacThuc.test.js` (pass; token thiếu/sai `nguoiDungId` đã sửa → 401). Quản trị tài khoản (`/api/v1/nguoiDung`): danh sách, cấp mật khẩu tạm, khóa/mở, gán vai trò, nhật ký hệ thống — test `backend/tests/nguoiDung.test.js` (94 test, pass; gồm cookie httpOnly, `X-Tra-Token`, chặn Origin lạ).
-- [ ] Module Hồ sơ nhân sự, Trạng thái lao động & Hợp đồng
+- [x] Module Hồ sơ nhân sự, Trạng thái lao động & Hợp đồng (backend + frontend + seed, 2026-11-01)
   - [x] Hồ sơ nhân sự & trạng thái lao động (`/api/v1/nhanVien`) — test `backend/tests/nhanVien.test.js` (130 test, pass). Toàn backend 316/316 pass (2026-11-01, `npm test` hai lần + `npx jest --runInBand --randomize`).
   - [x] Cơ cấu tổ chức (`/api/v1/phongBan`, `/chucDanh`, `/chucDanhPhongBan`, bổ nhiệm/miễn nhiệm) — test `backend/tests/coCauToChuc.test.js` (101 test, pass). Toàn backend 417/417 pass (2026-11-01, `npm test` hai lần + `npm test -- --randomize`, seed 395550296).
-  - [ ] Hợp đồng lao động
+  - [x] Hợp đồng lao động (`/api/v1/hopDong`) — test `backend/tests/hopDong.test.js` (96 test, pass). Sau đợt sửa lỗi reviewer: toàn backend 519/519 pass (2026-11-01, `npm test` + `npx jest --runInBand --randomize` seed -457478370; thêm test: chồng lấn với hợp đồng DA_CHAM_DUT, DUOC_PHAN_QUYEN chỉ khi đổi quanLy, sửa phòng con khi cha ngừng, nhật ký chỉ ghi trường đổi, DANG_NHAP_THAT_BAI không ghi chuỗi lạ). Trước đó 512/512 pass (2026-11-01, `npm test` hai lần + `npm test -- --randomize`, seed -574257199) trên CSDL vừa dựng lại bằng `npm run khoiTaoCsdl`. Test đặt ngày hợp đồng mẫu 6, 7 tương đối theo hôm nay ở `beforeEach` (seed dùng ngày cố định).
+  - [x] Frontend module: Hồ sơ của tôi, Danh sách/Chi tiết nhân viên (`/nhanSu/danhSach/:id`), Hợp đồng (cảnh báo hết hạn, lịch sử, thao tác HR), Phòng ban (cây + vị trí + chức danh, bổ nhiệm), Hệ thống: Tài khoản (chỉ Admin), Nhật ký. `vite build` pass; chưa kiểm thử tự động giao diện.
 - [ ] Module Chấm công, Đơn từ hành chính & Lương
 - [ ] Module Đánh giá KPI, Khen thưởng & Kỷ luật
 - [ ] Tầng AI Agent: RAG quy chế, Function Calling tạo đơn, Text-to-SQL báo cáo
 
 ## Đang làm & việc tiếp theo (cập nhật 2026-11-01)
-- Nhánh hiện tại: `feature/ho-so-nhan-su` (chưa commit; người dùng tự commit/push theo CLAUDE.md).
+- Nhánh hiện tại: `feature/ho-so-nhan-su` — module 2 xong, chờ người dùng thử trên web (`npm run dev` ở backend + frontend), commit, PR về `develop`, rồi PR `develop` → `main` (xong trọn module).
 - Quy trình: xong MỖI chức năng → `reviewer` toàn project → sửa lỗi → `qa-tester` toàn project → sửa lỗi → mới làm chức năng kế tiếp.
-- Thứ tự còn lại của module này:
-  1. **Hợp đồng lao động** (đang bắt đầu, chưa viết code): `hopdonglaodong` + `lichsuhopdong` trong một transaction (tạo, gia hạn, điều chỉnh, chấm dứt — HR trừ mình); xem hợp đồng & lịch sử (mình; HR, giamDoc); cảnh báo sắp hết hạn (HR, giamDoc). Không cho quanLy/Admin xem hợp đồng người khác (quy tắc 6). Cần đọc schema `lichsuhopdong` trước khi làm.
-  2. **Frontend module**: danh sách/chi tiết nhân viên, sơ đồ tổ chức, quản trị tài khoản (Admin), hợp đồng; đối chiếu `docs/design-system.md`.
-  3. **Bổ sung `database/seed.sql`**: dữ liệu mẫu hợp đồng (+ lịch sử) đủ demo 5 vai trò, chạy lại `npm run khoiTaoCsdl` + `npm test`.
-  4. Reviewer + qa-tester lượt cuối, tick module, đưa hướng dẫn commit/PR về `develop`.
+- Review lượt 2 (toàn project) đã sửa: chồng lấn với hợp đồng chấm dứt ở tương lai, DUOC_PHAN_QUYEN chỉ ghi khi đổi quanLy, đổi tên phòng ban khi phòng cha đã ngừng, nhật ký chỉ ghi trường thật sự đổi, không lưu tenDangNhap lạ khi đăng nhập sai. Backend 519/519 (cả randomize).
+- Seed mở rộng nhiều người/vai trò (hr2 NV0007, giamdoc2 NV0008, quanly2 NV0009 trưởng PKD, nhanvien3 NV0010; hợp đồng 8-11): test đã bỏ đếm cứng, giá trị kỳ vọng tính từ CSDL (COUNT, MAX mã NV, quân số theo cây phòng ban). Thêm 8 test "Nhiều người cùng vai trò" trong `nhanVien.test.js` (quanly2 chỉ thấy PKD, quanly không thấy PKD, hr/hr2 sửa hồ sơ lẫn nhau, giamdoc2 xem toàn công ty). Backend 529/529 pass (2026-11-01, `npm test` + `npx jest --runInBand --randomize` seed 34658132).
+- Tồn đọng (chưa sửa, chờ quyết định): form lập hợp đồng nhập `nhanVienId` thay vì ô chọn nhân viên; nút "Cấp mật khẩu tạm" hiện với tài khoản cấp cao; sửa vị trí/chức danh gọi 2 API không nguyên tử; ứng viên bổ nhiệm tối đa 100; tài khoản quanLy có sẵn trong seed (`quanly`, `quanly2`) không có nhật ký TU_DONG_GAN_QUAN_LY nên miễn nhiệm không tự gỡ quanLy (đúng thiết kế; demo luồng tự gỡ thì bổ nhiệm người mới).
+- Seed (review lượt 3): mỗi vai trò ≥ 2 người (thêm hr2, giamdoc2, quanly2 - trưởng PKD, nhanvien3); lịch sử hợp đồng lập trước khi HR vào làm do giám đốc NV0002 thực hiện. Backend 529/529 (randomize) trên DB dựng lại.
+- Tiếp theo: Module Chấm công, Đơn từ hành chính & Lương — nhánh `feature/cham-cong` từ `develop`.
+- Frontend: tab Tài khoản chỉ Admin (API `/nguoiDung` chỉ Admin); HR cấp mật khẩu tạm trong chi tiết nhân viên. Trang mới đăng ký trong `TRANG_DA_LAM` / `TRANG_CON` ở `frontend/src/App.jsx`.
 
 ## Danh sách API đã hoàn thành
 | Method | Endpoint | Vai trò | Mô tả |
@@ -56,8 +58,17 @@
 | PATCH | `/api/v1/nhanVien/:id` | HR (trừ mình) | Sửa thông tin hồ sơ; log `SUA_NHAN_VIEN` |
 | POST | `/api/v1/nhanVien/:id/doiTrangThai` | HR (trừ mình) | `{trangThaiLamViec, lyDo}`; `DA_NGHI_VIEC` → khóa tài khoản (409 nếu đang là trưởng bộ phận), quay lại → mở khóa; log `DOI_TRANG_THAI_LAM_VIEC` |
 | POST | `/api/v1/nhanVien/:id/dieuChuyen` | HR (trừ mình) | `{chucDanhPhongBanId, lyDo}`; kiểm tra định biên, chặn trưởng bộ phận rời phòng; log `DIEU_CHUYEN_NHAN_VIEN` |
+| GET | `/api/v1/hopDong` | HR, giamDoc | `?tuKhoa&nhanVienId&loaiHopDong&trangThai(HIEU_LUC/HET_HAN/DA_CHAM_DUT)&trang&kichThuoc`; tham số sai 400 |
+| GET | `/api/v1/hopDong/cuaToi` | Mọi vai trò | Hợp đồng của mình, mới nhất trước |
+| GET | `/api/v1/hopDong/sapHetHan` | HR, giamDoc | `?soNgay` (mặc định 30, tối đa 365) → `{soNgay, items[soNgayConLai]}`; bỏ người `DA_NGHI_VIEC` và hợp đồng đã có hợp đồng nối tiếp |
+| GET | `/api/v1/hopDong/:id` | Chính chủ; HR, giamDoc | Kèm `lichSu[]` (mới nhất trước); Admin/quanLy xem người khác 403 |
+| POST | `/api/v1/hopDong` | HR (trừ mình) | `{nhanVienId, loaiHopDong, ngayBatDau, ngayKetThuc?, luongCoBan>0, mucPhuCap?, duongDanFileHopDong?, lyDo?}` → 201, mã `HDyyyy-xxxx` theo năm `ngayBatDau`; chồng lấn 409, nghỉ việc 409; log `THEM_HOP_DONG` + lịch sử `TAO_MOI` |
+| POST | `/api/v1/hopDong/:id/giaHan` | HR (trừ mình) | `{ngayKetThucMoi, lyDo?}`; chỉ XĐTH đang hiệu lực (409), ngày mới > ngày cũ (400), ≤36 tháng; log `GIA_HAN_HOP_DONG` |
+| POST | `/api/v1/hopDong/:id/dieuChinh` | HR (trừ mình) | `{luongCoBan?, mucPhuCap?, duongDanFileHopDong?, lyDo}`; không đổi gì 400; chỉ `HIEU_LUC`; log `DIEU_CHINH_HOP_DONG` |
+| POST | `/api/v1/hopDong/:id/chamDut` | HR (trừ mình) | `{ngayChamDut, lyDo}`; ngày trong [bắt đầu, kết thúc]; đã chấm dứt 409; log `CHAM_DUT_HOP_DONG` |
 
 ## Biến môi trường & lưu ý kỹ thuật
+- **Hợp đồng:** `HET_HAN` không lưu, suy ra khi đọc (`HIEU_LUC` + `ngayKetThuc < CURDATE()`); API trả `trangThai` (suy ra) và `trangThaiLuu`; `lichsuhopdong.trangThaiCu` ghi giá trị lưu thật. THU_VIEC ≤180 ngày, XĐTH ≤36 tháng (bắt buộc ngày kết thúc), KXĐ không có ngày kết thúc; ngày bắt đầu ≥ ngày vào làm và ≤ hôm nay+180. Chồng lấn chỉ xét hợp đồng `HIEU_LUC` (khóa dòng `nhanvien` trước rồi tới hợp đồng). Mã trùng do gap lock thì service thử lại tối đa 3 lần. Test rollback mock `hopDongRepository.themLichSu`; `themNhatKy` được destructure trong service nên `jest.spyOn` trên module nhật ký không có tác dụng.
 - CSDL là MariaDB 10.4 (XAMPP), không phải SQL Server. Schema: `database/schema.sql`.
 - Tên database viết thường: `quanlydoanhnghiepthongminh`.
 - Bảng mở rộng `dexuatkhenthuongkyluat` (2026-10-29) cho luồng quanLy đề xuất khen thưởng/kỷ luật. Ma trận quyền: `docs/phan-quyen.md`.
