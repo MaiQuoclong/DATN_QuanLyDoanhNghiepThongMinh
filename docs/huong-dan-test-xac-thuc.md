@@ -116,7 +116,7 @@ DELETE FROM nhatkyhethong WHERE nguoiDungId = 6 AND hanhDong = 'RESET_MAT_KHAU_T
 
 ### A7. Tài khoản bị khóa
 ```sql
-UPDATE nguoidung SET trangThai = 'BI_KHOA' WHERE id = 6;
+UPDATE nguoidung SET trangThai = 'KHOA' WHERE id = 6;
 ```
 | # | Thao tác | Kết quả |
 |---|---|---|

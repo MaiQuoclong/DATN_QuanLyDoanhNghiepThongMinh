@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { NhaCungCapXacThuc } from './context/NguCanhXacThuc';
 import './styles/bienMau.css';
+import './styles/trangNghiepVu.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

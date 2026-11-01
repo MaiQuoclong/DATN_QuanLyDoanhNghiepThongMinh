@@ -28,7 +28,7 @@ let hashGoc;
 let idNhatKyMoc;
 
 function dangNhap(tenDangNhap, matKhau = MAT_KHAU) {
-  return request(app).post('/api/v1/xacThuc/dangNhap').send({ tenDangNhap, matKhau });
+  return request(app).post('/api/v1/xacThuc/dangNhap').set('X-Tra-Token', '1').send({ tenDangNhap, matKhau });
 }
 async function layToken(tenDangNhap) {
   const res = await dangNhap(tenDangNhap);
@@ -109,25 +109,41 @@ describe('POST /api/v1/xacThuc/dangNhap', () => {
     expect(khong.body.message).toBe(sai.body.message);
   });
 
+  test('đăng nhập sai: tên không tồn tại không ghi chuỗi đã gõ, tên tồn tại vẫn ghi tenDangNhap=', async () => {
+    const chuoiLa = 'MatKhauGoNhamO_qa987';
+    expect((await dangNhap(chuoiLa, 'abcXYZ123')).status).toBe(401);
+    expect((await dangNhap('nhanvien2', 'SaiMatKhau1')).status).toBe(401);
+    const [dong] = await pool.execute(
+      "SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = 'DANG_NHAP_THAT_BAI' ORDER BY id",
+      [idNhatKyMoc]
+    );
+    await pool.execute("DELETE FROM nhatkyhethong WHERE id > ? AND hanhDong = 'DANG_NHAP_THAT_BAI'", [idNhatKyMoc]);
+    expect(dong).toHaveLength(2);
+    expect(dong[0].nguoiDungId).toBeNull();
+    expect(dong[0].chiTiet ?? '').not.toContain(chuoiLa);
+    expect(dong[1].nguoiDungId).toBe(ID_NHANVIEN2);
+    expect(dong[1].chiTiet).toContain('tenDangNhap=nhanvien2');
+  });
+
   test.each([
     [{ matKhau: MAT_KHAU }],
     [{ tenDangNhap: 'admin' }],
     [{ tenDangNhap: '   ', matKhau: MAT_KHAU }],
     [{}],
   ])('thiếu trường %j trả 400', async (body) => {
-    const res = await request(app).post('/api/v1/xacThuc/dangNhap').send(body);
+    const res = await request(app).post('/api/v1/xacThuc/dangNhap').set('X-Tra-Token', '1').send(body);
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({ success: false, code: 400, data: null });
   });
 
   test('trường không phải chuỗi trả 400', async () => {
-    const res = await request(app).post('/api/v1/xacThuc/dangNhap').send({ tenDangNhap: 123, matKhau: MAT_KHAU });
+    const res = await request(app).post('/api/v1/xacThuc/dangNhap').set('X-Tra-Token', '1').send({ tenDangNhap: 123, matKhau: MAT_KHAU });
     expect(res.status).toBe(400);
   });
 
   test('tài khoản bị khóa: đăng nhập trả 403, token đang dùng bị từ chối 401', async () => {
     const token = await layToken('nhanvien2');
-    await pool.execute("UPDATE nguoidung SET trangThai = 'BI_KHOA' WHERE id = ?", [ID_NHANVIEN2]);
+    await pool.execute("UPDATE nguoidung SET trangThai = 'KHOA' WHERE id = ?", [ID_NHANVIEN2]);
     const res = await dangNhap('nhanvien2');
     expect(res.status).toBe(403);
     expect(res.body).toMatchObject({ success: false, code: 403, data: null });
@@ -191,13 +207,74 @@ describe('GET /api/v1/xacThuc/toi', () => {
   });
 });
 
+describe('Token bất thường (bổ sung)', () => {
+  const goiToi = (tk) => request(app).get('/api/v1/xacThuc/toi').set('Authorization', `Bearer ${tk}`);
+
+  test('token hợp lệ nhưng người dùng không còn tồn tại trả 401', async () => {
+    const tk = jwt.sign({ nguoiDungId: 999999 }, process.env.JWT_BI_MAT, { algorithm: 'HS256' });
+    const res = await goiToi(tk);
+    expect(res.status).toBe(401);
+    expect(res.body).toMatchObject({ success: false, code: 401, data: null });
+  });
+
+  test('token thuật toán none (không chữ ký) trả 401', async () => {
+    const tk = jwt.sign({ nguoiDungId: 1 }, null, { algorithm: 'none' });
+    expect((await goiToi(tk)).status).toBe(401);
+  });
+
+  test('token ký đúng bí mật nhưng thuật toán HS512 (ngoài danh sách cho phép) trả 401', async () => {
+    const tk = jwt.sign({ nguoiDungId: 1 }, process.env.JWT_BI_MAT, { algorithm: 'HS512' });
+    expect((await goiToi(tk)).status).toBe(401);
+  });
+
+  // kiemTraPhien kiểm tra nguoiDungId phải là số nguyên dương (đã sửa sau review lần 2)
+  test.each([
+    ['thiếu nguoiDungId', { abc: 1 }],
+    ['nguoiDungId là chuỗi "1"', { nguoiDungId: '1' }],
+    ['nguoiDungId là số âm', { nguoiDungId: -1 }],
+    ['nguoiDungId bằng 0', { nguoiDungId: 0 }],
+    ['nguoiDungId là số thực', { nguoiDungId: 1.5 }],
+  ])('token ký đúng bí mật nhưng %s trả 401 chuẩn (không phải 500)', async (_ten, payload) => {
+    const tk = jwt.sign(payload, process.env.JWT_BI_MAT, { algorithm: 'HS256' });
+    const res = await goiToi(tk);
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ success: false, code: 401, message: 'Token không hợp lệ', data: null });
+  });
+
+  test('token có nbf trong tương lai trả 401', async () => {
+    const tk = jwt.sign({ nguoiDungId: 1 }, process.env.JWT_BI_MAT, { algorithm: 'HS256', notBefore: 3600 });
+    expect((await goiToi(tk)).status).toBe(401);
+  });
+
+  test("tài khoản trạng thái 'KHOA' (do nghỉ việc) cũng bị chặn đăng nhập 403 và token 401", async () => {
+    const tk = await layToken('nhanvien2');
+    await pool.execute("UPDATE nguoidung SET trangThai = 'KHOA' WHERE id = ?", [ID_NHANVIEN2]);
+    expect((await dangNhap('nhanvien2')).status).toBe(403);
+    expect((await goiToi(tk)).status).toBe(401);
+  });
+
+  test('mật khẩu tạm chặn cả route nghiệp vụ thật (/nhanVien/toi) với 403', async () => {
+    await chenResetMatKhauTam(ID_NHANVIEN2);
+    const tk = (await dangNhap('nhanvien2')).body.data.token;
+    const res = await request(app).get('/api/v1/nhanVien/toi').set('Authorization', `Bearer ${tk}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('đa vai trò trên route thật: quanly (quanLy + nhanVien) dùng được cả route quanLy và route cá nhân', async () => {
+    const tk = await layToken('quanly');
+    expect((await request(app).get('/api/v1/nhanVien').set('Authorization', `Bearer ${tk}`)).status).toBe(200);
+    expect((await request(app).get('/api/v1/nhanVien/toi').set('Authorization', `Bearer ${tk}`)).status).toBe(200);
+    expect((await request(app).post('/api/v1/nhanVien').set('Authorization', `Bearer ${tk}`).send({})).status).toBe(403);
+  });
+});
+
 describe('POST /api/v1/xacThuc/doiMatKhau', () => {
   const doi = (token, body) =>
-    request(app).post('/api/v1/xacThuc/doiMatKhau').set('Authorization', `Bearer ${token}`).send(body);
+    request(app).post('/api/v1/xacThuc/doiMatKhau').set('X-Tra-Token', '1').set('Authorization', `Bearer ${token}`).send(body);
 
   test('không có token trả 401', async () => {
     const res = await request(app)
-      .post('/api/v1/xacThuc/doiMatKhau')
+      .post('/api/v1/xacThuc/doiMatKhau').set('X-Tra-Token', '1')
       .send({ matKhauCu: MAT_KHAU, matKhauMoi: MAT_KHAU_MOI });
     expect(res.status).toBe(401);
   });
@@ -261,7 +338,7 @@ describe('Luồng mật khẩu tạm (RESET_MAT_KHAU_TAM)', () => {
     await chenResetMatKhauTam(ID_NHANVIEN2);
     const token = (await dangNhap('nhanvien2')).body.data.token;
     const doi = await request(app)
-      .post('/api/v1/xacThuc/doiMatKhau')
+      .post('/api/v1/xacThuc/doiMatKhau').set('X-Tra-Token', '1')
       .set('Authorization', `Bearer ${token}`)
       .send({ matKhauCu: MAT_KHAU, matKhauMoi: MAT_KHAU_MOI });
     expect(doi.status).toBe(200);
@@ -305,8 +382,14 @@ describe('POST /api/v1/xacThuc/dangXuat', () => {
     expect(Number(dong[0].n)).toBe(1);
   });
 
-  test('không có token trả 401', async () => {
-    expect((await request(app).post('/api/v1/xacThuc/dangXuat')).status).toBe(401);
+  // Đăng xuất luôn xóa cookie, kể cả khi token đã hỏng/bị thu hồi (máy dùng chung không còn cookie cũ)
+  test('không có token hoặc token hỏng vẫn trả 200 và xóa cookie', async () => {
+    for (const cookie of [undefined, 'smartHrmToken=abc.def.ghi', 'smartHrmToken=%E0']) {
+      const yeuCau = request(app).post('/api/v1/xacThuc/dangXuat');
+      const res = cookie ? await yeuCau.set('Cookie', cookie) : await yeuCau;
+      expect(res.status).toBe(200);
+      expect(String(res.headers['set-cookie'])).toMatch(/smartHrmToken=;/);
+    }
   });
 });
 

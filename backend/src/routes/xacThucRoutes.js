@@ -3,7 +3,7 @@ const { rateLimit } = require('express-rate-limit');
 const batLoiBatDongBo = require('../utils/batLoiBatDongBo');
 const { thatBai } = require('../utils/phanHoi');
 const kiemTraDuLieu = require('../middlewares/kiemTraDuLieu');
-const { xacThucJwtChoMatKhauTam } = require('../middlewares/xacThucJwt');
+const { xacThucJwtChoMatKhauTam, xacThucJwtTuyChon } = require('../middlewares/xacThucJwt');
 const xacThucController = require('../controllers/xacThucController');
 
 const router = express.Router();
@@ -63,6 +63,6 @@ router.post(
   batLoiBatDongBo(xacThucController.doiMatKhau)
 );
 
-router.post('/dangXuat', xacThucJwtChoMatKhauTam, batLoiBatDongBo(xacThucController.dangXuat));
+router.post('/dangXuat', xacThucJwtTuyChon, batLoiBatDongBo(xacThucController.dangXuat));
 
 module.exports = router;

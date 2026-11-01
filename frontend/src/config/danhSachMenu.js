@@ -78,9 +78,10 @@ const danhSachMenu = [
     duongDan: '/heThong',
     ten: 'Hệ thống',
     bieuTuong: ShieldCheck,
-    vaiTro: ['Admin', 'giamDoc', 'HR'],
+    vaiTro: ['Admin', 'giamDoc'],
     tab: [
-      { duongDan: 'taiKhoan', ten: 'Tài khoản', vaiTro: ['Admin', 'HR'] },
+      // Danh sách tài khoản chỉ Admin; HR cấp mật khẩu tạm ngay trong hồ sơ nhân viên
+      { duongDan: 'taiKhoan', ten: 'Tài khoản', vaiTro: ['Admin'] },
       { duongDan: 'nhatKy', ten: 'Nhật ký', vaiTro: ['Admin', 'giamDoc'] },
     ],
   },

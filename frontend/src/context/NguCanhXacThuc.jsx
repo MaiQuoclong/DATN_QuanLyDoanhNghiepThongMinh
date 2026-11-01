@@ -1,57 +1,53 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import goiApi, { KHOA_TOKEN, SU_KIEN_HET_PHIEN } from '../services/goiApi';
+import goiApi, { SU_KIEN_CAN_DOI_MAT_KHAU, SU_KIEN_HET_PHIEN } from '../services/goiApi';
 
 const NguCanhXacThuc = createContext(null);
 
-// Giữ token + thông tin người dùng; F5 thì gọi lại /xacThuc/toi để khôi phục phiên
+// Giữ thông tin người dùng; token nằm trong cookie httpOnly nên client không lưu.
+// Mở trang / F5 thì gọi /xacThuc/toi: còn cookie hợp lệ -> khôi phục phiên, không thì về đăng nhập.
 export function NhaCungCapXacThuc({ children }) {
   const [nguoiDung, setNguoiDung] = useState(null);
-  const [dangTai, setDangTai] = useState(() => Boolean(localStorage.getItem(KHOA_TOKEN)));
+  const [dangTai, setDangTai] = useState(true);
 
-  const xoaPhien = useCallback(() => {
-    localStorage.removeItem(KHOA_TOKEN);
-    setNguoiDung(null);
-  }, []);
+  const xoaPhien = useCallback(() => setNguoiDung(null), []);
 
-  // Báo backend ghi DANG_XUAT; lỗi mạng cũng không chặn việc đăng xuất ở client
-  const dangXuat = useCallback(() => {
-    // Gắn token tại đây vì interceptor chạy sau khi xoaPhien đã xóa localStorage
-    const token = localStorage.getItem(KHOA_TOKEN);
-    if (token) {
-      goiApi.post('/xacThuc/dangXuat', null, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
-    }
+  const taiThongTin = useCallback(
+    () => goiApi.get('/xacThuc/toi').then((ketQua) => setNguoiDung(ketQua.data)),
+    []
+  );
+
+  // Backend xóa cookie và ghi DANG_XUAT; chờ xong mới xóa phiên để Set-Cookie xóa của lần đăng xuất
+  // không ghi đè cookie của lần đăng nhập ngay sau đó. Lỗi mạng cũng không chặn đăng xuất ở client.
+  const dangXuat = useCallback(async () => {
+    await goiApi.post('/xacThuc/dangXuat').catch(() => {});
     xoaPhien();
   }, [xoaPhien]);
 
-  const luuPhien = useCallback(({ token, nguoiDung: thongTin }) => {
-    localStorage.setItem(KHOA_TOKEN, token);
-    setNguoiDung(thongTin);
-  }, []);
-
   useEffect(() => {
-    if (!localStorage.getItem(KHOA_TOKEN)) return;
-    goiApi
-      .get('/xacThuc/toi')
-      .then((ketQua) => setNguoiDung(ketQua.data))
-      .catch(xoaPhien)
-      .finally(() => setDangTai(false));
-  }, [xoaPhien]);
+    taiThongTin().catch(xoaPhien).finally(() => setDangTai(false));
+  }, [taiThongTin, xoaPhien]);
 
-  // Token bị backend từ chối (hết hạn, bị khóa, đổi mật khẩu nơi khác) -> chỉ xóa phiên ở client
+  // Phiên bị backend từ chối (hết hạn, bị khóa, đổi mật khẩu nơi khác) -> xóa phiên ở client.
+  // Bị reset mật khẩu tạm giữa phiên -> tải lại thông tin (batBuocDoiMatKhau = true).
   useEffect(() => {
+    const canDoiMatKhau = () => taiThongTin().catch(xoaPhien);
     window.addEventListener(SU_KIEN_HET_PHIEN, xoaPhien);
-    return () => window.removeEventListener(SU_KIEN_HET_PHIEN, xoaPhien);
-  }, [xoaPhien]);
+    window.addEventListener(SU_KIEN_CAN_DOI_MAT_KHAU, canDoiMatKhau);
+    return () => {
+      window.removeEventListener(SU_KIEN_HET_PHIEN, xoaPhien);
+      window.removeEventListener(SU_KIEN_CAN_DOI_MAT_KHAU, canDoiMatKhau);
+    };
+  }, [taiThongTin, xoaPhien]);
 
   const dangNhap = async (tenDangNhap, matKhau) => {
     const ketQua = await goiApi.post('/xacThuc/dangNhap', { tenDangNhap, matKhau });
-    luuPhien(ketQua.data);
+    setNguoiDung(ketQua.data.nguoiDung);
     return ketQua.data.nguoiDung;
   };
 
   const doiMatKhau = async (matKhauCu, matKhauMoi) => {
     const ketQua = await goiApi.post('/xacThuc/doiMatKhau', { matKhauCu, matKhauMoi });
-    luuPhien(ketQua.data);
+    setNguoiDung(ketQua.data.nguoiDung);
   };
 
   return (

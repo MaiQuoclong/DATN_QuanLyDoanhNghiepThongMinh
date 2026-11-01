@@ -30,8 +30,8 @@ async function layThongTin(nguoiDungId) {
   return dong[0] ?? null;
 }
 
-async function layDanhSachVaiTro(nguoiDungId) {
-  const [dong] = await pool.execute(
+async function layDanhSachVaiTro(nguoiDungId, ketNoi = pool) {
+  const [dong] = await ketNoi.execute(
     `SELECT vt.maVaiTro
        FROM nguoidungvaitro ndvt
        JOIN vaitro vt ON vt.id = ndvt.vaiTroId
@@ -49,7 +49,136 @@ async function capNhatLanDangNhapCuoi(nguoiDungId) {
   await pool.execute('UPDATE nguoidung SET lanDangNhapCuoi = NOW() WHERE id = ?', [nguoiDungId]);
 }
 
+async function timTheoTenHoacEmail(tenDangNhap, email, ketNoi = pool) {
+  const [dong] = await ketNoi.execute(
+    'SELECT id, tenDangNhap, email FROM nguoidung WHERE tenDangNhap = ? OR email = ? LIMIT 1',
+    [tenDangNhap, email]
+  );
+  return dong[0] ?? null;
+}
+
+async function themNguoiDung({ tenDangNhap, email, matKhauMaHoa }, ketNoi = pool) {
+  const [ketQua] = await ketNoi.execute(
+    'INSERT INTO nguoidung (tenDangNhap, email, matKhauMaHoa) VALUES (?, ?, ?)',
+    [tenDangNhap, email, matKhauMaHoa]
+  );
+  return ketQua.insertId;
+}
+
+async function ganVaiTro(nguoiDungId, maVaiTro, ketNoi = pool) {
+  const [ketQua] = await ketNoi.execute(
+    `INSERT INTO nguoidungvaitro (nguoiDungId, vaiTroId)
+     SELECT ?, id FROM vaitro WHERE maVaiTro = ?`,
+    [nguoiDungId, maVaiTro]
+  );
+  return ketQua.affectedRows;
+}
+
+async function goVaiTro(nguoiDungId, maVaiTro, ketNoi = pool) {
+  const [ketQua] = await ketNoi.execute(
+    `DELETE ndvt FROM nguoidungvaitro ndvt JOIN vaitro vt ON vt.id = ndvt.vaiTroId
+      WHERE ndvt.nguoiDungId = ? AND vt.maVaiTro = ?`,
+    [nguoiDungId, maVaiTro]
+  );
+  return ketQua.affectedRows;
+}
+
+async function capNhatTrangThai(nguoiDungId, trangThai, ketNoi = pool) {
+  await ketNoi.execute('UPDATE nguoidung SET trangThai = ? WHERE id = ?', [trangThai, nguoiDungId]);
+}
+
+async function khoaVaLayTrangThai(nguoiDungId, ketNoi) {
+  const [dong] = await ketNoi.execute('SELECT trangThai FROM nguoidung WHERE id = ? FOR UPDATE', [nguoiDungId]);
+  return dong[0]?.trangThai ?? null;
+}
+
+// Danh sách tài khoản cho Admin (không bao giờ chọn matKhauMaHoa); vai trò gộp thành chuỗi rồi tách ở service
+async function layDanhSachTaiKhoan({ tuKhoa, trangThai, maVaiTro, viTri, soLuong }) {
+  const dieuKien = [];
+  const thamSo = [];
+  if (tuKhoa) {
+    const mau = `%${tuKhoa.replace(/[\\%_]/g, '\\$&')}%`;
+    dieuKien.push('(nd.tenDangNhap LIKE ? OR nd.email LIKE ? OR nv.hoVaTen LIKE ? OR nv.maNhanVien LIKE ?)');
+    thamSo.push(mau, mau, mau, mau);
+  }
+  if (trangThai) {
+    dieuKien.push('nd.trangThai = ?');
+    thamSo.push(trangThai);
+  }
+  if (maVaiTro) {
+    dieuKien.push(`EXISTS (SELECT 1 FROM nguoidungvaitro x JOIN vaitro v ON v.id = x.vaiTroId
+                           WHERE x.nguoiDungId = nd.id AND v.maVaiTro = ?)`);
+    thamSo.push(maVaiTro);
+  }
+  const where = dieuKien.length ? `WHERE ${dieuKien.join(' AND ')}` : '';
+  const bangNoi = 'FROM nguoidung nd LEFT JOIN nhanvien nv ON nv.nguoiDungId = nd.id';
+
+  const [[dem]] = await pool.query(`SELECT COUNT(*) AS tongSo ${bangNoi} ${where}`, thamSo);
+  const [items] = await pool.query(
+    `SELECT nd.id AS nguoiDungId, nd.tenDangNhap, nd.email, nd.trangThai, nd.ngayTao, nd.lanDangNhapCuoi,
+            nv.id AS nhanVienId, nv.maNhanVien, nv.hoVaTen, nv.trangThaiLamViec,
+            (SELECT GROUP_CONCAT(v.maVaiTro ORDER BY v.id) FROM nguoidungvaitro x JOIN vaitro v ON v.id = x.vaiTroId
+              WHERE x.nguoiDungId = nd.id) AS dsVaiTro
+       ${bangNoi} ${where}
+      ORDER BY nd.id LIMIT ? OFFSET ?`,
+    [...thamSo, soLuong, viTri]
+  );
+  return { items, tongSo: Number(dem.tongSo) };
+}
+
+// Đọc tài khoản kèm hồ sơ và khóa dòng nguoidung (dùng trong transaction)
+async function khoaTaiKhoan(nguoiDungId, ketNoi) {
+  const [dong] = await ketNoi.execute(
+    `SELECT nd.id AS nguoiDungId, nd.tenDangNhap, nd.trangThai,
+            nv.id AS nhanVienId, nv.maNhanVien, nv.trangThaiLamViec
+       FROM nguoidung nd
+       LEFT JOIN nhanvien nv ON nv.nguoiDungId = nd.id
+      WHERE nd.id = ?
+      FOR UPDATE`,
+    [nguoiDungId]
+  );
+  return dong[0] ?? null;
+}
+
+async function layTatCaVaiTro() {
+  const [dong] = await pool.execute('SELECT id, maVaiTro, tenVaiTro, moTa FROM vaitro ORDER BY id');
+  return dong;
+}
+
+// Thay toàn bộ vai trò: xóa rồi chèn lại trong cùng transaction
+async function thayVaiTro(nguoiDungId, dsMaVaiTro, ketNoi) {
+  await ketNoi.execute('DELETE FROM nguoidungvaitro WHERE nguoiDungId = ?', [nguoiDungId]);
+  const [ketQua] = await ketNoi.query(
+    'INSERT INTO nguoidungvaitro (nguoiDungId, vaiTroId) SELECT ?, id FROM vaitro WHERE maVaiTro IN (?)',
+    [nguoiDungId, dsMaVaiTro]
+  );
+  return ketQua.affectedRows;
+}
+
+// Số Admin còn hoạt động; FOR UPDATE để hai Admin không cùng lúc gỡ quyền của nhau về 0
+async function demAdminHoatDong(ketNoi) {
+  const [dong] = await ketNoi.execute(
+    `SELECT nd.id FROM nguoidung nd
+       JOIN nguoidungvaitro x ON x.nguoiDungId = nd.id
+       JOIN vaitro v ON v.id = x.vaiTroId
+      WHERE v.maVaiTro = 'Admin' AND nd.trangThai = 'DANG_HOAT_DONG'
+      FOR UPDATE`
+  );
+  return dong.length;
+}
+
 module.exports = {
+  layDanhSachTaiKhoan,
+  khoaTaiKhoan,
+  layTatCaVaiTro,
+  thayVaiTro,
+  demAdminHoatDong,
+  khoaVaLayTrangThai,
+  timTheoTenHoacEmail,
+  themNguoiDung,
+  ganVaiTro,
+  goVaiTro,
+  capNhatTrangThai,
   timDeDangNhap,
   layMatKhauMaHoa,
   layThongTin,
