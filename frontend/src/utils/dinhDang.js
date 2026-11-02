@@ -51,3 +51,18 @@ export function locThamSo(thamSo) {
     Object.entries(thamSo).filter(([, giaTri]) => giaTri !== '' && giaTri !== undefined && giaTri !== null)
   );
 }
+
+// 'HH:MM:SS' -> 'HH:MM'
+export function dinhDangGio(giaTri) {
+  return giaTri ? String(giaTri).slice(0, 5) : '—';
+}
+
+// Tháng hiện tại 'YYYY-MM' theo giờ máy người dùng
+export function thangHienTai() {
+  return new Date().toLocaleDateString('sv-SE').slice(0, 7);
+}
+
+const THU_TRONG_TUAN = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+export function layThu(ngay) {
+  return THU_TRONG_TUAN[new Date(`${String(ngay).slice(0, 10)}T00:00:00Z`).getUTCDay()];
+}
