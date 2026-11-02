@@ -11,7 +11,18 @@
 - [ ] Module Đánh giá KPI, Khen thưởng & Kỷ luật
 - [ ] Tầng AI Agent: RAG quy chế, Function Calling tạo đơn, Text-to-SQL báo cáo
 
-## Đang làm & việc tiếp theo (cập nhật 2026-11-02)
+## Đang làm & việc tiếp theo (cập nhật 2026-11-03)
+- **Nhánh `feature/ra-soat-sau-module-2`**: sửa lỗi reviewer sau module 2. Backend **568/568 pass** (2026-11-03, `npm test` + `npm test -- --randomize` seed -1143620430; chạy trên DB hiện có vì hook qa-tester chặn `npm run khoiTaoCsdl` và `npx vite build` — người dùng cần tự chạy 2 lệnh này để xác nhận).
+  1. `hopDongService.dieuChinhHopDong`: nhật ký `DIEU_CHINH_HOP_DONG` chỉ ghi `<cot>: đã thay đổi`, không lộ số tiền (giá trị cũ/mới nằm ở `lichsuhopdong`).
+  2. `nhanVienService.dieuChuyen`: cho điều chuyển người `DA_NGHI_VIEC` (tái tuyển khi vị trí cũ đầy/ngừng); vị trí đích vẫn phải đang áp dụng + còn chỗ (409). Frontend chi tiết nhân viên luôn hiện nút Điều chuyển.
+  3. `nguoiDungService.capNhatVaiTro`: Admin tự cấp thêm vai trò cho mình → 403; giữ nguyên hoặc bớt vai trò không phải Admin vẫn được.
+  4. `nhanVienService.capNhatHoSo`: `ngayVaoLam` sau MIN(`ngayBatDau`) hợp đồng → 409 (`hopDongRepository.layNgayBatDauSomNhat`).
+  5. XĐTH tối đa 36 tháng trừ 1 ngày (`congNgay(congThang(bd, 36), -1)`).
+  6. `TrangPhongBan.jsx`: form thêm phòng không gán sẵn phòng cha đã ngừng; ẩn Miễn nhiệm khi giamDoc xem phòng do chính mình làm trưởng.
+  - Test bổ sung (qa-tester, +3): DA_NGHI_VIEC điều chuyển sang vị trí đủ định biên/đã ngừng vẫn 409 và không đổi dữ liệu; Admin tự bớt vai trò HR được; chỉ điều chỉnh `mucPhuCap` thì nhật ký không lộ số.
+  - Hạn chế đã biết: seed `HD2024-0001` (NV0005, bắt đầu 2024-06-03, kết thúc `CURDATE()+20`) sẽ vượt 36 tháng XĐTH từ khoảng 2027-05-14 — cần dời ngày bắt đầu theo `CURDATE()` trước thời điểm đó.
+
+## Trước đó (cập nhật 2026-11-02)
 - **Nhánh `feature/sua-loi-ho-so-nhan-su`** (từ `develop`): XONG — sửa 5 lỗi tồn đọng + reviewer toàn project 2 lượt + qa-tester 2 lượt. Backend **564/564 pass** (2026-11-02, `npm run khoiTaoCsdl` → `npm test` + `npm test -- --randomize` seed -168098178), `vite build` pass. Chờ người dùng thử trên web, commit, PR về `develop`.
   1. Ô chọn nhân viên có tìm kiếm `components/OChonNhanVien.jsx` (kiểu trường `nhanVien` trong `HopThoaiBieuMau`): dùng ở Lập hợp đồng và Bổ nhiệm trưởng (bỏ giới hạn 100).
   2. `GET /nhanVien/:id` trả thêm `vaiTroTaiKhoan[]` cho HR/giamDoc; chi tiết nhân viên ẩn "Cấp mật khẩu tạm" khi đích có Admin/giamDoc/HR (trừ người gọi là Admin).
@@ -45,7 +56,7 @@
 | POST | `/api/v1/nguoiDung/:id/datLaiMatKhau` | Admin (mọi tài khoản), HR (không có vai trò Admin/giamDoc/HR) | Trả `matKhauTam` một lần; ghi `RESET_MAT_KHAU_TAM` (người bị reset, thu hồi token cũ) + `CAP_MAT_KHAU_TAM` (người cấp); không tự reset mình |
 | POST | `/api/v1/nguoiDung/:id/khoa` | Admin | `{lyDo}`; ghi `KHOA_TAI_KHOAN`; chặn tự khóa và khóa Admin hoạt động cuối cùng (409) |
 | POST | `/api/v1/nguoiDung/:id/moKhoa` | Admin | `{lyDo}`; ghi `MO_KHOA_TAI_KHOAN`; người `DA_NGHI_VIEC` trả 409 (HR phải cho quay lại làm việc) |
-| PUT | `/api/v1/nguoiDung/:id/vaiTro` | Admin | `{vaiTro: [...]}` thay toàn bộ; có hồ sơ thì luôn giữ `nhanVien`; không tự gỡ Admin, không gỡ Admin cuối; ghi `PHAN_QUYEN` |
+| PUT | `/api/v1/nguoiDung/:id/vaiTro` | Admin | `{vaiTro: [...]}` thay toàn bộ; có hồ sơ thì luôn giữ `nhanVien`; không tự gỡ Admin, không tự cấp thêm vai trò cho mình (403; tự bớt vai trò khác được), không gỡ Admin cuối; ghi `PHAN_QUYEN` |
 | GET | `/api/v1/vaiTro` | Admin | Danh mục 5 vai trò |
 | GET | `/api/v1/nhatKyHeThong` | Admin, giamDoc | `?nguoiDungId&hanhDong&tuNgay&denNgay&trang&kichThuoc`, mới nhất trước |
 | GET | `/api/v1/phongBan` | Mọi vai trò | `?trangThai`; danh sách phẳng (dựng cây theo `phongBanChaId`), kèm trưởng bộ phận, `soNhanVien` (trực tiếp) và `tongQuanSo` (cộng cả phòng con) |
@@ -66,9 +77,9 @@
 | PATCH | `/api/v1/nhanVien/toi` | Người có hồ sơ | Sửa `soDienThoai`, `diaChi`, `soTaiKhoanNganHang`, `tenNganHang` (`""` = xóa); log `CAP_NHAT_HO_SO_CA_NHAN` |
 | GET | `/api/v1/nhanVien/:id` | Mình; HR, giamDoc; quanLy (PM, ẩn ngân hàng) | 403 nếu ngoài phạm vi; HR/giamDoc nhận thêm `vaiTroTaiKhoan[]` |
 | POST | `/api/v1/nhanVien` | HR | Transaction: `nguoidung` (mật khẩu tạm) + vai trò `nhanVien` + `nhanvien` (sinh `NVxxxx`), kiểm tra định biên, đủ 15 tuổi; trả `taiKhoan.matKhauTam` một lần; log `THEM_NHAN_VIEN` + `RESET_MAT_KHAU_TAM` |
-| PATCH | `/api/v1/nhanVien/:id` | HR (trừ mình) | Sửa thông tin hồ sơ; log `SUA_NHAN_VIEN` |
+| PATCH | `/api/v1/nhanVien/:id` | HR (trừ mình) | Sửa thông tin hồ sơ; `ngayVaoLam` phải ≤ ngày bắt đầu hợp đồng sớm nhất (409); log `SUA_NHAN_VIEN` |
 | POST | `/api/v1/nhanVien/:id/doiTrangThai` | HR (trừ mình) | `{trangThaiLamViec, lyDo}`; `DA_NGHI_VIEC` → khóa tài khoản (409 nếu đang là trưởng bộ phận), quay lại → mở khóa; log `DOI_TRANG_THAI_LAM_VIEC` |
-| POST | `/api/v1/nhanVien/:id/dieuChuyen` | HR (trừ mình) | `{chucDanhPhongBanId, lyDo}`; kiểm tra định biên, chặn trưởng bộ phận rời phòng; log `DIEU_CHUYEN_NHAN_VIEN` |
+| POST | `/api/v1/nhanVien/:id/dieuChuyen` | HR (trừ mình) | `{chucDanhPhongBanId, lyDo}`; nhận cả người `DA_NGHI_VIEC` (tái tuyển); vị trí đích phải đang áp dụng và còn định biên (409), chặn trưởng bộ phận rời phòng; log `DIEU_CHUYEN_NHAN_VIEN` |
 | GET | `/api/v1/hopDong` | HR, giamDoc | `?tuKhoa&nhanVienId&loaiHopDong&trangThai(HIEU_LUC/HET_HAN/DA_CHAM_DUT)&trang&kichThuoc`; tham số sai 400 |
 | GET | `/api/v1/hopDong/cuaToi` | Mọi vai trò | Hợp đồng của mình, mới nhất trước |
 | GET | `/api/v1/hopDong/sapHetHan` | HR, giamDoc | `?soNgay` (mặc định 30, tối đa 365) → `{soNgay, items[soNgayConLai]}`; bỏ người `DA_NGHI_VIEC` và hợp đồng đã có hợp đồng nối tiếp |
