@@ -189,3 +189,63 @@ INSERT INTO lichsuhopdong (hopDongLaoDongId, hanhDong, loaiHopDongCu, loaiHopDon
   (9, 'TAO_MOI', NULL, 'KHONG_XAC_DINH_THOI_HAN', NULL, 38000000.00, NULL, 4000000.00, NULL, '2019-02-11', NULL, NULL, NULL, 'HIEU_LUC', 'Ký hợp đồng phó giám đốc', 2, '2019-02-11 08:00:00'),
   (10,'TAO_MOI', NULL, 'KHONG_XAC_DINH_THOI_HAN', NULL, 28000000.00, NULL, 3000000.00, NULL, '2021-03-15', NULL, NULL, NULL, 'HIEU_LUC', NULL, 2, '2021-03-15 08:00:00'),
   (11,'TAO_MOI', NULL, 'XAC_DINH_THOI_HAN', NULL, 12000000.00, NULL, 1000000.00, NULL, '2025-02-17', NULL, '2027-02-16', NULL, 'HIEU_LUC', NULL, 7, '2025-02-17 08:00:00');
+
+-- ---------------------------------------------------------------------
+-- 9. Chấm công (ngày tính theo CURDATE() để demo luôn đúng)
+--    Từ đầu tháng (hiện tại - 2) đến hôm qua, bỏ thứ 7/CN, từ ngày vào làm. Hôm nay để trống để demo check-in.
+--    Ca 08:00-17:00, nghỉ trưa 12:00-13:00 (backend/src/config/thamSoNghiepVu.js). Mẫu giờ theo MOD(id*7 + ngày, 10):
+--      0: 08:20-17:05 đi muộn (7.67 giờ) · 1: 07:55-18:45 làm thêm 1.75 giờ · 2: 07:50-16:30 về sớm (7.50 giờ) · còn lại: 07:55-17:10 (8 giờ)
+-- ---------------------------------------------------------------------
+INSERT INTO banghichamcong (nhanVienId, ngayChamCong, gioVao, gioRa, soGioLamThucTe, soGioLamThemOT, diMuon, veSom, trangThai)
+SELECT nv.id, ng.ngay,
+       CASE MOD(nv.id * 7 + DAYOFMONTH(ng.ngay), 10) WHEN 0 THEN '08:20:00' WHEN 1 THEN '07:55:00' WHEN 2 THEN '07:50:00' ELSE '07:55:00' END,
+       CASE MOD(nv.id * 7 + DAYOFMONTH(ng.ngay), 10) WHEN 0 THEN '17:05:00' WHEN 1 THEN '18:45:00' WHEN 2 THEN '16:30:00' ELSE '17:10:00' END,
+       CASE MOD(nv.id * 7 + DAYOFMONTH(ng.ngay), 10) WHEN 0 THEN 7.67 WHEN 2 THEN 7.50 ELSE 8.00 END,
+       CASE MOD(nv.id * 7 + DAYOFMONTH(ng.ngay), 10) WHEN 1 THEN 1.75 ELSE 0.00 END,
+       MOD(nv.id * 7 + DAYOFMONTH(ng.ngay), 10) = 0,
+       MOD(nv.id * 7 + DAYOFMONTH(ng.ngay), 10) = 2,
+       'HOP_LE'
+  FROM nhanvien nv
+  JOIN (SELECT DATE_SUB(CURDATE(), INTERVAL (a.n + b.n * 10 + 1) DAY) AS ngay
+          FROM (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
+                UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a
+         CROSS JOIN (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
+                UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) b) ng
+    ON ng.ngay >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 MONTH), '%Y-%m-01')
+   AND DAYOFWEEK(ng.ngay) NOT IN (1, 7)
+   AND ng.ngay >= nv.ngayVaoLam;
+
+-- Ba ngày làm việc gần nhất trước hôm nay
+SET @ngay1 = (SELECT MAX(ngayChamCong) FROM banghichamcong WHERE nhanVienId = 5);
+SET @ngay2 = (SELECT MAX(ngayChamCong) FROM banghichamcong WHERE nhanVienId = 5 AND ngayChamCong < @ngay1);
+SET @ngay3 = (SELECT MAX(ngayChamCong) FROM banghichamcong WHERE nhanVienId = 5 AND ngayChamCong < @ngay2);
+
+-- NV0005 quên check-out hôm @ngay1; NV0010 quên chấm cả ngày @ngay2
+UPDATE banghichamcong SET gioRa = NULL, soGioLamThucTe = 0, soGioLamThemOT = 0, veSom = 0
+ WHERE nhanVienId = 5 AND ngayChamCong = @ngay1;
+DELETE FROM banghichamcong WHERE nhanVienId = 10 AND ngayChamCong = @ngay2;
+-- NV0006 đã được duyệt điều chỉnh hôm @ngay3
+UPDATE banghichamcong SET gioVao = '08:00:00', gioRa = '17:00:00', soGioLamThucTe = 8.00, soGioLamThemOT = 0,
+       diMuon = 0, veSom = 0, trangThai = 'DA_DIEU_CHINH'
+ WHERE nhanVienId = 6 AND ngayChamCong = @ngay3;
+
+-- Yêu cầu điều chỉnh công:
+--   chờ duyệt: NV0005 (quanly duyệt, PKT-PT thuộc PKT), NV0010 (quanly2 duyệt, PKD), NV0007 hr2 (hr/giamdoc duyệt, không tự duyệt)
+--   đã xử lý: NV0006 DA_DUYET bởi quanly NV0003, NV0001 admin TU_CHOI bởi giám đốc NV0002
+INSERT INTO yeucaudieuchinhchamcong (banGhiChamCongId, nhanVienId, ngayCanDieuChinh, gioVaoDeXuat, gioRaDeXuat,
+                                     lyDoGiaiTrinh, nguoiDuyetId, trangThai, lyDoTuChoi, thoiGianDuyet, ngayTao) VALUES
+  ((SELECT id FROM banghichamcong WHERE nhanVienId = 5 AND ngayChamCong = @ngay1), 5, @ngay1, NULL, '17:30:00',
+   'Quên check-out do họp khách hàng đến 17:30', NULL, 'CHO_DUYET', NULL, NULL, TIMESTAMP(CURDATE(), '08:10:00')),
+  (NULL, 10, @ngay2, '08:00:00', '17:00:00',
+   'Đi gặp khách hàng cả ngày, không chấm công trên hệ thống được', NULL, 'CHO_DUYET', NULL, NULL, TIMESTAMP(CURDATE(), '08:15:00')),
+  ((SELECT id FROM banghichamcong WHERE nhanVienId = 7 AND ngayChamCong = @ngay2), 7, @ngay2, '07:45:00', NULL,
+   'Đã đến sớm hỗ trợ phỏng vấn nhưng máy chấm công lỗi', NULL, 'CHO_DUYET', NULL, NULL, TIMESTAMP(CURDATE(), '08:20:00')),
+  ((SELECT id FROM banghichamcong WHERE nhanVienId = 6 AND ngayChamCong = @ngay3), 6, @ngay3, '08:00:00', '17:00:00',
+   'Kẹt xe do mưa lớn, đã báo trưởng phòng', 3, 'DA_DUYET', NULL, TIMESTAMP(@ngay2, '09:00:00'), TIMESTAMP(@ngay3, '18:00:00')),
+  ((SELECT id FROM banghichamcong WHERE nhanVienId = 1 AND ngayChamCong = @ngay3), 1, @ngay3, '07:30:00', NULL,
+   'Đến sớm bảo trì máy chủ', 2, 'TU_CHOI', 'Không có xác nhận của người phụ trách', TIMESTAMP(@ngay2, '10:00:00'), TIMESTAMP(@ngay3, '18:30:00'));
+
+-- Chốt công tháng (hiện tại - 2) do HR thực hiện: dữ liệu sẵn cho demo lập bảng lương
+INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
+  (4, 'CHOT_CONG_THANG', '127.0.0.1', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 MONTH), '%Y-%m'),
+   TIMESTAMP(DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-02'), '09:00:00'));
