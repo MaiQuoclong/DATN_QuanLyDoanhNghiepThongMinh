@@ -56,7 +56,6 @@ function TrangPhongBan() {
   const [chiTiet, setChiTiet] = useState(null);
   const [loi, setLoi] = useState('');
   const [thaoTac, setThaoTac] = useState(null); // { loai, duLieu }
-  const [nhanVienPhong, setNhanVienPhong] = useState([]);
   const [tab, setTab] = useState('phongBan');
 
   const taiDanhSach = useCallback(() => {
@@ -97,17 +96,7 @@ function TrangPhongBan() {
     }
   };
 
-  const moBoNhiem = async () => {
-    try {
-      const kq = await goiApi.get('/nhanVien', { params: { phongBanId: chiTiet.id, kichThuoc: 100 } });
-      setNhanVienPhong(kq.data.items
-        .filter((nv) => nv.phongBanId === chiTiet.id && ['THU_VIEC', 'CHINH_THUC'].includes(nv.trangThaiLamViec))
-        .map((nv) => ({ giaTri: nv.id, nhan: `${nv.hoVaTen} (${nv.maNhanVien}) - ${nv.tenChucDanh}` })));
-      setThaoTac({ loai: 'boNhiem' });
-    } catch (e) {
-      setLoi(e.message);
-    }
-  };
+  const moBoNhiem = () => setThaoTac({ loai: 'boNhiem' });
 
   const xemDinhBien = laHR || laGiamDoc;
   const cotViTri = [
@@ -264,7 +253,15 @@ function TrangPhongBan() {
         <HopThoaiBieuMau
           tieuDe={`Bổ nhiệm trưởng ${chiTiet.tenPhongBan}`}
           moTa="Người được bổ nhiệm tự động có vai trò Quản lý cho phòng ban này và các phòng con."
-          truong={[{ ten: 'nhanVienId', nhan: 'Nhân viên trong phòng', kieu: 'select', luaChon: nhanVienPhong, batBuoc: true, rongHet: true }]}
+          truong={[{
+            ten: 'nhanVienId', nhan: 'Nhân viên trong phòng', kieu: 'nhanVien', batBuoc: true,
+            // Chỉ người đang làm việc thuộc chính phòng này; bỏ trưởng hiện tại và chính giamDoc (không tự bổ nhiệm)
+            locNhanVien: {
+              phongBanId: chiTiet.id,
+              trangThai: ['THU_VIEC', 'CHINH_THUC'],
+              boQuaIds: [chiTiet.truongBoPhanId, nguoiDung.nhanVienId].filter(Boolean),
+            },
+          }]}
           nhanNutGui="Bổ nhiệm"
           onGui={gui('post', `/phongBan/${chiTiet.id}/boNhiem`)}
           onDong={() => setThaoTac(null)}
@@ -297,10 +294,13 @@ function TrangPhongBan() {
           giaTriBanDau={thaoTac.duLieu}
           onGui={async (g) => {
             const vt = thaoTac.duLieu;
-            if (Number(g.dinhBien) !== vt.dinhBien || g.ghiChu !== (vt.ghiChu ?? '')) {
-              await goiApi.patch(`/chucDanhPhongBan/${vt.id}`, { dinhBien: Number(g.dinhBien), ghiChu: g.ghiChu });
-            }
-            if (g.trangThai !== vt.trangThai) await goiApi.post(`/chucDanhPhongBan/${vt.id}/doiTrangThai`, { trangThai: g.trangThai });
+            // Một lời gọi duy nhất: backend sửa thông tin + trạng thái trong cùng transaction
+            const thayDoi = {
+              ...(Number(g.dinhBien) !== vt.dinhBien && { dinhBien: Number(g.dinhBien) }),
+              ...(g.ghiChu !== (vt.ghiChu ?? '') && { ghiChu: g.ghiChu }),
+              ...(g.trangThai !== vt.trangThai && { trangThai: g.trangThai }),
+            };
+            if (Object.keys(thayDoi).length) await goiApi.patch(`/chucDanhPhongBan/${vt.id}`, thayDoi);
             xong();
           }}
           onDong={() => setThaoTac(null)}
@@ -332,10 +332,12 @@ function TrangPhongBan() {
           giaTriBanDau={thaoTac.duLieu}
           onGui={async (g) => {
             const cd = thaoTac.duLieu;
-            if (g.tenChucDanh !== cd.tenChucDanh || g.capBac !== cd.capBac) {
-              await goiApi.patch(`/chucDanh/${cd.id}`, { tenChucDanh: g.tenChucDanh, capBac: g.capBac });
-            }
-            if (g.trangThai !== cd.trangThai) await goiApi.post(`/chucDanh/${cd.id}/doiTrangThai`, { trangThai: g.trangThai });
+            const thayDoi = {
+              ...(g.tenChucDanh !== cd.tenChucDanh && { tenChucDanh: g.tenChucDanh }),
+              ...(g.capBac !== cd.capBac && { capBac: g.capBac }),
+              ...(g.trangThai !== cd.trangThai && { trangThai: g.trangThai }),
+            };
+            if (Object.keys(thayDoi).length) await goiApi.patch(`/chucDanh/${cd.id}`, thayDoi);
             xong();
           }}
           onDong={() => setThaoTac(null)}
