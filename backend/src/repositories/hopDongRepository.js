@@ -85,6 +85,15 @@ async function timHopDongChongLan(nhanVienId, ngayBatDau, ngayKetThuc, boQuaId, 
   return dong[0] ?? null;
 }
 
+// Ngày bắt đầu sớm nhất trong các hợp đồng của nhân viên (đối chiếu khi HR sửa ngày vào làm)
+async function layNgayBatDauSomNhat(nhanVienId, ketNoi = pool) {
+  const [dong] = await ketNoi.execute(
+    `SELECT DATE_FORMAT(MIN(ngayBatDau), '%Y-%m-%d') AS ngay FROM hopdonglaodong WHERE nhanVienId = ?`,
+    [nhanVienId]
+  );
+  return dong[0].ngay;
+}
+
 // Số thứ tự lớn nhất của mã HDyyyy-xxxx trong năm; FOR UPDATE để không sinh trùng mã
 async function laySoMaLonNhat(nam, ketNoi) {
   const [dong] = await ketNoi.execute(
@@ -177,6 +186,7 @@ module.exports = {
   layNhanVienCuaHopDong,
   khoaHopDong,
   timHopDongChongLan,
+  layNgayBatDauSomNhat,
   laySoMaLonNhat,
   them,
   capNhat,

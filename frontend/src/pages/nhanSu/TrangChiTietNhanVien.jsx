@@ -122,9 +122,7 @@ function TrangChiTietNhanVien() {
           <div className="hangNutPhai">
             <NutBam bienThe="phu" bieuTuong={Pencil} onClick={() => setThaoTac('sua')}>Sửa</NutBam>
             <NutBam bienThe="phu" bieuTuong={RefreshCw} onClick={() => setThaoTac('trangThai')}>Đổi trạng thái</NutBam>
-            {hoSo.trangThaiLamViec !== 'DA_NGHI_VIEC' && (
-              <NutBam bienThe="phu" bieuTuong={Shuffle} onClick={moDieuChuyen}>Điều chuyển</NutBam>
-            )}
+            <NutBam bienThe="phu" bieuTuong={Shuffle} onClick={moDieuChuyen}>Điều chuyển</NutBam>
             {hoSo.nguoiDungId && hoSo.trangThaiTaiKhoan !== 'KHOA' && duocCapMatKhauTam && (
               <NutBam bienThe="phu" bieuTuong={KeyRound} onClick={() => setThaoTac('matKhau')}>Cấp mật khẩu tạm</NutBam>
             )}
