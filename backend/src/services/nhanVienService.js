@@ -3,6 +3,7 @@ const { chayTransaction } = require('../config/ketNoiCsdl');
 const nhanVienRepository = require('../repositories/nhanVienRepository');
 const nguoiDungRepository = require('../repositories/nguoiDungRepository');
 const phongBanRepository = require('../repositories/phongBanRepository');
+const hopDongRepository = require('../repositories/hopDongRepository');
 const { themNhatKy, layHanhDongGanNhat } = require('../repositories/nhatKyRepository');
 const { taoMatKhauTam, bamMatKhau } = require('../utils/matKhauTam');
 const { TRANG_THAI_LAM_VIEC } = require('../utils/trangThai');
@@ -247,7 +248,7 @@ async function capNhatCoNhatKy(nguoiDung, id, truong, hanhDong, diaChiIP, kiemTr
   if (Object.keys(truong).length === 0) throw new LoiUngDung(400, 'Không có thông tin nào để cập nhật');
   await chayTransaction(async (ketNoi) => {
     const hoSo = await khoaVaLayHoSo(id, ketNoi);
-    if (kiemTraThem) kiemTraThem(hoSo);
+    if (kiemTraThem) await kiemTraThem(hoSo, ketNoi);
     await nhanVienRepository.capNhat(id, truong, ketNoi);
     await themNhatKy(nguoiDung.nguoiDungId, hanhDong, diaChiIP, `${hoSo.maNhanVien}: ${moTaThayDoi(hoSo, truong)}`, ketNoi);
   });
@@ -265,9 +266,16 @@ async function capNhatHoSoCuaToi(nguoiDung, body, diaChiIP) {
 async function capNhatHoSo(nguoiDung, id, body, diaChiIP) {
   chanTuSua(nguoiDung, id);
   const truong = chonTruong(body, COT_HO_SO_HR);
-  return capNhatCoNhatKy(nguoiDung, id, truong, 'SUA_NHAN_VIEN', diaChiIP, (hoSo) => {
+  return capNhatCoNhatKy(nguoiDung, id, truong, 'SUA_NHAN_VIEN', diaChiIP, async (hoSo, ketNoi) => {
     if (truong.ngaySinh || truong.ngayVaoLam) {
       kiemTraNgayHoSo(truong.ngaySinh ?? hoSo.ngaySinh, truong.ngayVaoLam ?? hoSo.ngayVaoLam);
+    }
+    // Hợp đồng không được bắt đầu trước ngày vào làm (đã khóa dòng nhân viên nên không có hợp đồng mới chen vào)
+    if (truong.ngayVaoLam) {
+      const ngayHopDongSomNhat = await hopDongRepository.layNgayBatDauSomNhat(id, ketNoi);
+      if (ngayHopDongSomNhat && ngayHopDongSomNhat < truong.ngayVaoLam) {
+        throw new LoiUngDung(409, `Ngày vào làm không được sau ngày bắt đầu hợp đồng sớm nhất (${ngayHopDongSomNhat})`);
+      }
     }
   });
 }
@@ -329,9 +337,8 @@ async function dieuChuyen(nguoiDung, id, { chucDanhPhongBanId, lyDo }, diaChiIP)
     // Nếu sau này cho đổi phòng của vị trí thì phải đọc lại có khóa.
     const phongBanDichId = await phongBanRepository.layPhongBanCuaViTri(viTriMoiId);
     const hoSo = await khoaPhongBanRoiHoSo(id, phongBanDichId && { id: viTriMoiId, phongBanId: phongBanDichId }, ketNoi);
-    if (hoSo.trangThaiLamViec === 'DA_NGHI_VIEC') {
-      throw new LoiUngDung(409, 'Không thể điều chuyển nhân viên đã nghỉ việc');
-    }
+    // Người đã nghỉ việc vẫn được điều chuyển: để tái tuyển khi vị trí cũ đã đủ định biên hoặc đã ngừng
+    // (kiemTraViTriTrong vẫn kiểm tra vị trí đích đang áp dụng và còn chỗ)
     if (hoSo.chucDanhPhongBanId === viTriMoiId) {
       throw new LoiUngDung(400, 'Nhân viên đang ở vị trí này');
     }

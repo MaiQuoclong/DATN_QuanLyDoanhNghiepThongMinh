@@ -179,7 +179,7 @@ function TrangPhongBan() {
                     {laGiamDoc && chiTiet.trangThai === 'DANG_HOAT_DONG' && (
                       <NutBam bienThe="phu" bieuTuong={UserCheck} onClick={moBoNhiem}>Bổ nhiệm trưởng</NutBam>
                     )}
-                    {laGiamDoc && chiTiet.truongBoPhanId && (
+                    {laGiamDoc && chiTiet.truongBoPhanId && chiTiet.truongBoPhanId !== nguoiDung.nhanVienId && (
                       <NutBam
                         bienThe="phu"
                         bieuTuong={UserMinus}
@@ -225,7 +225,7 @@ function TrangPhongBan() {
             { ten: 'tenPhongBan', nhan: 'Tên phòng ban', batBuoc: true },
             { ten: 'phongBanChaId', nhan: 'Phòng ban cha', kieu: 'select', luaChon: luaChonPhongBan, rongHet: true },
           ]}
-          giaTriBanDau={{ phongBanChaId: dangChon ?? '' }}
+          giaTriBanDau={{ phongBanChaId: luaChonPhongBan.some((lc) => lc.giaTri === dangChon) ? dangChon : '' }}
           onGui={(g) => gui('post', '/phongBan')({ ...g, phongBanChaId: g.phongBanChaId || undefined })}
           onDong={() => setThaoTac(null)}
         />

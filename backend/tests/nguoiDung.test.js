@@ -452,10 +452,27 @@ describe('PUT /api/v1/nguoiDung/:id/vaiTro', () => {
     expect(await layVaiTro(1)).toEqual(['Admin', 'nhanVien']);
   });
 
-  test('Admin tự đổi vai trò nhưng vẫn giữ Admin thì được', async () => {
+  test('Admin tự cấp thêm vai trò cho mình bị 403, giữ nguyên vai trò thì được', async () => {
     const res = await goi('put', '/nguoiDung/1/vaiTro', await layToken('admin')).send({ vaiTro: ['Admin', 'HR'] });
-    expect(res.status).toBe(200);
-    expect(await layVaiTro(1)).toEqual(['Admin', 'HR', 'nhanVien']);
+    expect(res.status).toBe(403);
+    expect(await layVaiTro(1)).toEqual(['Admin', 'nhanVien']);
+    const res2 = await goi('put', '/nguoiDung/1/vaiTro', await layToken('admin')).send({ vaiTro: ['Admin'] });
+    expect(res2.status).toBe(200);
+    expect(await layVaiTro(1)).toEqual(['Admin', 'nhanVien']);
+  });
+
+  test('Admin tự bớt vai trò không phải Admin (HR) của mình thì được', async () => {
+    await pool.execute(
+      "INSERT INTO nguoidungvaitro (nguoiDungId, vaiTroId) SELECT 1, id FROM vaitro WHERE maVaiTro = 'HR'");
+    try {
+      expect(await layVaiTro(1)).toEqual(['Admin', 'HR', 'nhanVien']);
+      const res = await goi('put', '/nguoiDung/1/vaiTro', await layToken('admin')).send({ vaiTro: ['Admin'] });
+      expect(res.status).toBe(200);
+      expect(await layVaiTro(1)).toEqual(['Admin', 'nhanVien']);
+    } finally {
+      await pool.execute(
+        "DELETE FROM nguoidungvaitro WHERE nguoiDungId = 1 AND vaiTroId = (SELECT id FROM vaitro WHERE maVaiTro = 'HR')");
+    }
   });
 
   test('gỡ Admin cuối cùng trả 409 và rollback (giả lập bộ đếm Admin = 1)', async () => {

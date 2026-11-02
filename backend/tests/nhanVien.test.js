@@ -492,6 +492,20 @@ describe('PATCH /api/v1/nhanVien/:id - HR sửa hồ sơ', () => {
     expect(nk[0].chiTiet).toContain('NV0005');
   });
 
+  test('ngày vào làm sau ngày bắt đầu hợp đồng sớm nhất trả 409, bằng ngày đó thì được', async () => {
+    const [[{ somNhat, sauMotNgay }]] = await pool.execute(
+      `SELECT DATE_FORMAT(MIN(ngayBatDau), '%Y-%m-%d') AS somNhat,
+              DATE_FORMAT(DATE_ADD(MIN(ngayBatDau), INTERVAL 1 DAY), '%Y-%m-%d') AS sauMotNgay
+         FROM hopdonglaodong WHERE nhanVienId = 5`);
+    const [[truoc]] = await pool.execute("SELECT DATE_FORMAT(ngayVaoLam, '%Y-%m-%d') AS ngay FROM nhanvien WHERE id = 5");
+    const res = await goi('patch', '/5', token.hr).send({ ngayVaoLam: sauMotNgay });
+    expect(res.status).toBe(409);
+    const [[sau]] = await pool.execute("SELECT DATE_FORMAT(ngayVaoLam, '%Y-%m-%d') AS ngay FROM nhanvien WHERE id = 5");
+    expect(sau.ngay).toBe(truoc.ngay);
+    expect(await layNhatKy('SUA_NHAN_VIEN')).toHaveLength(0);
+    expect((await goi('patch', '/5', token.hr).send({ ngayVaoLam: somNhat })).status).toBe(200);
+  });
+
   test('nhật ký che số tài khoản ngân hàng cũ và mới (chỉ giữ 4 số cuối)', async () => {
     const res = await goi('patch', '/5', token.hr).send({ soTaiKhoanNganHang: '9988776655' });
     expect(res.status).toBe(200);
@@ -814,9 +828,35 @@ describe('POST /api/v1/nhanVien/:id/dieuChuyen', () => {
     expect(dong[0].chucDanhPhongBanId).toBe(5);
   });
 
-  test('nhân viên đã nghỉ việc không điều chuyển được (409)', async () => {
+  test('tái tuyển: vị trí cũ đã ngừng → điều chuyển người đã nghỉ việc rồi cho quay lại', async () => {
     await pool.execute("UPDATE nhanvien SET trangThaiLamViec = 'DA_NGHI_VIEC' WHERE id = 6");
-    expect((await chuyen(6, { chucDanhPhongBanId: 2 })).status).toBe(409);
+    const [[{ chucDanhPhongBanId: viTriCu }]] = await pool.execute('SELECT chucDanhPhongBanId FROM nhanvien WHERE id = 6');
+    await pool.execute("UPDATE chucdanhphongban SET trangThai = 'NGUNG_AP_DUNG' WHERE id = ?", [viTriCu]);
+    try {
+      expect((await goi('post', '/6/doiTrangThai', token.hr).send({ trangThaiLamViec: 'CHINH_THUC' })).status).toBe(409);
+      expect((await chuyen(6, { chucDanhPhongBanId: 2 })).status).toBe(200);
+      const res = await goi('post', '/6/doiTrangThai', token.hr).send({ trangThaiLamViec: 'CHINH_THUC' });
+      expect(res.status).toBe(200);
+      const [[nv]] = await pool.execute('SELECT chucDanhPhongBanId, trangThaiLamViec FROM nhanvien WHERE id = 6');
+      expect(nv).toEqual({ chucDanhPhongBanId: 2, trangThaiLamViec: 'CHINH_THUC' });
+    } finally {
+      await pool.execute("UPDATE chucdanhphongban SET trangThai = 'DANG_AP_DUNG' WHERE id = ?", [viTriCu]);
+    }
+  });
+
+  test('người đã nghỉ việc điều chuyển sang vị trí đủ định biên hoặc đã ngừng vẫn 409, không đổi dữ liệu', async () => {
+    await pool.execute("UPDATE nhanvien SET trangThaiLamViec = 'DA_NGHI_VIEC' WHERE id = 6");
+    const [[{ chucDanhPhongBanId: viTriCu }]] = await pool.execute('SELECT chucDanhPhongBanId FROM nhanvien WHERE id = 6');
+    expect((await chuyen(6, { chucDanhPhongBanId: 3 })).status).toBe(409);
+    await pool.execute("UPDATE chucdanhphongban SET trangThai = 'NGUNG_AP_DUNG' WHERE id = 2");
+    try {
+      expect((await chuyen(6, { chucDanhPhongBanId: 2 })).status).toBe(409);
+    } finally {
+      await pool.execute("UPDATE chucdanhphongban SET trangThai = 'DANG_AP_DUNG' WHERE id = 2");
+    }
+    const [[nv]] = await pool.execute('SELECT chucDanhPhongBanId, trangThaiLamViec FROM nhanvien WHERE id = 6');
+    expect(nv).toEqual({ chucDanhPhongBanId: viTriCu, trangThaiLamViec: 'DA_NGHI_VIEC' });
+    expect(await layNhatKy('DIEU_CHUYEN_NHAN_VIEN')).toHaveLength(0);
   });
 
   test('điều chuyển về đúng vị trí hiện tại trả 400', async () => {
