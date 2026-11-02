@@ -56,7 +56,7 @@ function kiemTraThoiHan(loaiHopDong, ngayBatDau, ngayKetThuc) {
   if (loaiHopDong === 'THU_VIEC' && ngayKetThuc > congNgay(ngayBatDau, SO_NGAY_THU_VIEC_TOI_DA - 1)) {
     throw new LoiUngDung(400, `Thời gian thử việc tối đa ${SO_NGAY_THU_VIEC_TOI_DA} ngày`);
   }
-  if (loaiHopDong === 'XAC_DINH_THOI_HAN' && ngayKetThuc > congThang(ngayBatDau, SO_THANG_XAC_DINH_TOI_DA)) {
+  if (loaiHopDong === 'XAC_DINH_THOI_HAN' && ngayKetThuc > congNgay(congThang(ngayBatDau, SO_THANG_XAC_DINH_TOI_DA), -1)) {
     throw new LoiUngDung(400, `Hợp đồng xác định thời hạn tối đa ${SO_THANG_XAC_DINH_TOI_DA} tháng, quá hạn này phải ký hợp đồng không xác định thời hạn`);
   }
   return ngayKetThuc;
@@ -228,7 +228,8 @@ async function dieuChinhHopDong(nguoiDung, id, body, diaChiIP) {
       const giaTri = Number(body[cot]);
       if (giaTri !== Number(hopDong[cot])) {
         truong[cot] = giaTri;
-        moTa.push(`${cot}: ${Number(hopDong[cot])} -> ${giaTri}`);
+        // Không ghi số tiền vào nhật ký (Admin xem được nhật ký nhưng không được xem lương); giá trị cũ/mới đã có ở lichsuhopdong
+        moTa.push(`${cot}: đã thay đổi`);
       }
     }
     if (body.duongDanFileHopDong !== undefined) {

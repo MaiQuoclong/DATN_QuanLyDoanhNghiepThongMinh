@@ -410,7 +410,7 @@ describe('POST / - lập hợp đồng', () => {
     ['ngày kết thúc bằng ngày bắt đầu', { ngayKetThuc: ngay(0) }],
     ['KXĐ có ngày kết thúc', { loaiHopDong: 'KHONG_XAC_DINH_THOI_HAN' }],
     ['thử việc quá 180 ngày', { loaiHopDong: 'THU_VIEC', ngayKetThuc: congNgay(ngay(0), 180) }],
-    ['XĐTH quá 36 tháng', { ngayKetThuc: congNgay(congThang(ngay(0), 36), 1) }],
+    ['XĐTH quá 36 tháng', { ngayKetThuc: congThang(ngay(0), 36) }],
     ['ngày bắt đầu sau hôm nay quá 180 ngày', { ngayBatDau: ngay(181), ngayKetThuc: ngay(400) }],
   ])('400 khi %s, không ghi gì vào CSDL', async (_ten, ghiDe) => {
     const soHd = await demHopDong();
@@ -429,7 +429,7 @@ describe('POST / - lập hợp đồng', () => {
       ngayKetThuc: congNgay(ngay(0), 179), luongCoBan: 1,
     });
     expect(tv.trangThai).toBe('HIEU_LUC');
-    await taoHopDongOk(hopDongXacDinh((await taoNhanVien()).nhanVien.id, { ngayKetThuc: congThang(ngay(0), 36) }));
+    await taoHopDongOk(hopDongXacDinh((await taoNhanVien()).nhanVien.id, { ngayKetThuc: congNgay(congThang(ngay(0), 36), -1) }));
     await taoHopDongOk(hopDongXacDinh((await taoNhanVien()).nhanVien.id, { ngayBatDau: ngay(180), ngayKetThuc: ngay(300) }));
   });
 
@@ -548,7 +548,7 @@ describe('POST /:id/giaHan', () => {
     const { nhanVien } = await taoNhanVien();
     const hd = await taoHopDongOk(hopDongXacDinh(nhanVien.id));
     expect((await goi('post', `/${hd.id}/giaHan`, token.hr)
-      .send({ ngayKetThucMoi: congNgay(congThang(ngay(0), 36), 1) })).status).toBe(400);
+      .send({ ngayKetThucMoi: congThang(ngay(0), 36) })).status).toBe(400);
     expect((await goi('post', `/${hd.id}/giaHan`, token.hr).send({})).status).toBe(400);
     expect((await goi('post', `/${hd.id}/giaHan`, token.hr).send({ ngayKetThucMoi: 'abc' })).status).toBe(400);
     expect((await goi('post', '/99999/giaHan', token.hr).send({ ngayKetThucMoi: ngay(700) })).status).toBe(404);
@@ -602,6 +602,17 @@ describe('POST /:id/dieuChinh', () => {
     const nk = await layNhatKy('DIEU_CHINH_HOP_DONG');
     expect(nk).toHaveLength(1);
     expect(nk[0].chiTiet).toContain('HD2024-0001');
+    expect(nk[0].chiTiet).not.toMatch(/13000000|14000000|800000|900000/);
+  });
+
+  test('chỉ điều chỉnh mức phụ cấp: nhật ký ghi "đã thay đổi", không lộ số tiền', async () => {
+    const res = await goi('post', '/6/dieuChinh', token.hr).send({ mucPhuCap: 1234567, lyDo: 'Tăng phụ cấp' });
+    expect(res.status).toBe(200);
+    const nk = await layNhatKy('DIEU_CHINH_HOP_DONG');
+    expect(nk).toHaveLength(1);
+    expect(nk[0].chiTiet).toContain('mucPhuCap: đã thay đổi');
+    expect(nk[0].chiTiet).not.toMatch(/1234567|800000/);
+    expect(nk[0].chiTiet).not.toContain('luongCoBan');
   });
 
   test.each([
