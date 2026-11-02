@@ -127,6 +127,10 @@ async function capNhatVaiTro(nguoiDung, nguoiDungId, dsVaiTro, diaChiIP) {
     if (vaiTroMoi.size === 0) throw new LoiUngDung(400, 'Tài khoản phải có ít nhất một vai trò');
 
     const vaiTroCu = await nguoiDungRepository.layDanhSachVaiTro(nguoiDungId, ketNoi);
+    // Admin không tự cấp thêm vai trò cho mình (tránh tự mở quyền xem lương/hợp đồng), chỉ được giữ hoặc bớt
+    if (nguoiDung.nguoiDungId === nguoiDungId && [...vaiTroMoi].some((vt) => !vaiTroCu.includes(vt))) {
+      throw new LoiUngDung(403, 'Không được tự cấp thêm vai trò cho chính mình');
+    }
     if (vaiTroCu.includes('Admin') && !vaiTroMoi.has('Admin')) {
       if (nguoiDung.nguoiDungId === nguoiDungId) throw new LoiUngDung(403, 'Không thể tự gỡ vai trò Admin của mình');
       if (tk.trangThai === 'DANG_HOAT_DONG') await chanMatAdminCuoiCung(ketNoi);
