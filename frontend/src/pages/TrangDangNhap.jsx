@@ -40,7 +40,7 @@ function TrangDangNhap() {
           <span className="logo">S</span>
           <div>
             <h1>Đăng nhập</h1>
-            <p>Smart HRM - Hệ thống quản lý doanh nghiệp thông minh</p>
+            <p>Hệ thống quản lý doanh nghiệp thông minh</p>
           </div>
         </div>
 

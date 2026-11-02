@@ -370,6 +370,32 @@ describe('POST /api/v1/nguoiDung/:id/khoa và /moKhoa', () => {
     // Admin mở khóa thủ công được vì đã quay lại làm việc
     expect((await goi('post', '/nguoiDung/6/moKhoa', tokenAdmin)).status).toBe(200);
   });
+
+  test.each(['DA_NGHI_VIEC', 'TAM_NGHI'])(
+    'song song: Admin khóa cùng lúc HR đổi trạng thái %s, lặp 3 vòng: không 500, cuối cùng KHOA và trạng thái làm việc khớp',
+    async (trangThaiMoi) => {
+      const tokenAdmin = await layToken('admin');
+      const tokenHr = await layToken('hr');
+      for (let vong = 0; vong < 3; vong += 1) {
+        await pool.execute("UPDATE nhanvien SET trangThaiLamViec = 'THU_VIEC' WHERE id = 6");
+        await pool.execute("UPDATE nguoidung SET trangThai = 'DANG_HOAT_DONG' WHERE id = 6");
+        const [khoa, doi] = await Promise.all([
+          goi('post', '/nguoiDung/6/khoa', tokenAdmin).send({ lyDo: 'Kiểm thử song song' }),
+          goi('post', '/nhanVien/6/doiTrangThai', tokenHr).send({ trangThaiLamViec: trangThaiMoi }),
+        ]);
+        // 400 = tài khoản đã bị khóa trước đó (nghỉ việc chạy trước tự khóa)
+        expect([200, 400, 409]).toContain(khoa.status);
+        expect([200, 409]).toContain(doi.status);
+        const [nv] = await pool.execute('SELECT trangThaiLamViec FROM nhanvien WHERE id = 6');
+        expect(nv[0].trangThaiLamViec).toBe(doi.status === 200 ? trangThaiMoi : 'THU_VIEC');
+        // Cả khóa tay và nghỉ việc đều dẫn tới KHOA; TAM_NGHI chỉ khóa nếu Admin khóa thành công
+        if (khoa.status === 400) expect(doi.status === 200 && trangThaiMoi === 'DA_NGHI_VIEC').toBe(true);
+        if (khoa.status === 200 || (doi.status === 200 && trangThaiMoi === 'DA_NGHI_VIEC')) {
+          expect(await layTrangThai(6)).toBe('KHOA');
+        }
+      }
+    }
+  );
 });
 
 // ---------------------------------------------------------------------------

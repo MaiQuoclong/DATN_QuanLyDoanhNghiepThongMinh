@@ -42,7 +42,7 @@ function BoCucChinh() {
       <header className="thanhTren">
         <div className="thuongHieu">
           <span className="logo">S</span>
-          <span className="tenHeThong">Smart HRM</span>
+          <span className="tenHeThong">Quản Lý Doanh Nghiệp</span>
           <span className="vachNgan" />
           <span className="tenModule">{moduleHienTai?.ten}</span>
         </div>

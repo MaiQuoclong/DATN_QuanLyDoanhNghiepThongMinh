@@ -139,10 +139,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   const [moc] = await pool.execute('SELECT COALESCE(MAX(id), 0) AS moc FROM nhatkyhethong');
   mocNhatKy = moc[0].moc;
-  // Seed dùng ngày cố định: đặt hợp đồng mẫu 6 (XĐTH) và 7 (thử việc) còn hiệu lực tương đối theo hôm nay
-  // để test không hỏng khi lịch trôi qua ngày kết thúc trong seed; afterEach khôi phục từ ảnh chụp
-  await pool.execute('UPDATE hopdonglaodong SET ngayKetThuc = ? WHERE id = 6', [ngay(24)]);
-  await pool.execute('UPDATE hopdonglaodong SET ngayBatDau = ?, ngayKetThuc = ? WHERE id = 7', [ngay(-60), ngay(60)]);
+  // Seed tính ngày hợp đồng 6, 7 theo CURDATE(); test đọc ngày thật từ CSDL, không ghi đè ngày cố định
 });
 
 afterEach(async () => {
@@ -319,6 +316,30 @@ describe('GET /sapHetHan', () => {
     const ids = res.body.data.items.map((h) => h.id);
     expect(ids).not.toContain(hdA.id);
     expect(ids).not.toContain(hdB.id);
+  });
+
+  test('seed tính ngày theo CURDATE(): HD2024-0001 (NV0005) còn 20 ngày nằm trong cảnh báo 30 ngày', async () => {
+    const res = await goi('get', '/sapHetHan?soNgay=30', token.hr);
+    expect(res.status).toBe(200);
+    const muc = res.body.data.items.find((h) => h.id === 6);
+    // Seed đặt ngayKetThuc = CURDATE()+20 lúc dựng DB; so với DATEDIFF thực tế để không phụ thuộc ngày dựng
+    const [[d]] = await pool.execute('SELECT DATEDIFF(ngayKetThuc, CURDATE()) AS con FROM hopdonglaodong WHERE id = 6');
+    expect(Number(d.con)).toBeGreaterThan(0);
+    expect(Number(d.con)).toBeLessThanOrEqual(20);
+    expect(muc).toMatchObject({ maHopDong: 'HD2024-0001', soNgayConLai: Number(d.con) });
+  });
+
+  test('seed: hợp đồng thử việc NV0006 bắt đầu CURDATE()-60, kết thúc CURDATE()+100, mã theo năm bắt đầu', async () => {
+    const res = await goi('get', '/7', token.hr);
+    expect(res.status).toBe(200);
+    const nam = ngay(-60).slice(0, 4);
+    expect(res.body.data).toMatchObject({ maHopDong: `HD${nam}-0001`, loaiHopDong: 'THU_VIEC' });
+    const db = await layHopDongDb(7);
+    const chuoi = (v) => (v instanceof Date ? v.toLocaleDateString('sv-SE') : String(v).slice(0, 10));
+    expect(chuoi(db.ngayBatDau)).toBe(ngay(-60));
+    expect(chuoi(db.ngayKetThuc)).toBe(ngay(100));
+    const [nv] = await pool.execute('SELECT ngayVaoLam FROM nhanvien WHERE id = 6');
+    expect(chuoi(nv[0].ngayVaoLam)).toBe(ngay(-60));
   });
 });
 
@@ -616,12 +637,13 @@ describe('POST /:id/dieuChinh', () => {
 // ---------------------------------------------------------------------------
 describe('POST /:id/chamDut', () => {
   test('chấm dứt thành công: ngày kết thúc = ngày chấm dứt, lịch sử CHAM_DUT, nhật ký; lần hai 409', async () => {
+    const ketThucCu = (await layHopDongDb(6)).ngayKetThuc;
     const res = await goi('post', '/6/chamDut', token.hr).send({ ngayChamDut: ngay(0), lyDo: ' Nghỉ việc ' });
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ trangThai: 'DA_CHAM_DUT', ngayKetThuc: ngay(0) });
     expect(res.body.data.lichSu[0]).toMatchObject({
       hanhDong: 'CHAM_DUT', trangThaiCu: 'HIEU_LUC', trangThaiMoi: 'DA_CHAM_DUT', lyDoThayDoi: 'Nghỉ việc',
-      ngayKetThucCu: ngay(24), ngayKetThucMoi: ngay(0),
+      ngayKetThucCu: ketThucCu, ngayKetThucMoi: ngay(0),
     });
     expect(await layNhatKy('CHAM_DUT_HOP_DONG')).toHaveLength(1);
     const lan2 = await goi('post', '/6/chamDut', token.hr).send({ ngayChamDut: ngay(0), lyDo: 'x' });
@@ -639,11 +661,14 @@ describe('POST /:id/chamDut', () => {
 
   test.each([
     ['trước ngày bắt đầu', { ngayChamDut: '2024-06-02', lyDo: 'x' }],
-    ['sau ngày kết thúc', { ngayChamDut: ngay(25), lyDo: 'x' }],
-    ['thiếu lý do', { ngayChamDut: ngay(10) }],
+    ['sau ngày kết thúc', null],
+    ['thiếu lý do', { ngayChamDut: ngay(0) }],
     ['ngày sai', { ngayChamDut: '2026-02-30', lyDo: 'x' }],
   ])('400 khi %s', async (_t, body) => {
-    const res = await goi('post', '/6/chamDut', token.hr).send(body);
+    // "sau ngày kết thúc" tính từ ngày kết thúc thật trong CSDL (seed theo CURDATE())
+    const ketThuc = (await layHopDongDb(6)).ngayKetThuc;
+    const duLieu = body || { ngayChamDut: congNgay(ketThuc, 1), lyDo: 'x' };
+    const res = await goi('post', '/6/chamDut', token.hr).send(duLieu);
     expect(res.status).toBe(400);
     expect((await layHopDongDb(6)).trangThai).toBe('HIEU_LUC');
   });
@@ -656,10 +681,11 @@ describe('POST /:id/chamDut', () => {
   test('rollback: lỗi ghi lịch sử thì trạng thái giữ nguyên', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(hopDongRepository, 'themLichSu').mockRejectedValueOnce(new Error('Lỗi giả lập'));
+    const truoc = await layHopDongDb(7);
     const res = await goi('post', '/7/chamDut', token.hr).send({ ngayChamDut: ngay(-1), lyDo: 'x' });
     expect(res.status).toBe(500);
     const hd = await layHopDongDb(7);
-    expect(hd).toMatchObject({ trangThai: 'HIEU_LUC', ngayKetThuc: ngay(60) });
+    expect(hd).toMatchObject({ trangThai: 'HIEU_LUC', ngayKetThuc: truoc.ngayKetThuc });
     expect(await layNhatKy('CHAM_DUT_HOP_DONG')).toHaveLength(0);
   });
 });

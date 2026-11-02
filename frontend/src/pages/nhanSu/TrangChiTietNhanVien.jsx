@@ -19,19 +19,22 @@ const CHUYEN_TRANG_THAI = {
   TAM_NGHI: ['CHINH_THUC', 'DA_NGHI_VIEC'],
   DA_NGHI_VIEC: ['THU_VIEC', 'CHINH_THUC'],
 };
+// Khớp VAI_TRO_CAP_CAO ở backend (nguoiDungService)
+const VAI_TRO_CAP_CAO = ['Admin', 'giamDoc', 'HR'];
 
-function TabHopDong({ nhanVien, laHR }) {
+// chiCuaToi: người không phải HR/giamDoc xem hồ sơ của mình -> /hopDong/cuaToi (route /hopDong chỉ cho HR, giamDoc)
+function TabHopDong({ nhanVien, laHR, chiCuaToi }) {
   const [danhSach, setDanhSach] = useState(null);
   const [loi, setLoi] = useState('');
   const [dangXem, setDangXem] = useState(null);
   const [dangLap, setDangLap] = useState(false);
 
   const tai = useCallback(() => {
-    goiApi
-      .get('/hopDong', { params: { nhanVienId: nhanVien.id, kichThuoc: 100 } })
-      .then((kq) => setDanhSach(kq.data.items))
-      .catch((e) => setLoi(e.message));
-  }, [nhanVien.id]);
+    const yeuCau = chiCuaToi
+      ? goiApi.get('/hopDong/cuaToi').then((kq) => kq.data)
+      : goiApi.get('/hopDong', { params: { nhanVienId: nhanVien.id, kichThuoc: 100 } }).then((kq) => kq.data.items);
+    yeuCau.then(setDanhSach).catch((e) => setLoi(e.message));
+  }, [nhanVien.id, chiCuaToi]);
   useEffect(tai, [tai]);
 
   return (
@@ -75,11 +78,16 @@ function TrangChiTietNhanVien() {
   const laMinh = hoSo && hoSo.id === nguoiDung.nhanVienId;
   // HR không tự sửa hồ sơ/hợp đồng của chính mình (docs/phan-quyen.md quy tắc 1)
   const laHR = nguoiDung.vaiTro.includes('HR') && !laMinh;
-  const xemHopDong = laMinh || nguoiDung.vaiTro.some((vt) => ['HR', 'giamDoc'].includes(vt));
+  // HR chỉ cấp mật khẩu tạm cho tài khoản không có vai trò cấp cao (Admin dùng trang Tài khoản)
+  const duocCapMatKhauTam = nguoiDung.vaiTro.includes('Admin')
+    || !(hoSo?.vaiTroTaiKhoan ?? []).some((vt) => VAI_TRO_CAP_CAO.includes(vt));
+  const xemHopDongToanCongTy = nguoiDung.vaiTro.some((vt) => ['HR', 'giamDoc'].includes(vt));
+  const xemHopDong = laMinh || xemHopDongToanCongTy;
 
   const capNhat = (duongDan, phuongThuc = 'post') => async (giaTri) => {
     const kq = await goiApi[phuongThuc](`/nhanVien/${id}${duongDan}`, giaTri);
-    setHoSo(kq.data);
+    // API thao tác không trả vaiTroTaiKhoan -> giữ lại giá trị đã tải
+    setHoSo((cu) => ({ ...cu, ...kq.data }));
     setThaoTac(null);
   };
 
@@ -117,7 +125,7 @@ function TrangChiTietNhanVien() {
             {hoSo.trangThaiLamViec !== 'DA_NGHI_VIEC' && (
               <NutBam bienThe="phu" bieuTuong={Shuffle} onClick={moDieuChuyen}>Điều chuyển</NutBam>
             )}
-            {hoSo.nguoiDungId && hoSo.trangThaiTaiKhoan !== 'KHOA' && (
+            {hoSo.nguoiDungId && hoSo.trangThaiTaiKhoan !== 'KHOA' && duocCapMatKhauTam && (
               <NutBam bienThe="phu" bieuTuong={KeyRound} onClick={() => setThaoTac('matKhau')}>Cấp mật khẩu tạm</NutBam>
             )}
           </div>
@@ -137,7 +145,7 @@ function TrangChiTietNhanVien() {
           <LuoiThongTinHoSo hoSo={hoSo} />
         </div>
       )}
-      {tab === 'hopDong' && xemHopDong && <TabHopDong nhanVien={hoSo} laHR={laHR} />}
+      {tab === 'hopDong' && xemHopDong && <TabHopDong nhanVien={hoSo} laHR={laHR} chiCuaToi={!xemHopDongToanCongTy} />}
 
       {thaoTac === 'sua' && (
         <HopThoaiBieuMau

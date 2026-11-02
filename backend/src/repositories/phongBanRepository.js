@@ -25,8 +25,32 @@ async function layPhongBanLamTruong(nhanVienId, ketNoi) {
   return dong;
 }
 
-// Khóa dòng vị trí (chức danh trong phòng ban) trong transaction để kiểm tra định biên không bị tranh chấp
+// Thứ tự khóa thống nhất: phongban -> chucdanhphongban -> nhanvien -> nguoidung.
+// Luồng bắt đầu từ nhân viên (điều chuyển, đổi trạng thái) gọi hàm này TRƯỚC khi khóa nhanvien,
+// khóa theo id tăng dần để hai transaction cùng khóa nhiều phòng không chờ vòng nhau.
+async function khoaCacPhongBan(phongBanIds, ketNoi) {
+  const ids = [...new Set(phongBanIds.filter(Boolean))].sort((a, b) => a - b);
+  if (!ids.length) return;
+  await ketNoi.query(`SELECT id FROM phongban WHERE id IN (${ids.map(() => '?').join(', ')}) ORDER BY id FOR UPDATE`, ids);
+}
+
+// Đọc không khóa (dùng trước transaction) để biết cần khóa phòng nào trước khi khóa nhanvien
+async function layIdPhongBanLamTruong(nhanVienId) {
+  const [dong] = await pool.execute('SELECT id FROM phongban WHERE truongBoPhanId = ?', [nhanVienId]);
+  return dong.map((d) => d.id);
+}
+
+async function layPhongBanCuaViTri(chucDanhPhongBanId, ketNoi = pool) {
+  const [dong] = await ketNoi.execute('SELECT phongBanId FROM chucdanhphongban WHERE id = ?', [chucDanhPhongBanId]);
+  return dong[0]?.phongBanId ?? null;
+}
+
+// Khóa dòng vị trí (chức danh trong phòng ban) trong transaction để kiểm tra định biên không bị tranh chấp.
+// Chỉ khóa chucdanhphongban: nếu JOIN ... FOR UPDATE sẽ khóa kèm phongban/chucdanh theo thứ tự tùy kế hoạch
+// thực thi, ngược với luồng sửa/ngừng chức danh (chucdanh -> chucdanhphongban). Trạng thái phòng ban/chức danh đọc riêng.
 async function khoaViTri(chucDanhPhongBanId, ketNoi) {
+  const [khoa] = await ketNoi.execute('SELECT id FROM chucdanhphongban WHERE id = ? FOR UPDATE', [chucDanhPhongBanId]);
+  if (!khoa.length) return null;
   const [dong] = await ketNoi.execute(
     `SELECT cdpb.id, cdpb.phongBanId, cdpb.chucDanhId, cdpb.dinhBien, cdpb.ghiChu, cdpb.trangThai,
             pb.trangThai AS trangThaiPhongBan, pb.tenPhongBan,
@@ -34,8 +58,7 @@ async function khoaViTri(chucDanhPhongBanId, ketNoi) {
        FROM chucdanhphongban cdpb
        JOIN phongban pb ON pb.id = cdpb.phongBanId
        JOIN chucdanh cd ON cd.id = cdpb.chucDanhId
-      WHERE cdpb.id = ?
-      FOR UPDATE`,
+      WHERE cdpb.id = ?`,
     [chucDanhPhongBanId]
   );
   return dong[0] ?? null;
@@ -233,6 +256,9 @@ function capNhatViTri(id, truong, ketNoi) {
 module.exports = {
   layPhongBanQuanLy,
   layPhongBanLamTruong,
+  khoaCacPhongBan,
+  layIdPhongBanLamTruong,
+  layPhongBanCuaViTri,
   khoaViTri,
   layDanhSachPhongBan,
   layPhongBanTheoId,

@@ -5,18 +5,29 @@
 - [x] Module Hồ sơ nhân sự, Trạng thái lao động & Hợp đồng (backend + frontend + seed, 2026-11-01)
   - [x] Hồ sơ nhân sự & trạng thái lao động (`/api/v1/nhanVien`) — test `backend/tests/nhanVien.test.js` (130 test, pass). Toàn backend 316/316 pass (2026-11-01, `npm test` hai lần + `npx jest --runInBand --randomize`).
   - [x] Cơ cấu tổ chức (`/api/v1/phongBan`, `/chucDanh`, `/chucDanhPhongBan`, bổ nhiệm/miễn nhiệm) — test `backend/tests/coCauToChuc.test.js` (101 test, pass). Toàn backend 417/417 pass (2026-11-01, `npm test` hai lần + `npm test -- --randomize`, seed 395550296).
-  - [x] Hợp đồng lao động (`/api/v1/hopDong`) — test `backend/tests/hopDong.test.js` (96 test, pass). Sau đợt sửa lỗi reviewer: toàn backend 519/519 pass (2026-11-01, `npm test` + `npx jest --runInBand --randomize` seed -457478370; thêm test: chồng lấn với hợp đồng DA_CHAM_DUT, DUOC_PHAN_QUYEN chỉ khi đổi quanLy, sửa phòng con khi cha ngừng, nhật ký chỉ ghi trường đổi, DANG_NHAP_THAT_BAI không ghi chuỗi lạ). Trước đó 512/512 pass (2026-11-01, `npm test` hai lần + `npm test -- --randomize`, seed -574257199) trên CSDL vừa dựng lại bằng `npm run khoiTaoCsdl`. Test đặt ngày hợp đồng mẫu 6, 7 tương đối theo hôm nay ở `beforeEach` (seed dùng ngày cố định).
+  - [x] Hợp đồng lao động (`/api/v1/hopDong`) — test `backend/tests/hopDong.test.js` (96 test, pass). Sau đợt sửa lỗi reviewer: toàn backend 519/519 pass (2026-11-01, `npm test` + `npx jest --runInBand --randomize` seed -457478370; thêm test: chồng lấn với hợp đồng DA_CHAM_DUT, DUOC_PHAN_QUYEN chỉ khi đổi quanLy, sửa phòng con khi cha ngừng, nhật ký chỉ ghi trường đổi, DANG_NHAP_THAT_BAI không ghi chuỗi lạ). Trước đó 512/512 pass (2026-11-01, `npm test` hai lần + `npm test -- --randomize`, seed -574257199) trên CSDL vừa dựng lại bằng `npm run khoiTaoCsdl`. (2026-11-02: seed tính ngày hợp đồng 6, 7 theo `CURDATE()`, test đọc ngày thật từ DB.)
   - [x] Frontend module: Hồ sơ của tôi, Danh sách/Chi tiết nhân viên (`/nhanSu/danhSach/:id`), Hợp đồng (cảnh báo hết hạn, lịch sử, thao tác HR), Phòng ban (cây + vị trí + chức danh, bổ nhiệm), Hệ thống: Tài khoản (chỉ Admin), Nhật ký. `vite build` pass; chưa kiểm thử tự động giao diện.
 - [ ] Module Chấm công, Đơn từ hành chính & Lương
 - [ ] Module Đánh giá KPI, Khen thưởng & Kỷ luật
 - [ ] Tầng AI Agent: RAG quy chế, Function Calling tạo đơn, Text-to-SQL báo cáo
 
-## Đang làm & việc tiếp theo (cập nhật 2026-11-01)
+## Đang làm & việc tiếp theo (cập nhật 2026-11-02)
+- **Nhánh `feature/sua-loi-ho-so-nhan-su`** (từ `develop`): XONG — sửa 5 lỗi tồn đọng + reviewer toàn project 2 lượt + qa-tester 2 lượt. Backend **564/564 pass** (2026-11-02, `npm run khoiTaoCsdl` → `npm test` + `npm test -- --randomize` seed -168098178), `vite build` pass. Chờ người dùng thử trên web, commit, PR về `develop`.
+  1. Ô chọn nhân viên có tìm kiếm `components/OChonNhanVien.jsx` (kiểu trường `nhanVien` trong `HopThoaiBieuMau`): dùng ở Lập hợp đồng và Bổ nhiệm trưởng (bỏ giới hạn 100).
+  2. `GET /nhanVien/:id` trả thêm `vaiTroTaiKhoan[]` cho HR/giamDoc; chi tiết nhân viên ẩn "Cấp mật khẩu tạm" khi đích có Admin/giamDoc/HR (trừ người gọi là Admin).
+  3. `PATCH /chucDanh/:id` và `PATCH /chucDanhPhongBan/:id` nhận thêm `trangThai` tùy chọn, sửa thông tin + trạng thái trong 1 transaction; frontend chỉ gọi 1 API.
+  4. Thứ tự khóa thống nhất phongban → chucdanhphongban → nhanvien → nguoidung: `dieuChuyen`/`doiTrangThai` nhân viên khóa phòng hiện tại (+ phòng đích) trước (`phongBanRepository.khoaCacPhongBan`, `nhanVienService.khoaPhongBanRoiHoSo`); hồ sơ đổi phòng giữa chừng → 409.
+  5. Review lượt 1-2: `khoaViTri` chỉ khóa `chucdanhphongban` (trạng thái phòng/chức danh đọc riêng); `kiemTraViTriTrong`, `khoaViTriHoacLoi` khóa phòng ban trước; bổ nhiệm/miễn nhiệm/ngừng phòng khóa trước phòng của trưởng cũ (`coCauToChucService.khoaPhongBanVaPhongCuaTruong`, trưởng đổi giữa chừng → 409); luồng tài khoản (`nguoiDungService.khoaTaiKhoanHoacLoi`) khóa phòng → nhân viên → tài khoản; bổ nhiệm đọc trạng thái tài khoản có khóa; PATCH `trangThai` rỗng/null/sai → 400 (`layTrangThaiTuyChon`); tab Hợp đồng khi người không phải HR/giamDoc xem hồ sơ mình gọi `/hopDong/cuaToi`.
+  6. Seed: ngày hợp đồng NV0005 (hết hạn CURDATE()+20, demo cảnh báo) và NV0006 (vào làm/thử việc CURDATE()-60 → +100, mã `HD<năm>-0001`) tính theo `CURDATE()`; test hợp đồng bỏ `beforeEach` ghi đè ngày, đọc ngày thật từ DB.
+  - Test mới (+35 so với 529): PATCH kèm trangThai (rollback khi 409), `vaiTroTaiKhoan` theo vai trò, song song: ngừng phòng + điều chuyển, ngừng chức danh + điều chuyển/tạo vị trí, 2 bổ nhiệm cùng trưởng cũ, bổ nhiệm + miễn nhiệm, 4 người thêm vào vị trí còn 1 chỗ (đúng 1 thành công), Admin khóa + HR cho nghỉ việc.
+  - Hạn chế đã biết (chưa sửa, rủi ro thấp): `doiMatKhau` đọc mật khẩu ngoài transaction; `OChonNhanVien` lọc nhiều trạng thái ở client (lấy 50 + tìm kiếm); seed chưa có mẫu `TAM_NGHI`/`DA_NGHI_VIEC`/tài khoản `KHOA` (demo tự tạo trên web).
+
+## Lịch sử (cập nhật 2026-11-01)
 - Nhánh hiện tại: `feature/ho-so-nhan-su` — module 2 xong, chờ người dùng thử trên web (`npm run dev` ở backend + frontend), commit, PR về `develop`, rồi PR `develop` → `main` (xong trọn module).
 - Quy trình: xong MỖI chức năng → `reviewer` toàn project → sửa lỗi → `qa-tester` toàn project → sửa lỗi → mới làm chức năng kế tiếp.
 - Review lượt 2 (toàn project) đã sửa: chồng lấn với hợp đồng chấm dứt ở tương lai, DUOC_PHAN_QUYEN chỉ ghi khi đổi quanLy, đổi tên phòng ban khi phòng cha đã ngừng, nhật ký chỉ ghi trường thật sự đổi, không lưu tenDangNhap lạ khi đăng nhập sai. Backend 519/519 (cả randomize).
 - Seed mở rộng nhiều người/vai trò (hr2 NV0007, giamdoc2 NV0008, quanly2 NV0009 trưởng PKD, nhanvien3 NV0010; hợp đồng 8-11): test đã bỏ đếm cứng, giá trị kỳ vọng tính từ CSDL (COUNT, MAX mã NV, quân số theo cây phòng ban). Thêm 8 test "Nhiều người cùng vai trò" trong `nhanVien.test.js` (quanly2 chỉ thấy PKD, quanly không thấy PKD, hr/hr2 sửa hồ sơ lẫn nhau, giamdoc2 xem toàn công ty). Backend 529/529 pass (2026-11-01, `npm test` + `npx jest --runInBand --randomize` seed 34658132).
-- Tồn đọng (chưa sửa, chờ quyết định): form lập hợp đồng nhập `nhanVienId` thay vì ô chọn nhân viên; nút "Cấp mật khẩu tạm" hiện với tài khoản cấp cao; sửa vị trí/chức danh gọi 2 API không nguyên tử; ứng viên bổ nhiệm tối đa 100; tài khoản quanLy có sẵn trong seed (`quanly`, `quanly2`) không có nhật ký TU_DONG_GAN_QUAN_LY nên miễn nhiệm không tự gỡ quanLy (đúng thiết kế; demo luồng tự gỡ thì bổ nhiệm người mới).
+- Lưu ý seed: tài khoản quanLy có sẵn trong seed (`quanly`, `quanly2`) không có nhật ký TU_DONG_GAN_QUAN_LY nên miễn nhiệm không tự gỡ quanLy (đúng thiết kế; demo luồng tự gỡ thì bổ nhiệm người mới).
 - Seed (review lượt 3): mỗi vai trò ≥ 2 người (thêm hr2, giamdoc2, quanly2 - trưởng PKD, nhanvien3); lịch sử hợp đồng lập trước khi HR vào làm do giám đốc NV0002 thực hiện. Backend 529/529 (randomize) trên DB dựng lại.
 - Tiếp theo: Module Chấm công, Đơn từ hành chính & Lương — nhánh `feature/cham-cong` từ `develop`.
 - Frontend: tab Tài khoản chỉ Admin (API `/nguoiDung` chỉ Admin); HR cấp mật khẩu tạm trong chi tiết nhân viên. Trang mới đăng ký trong `TRANG_DA_LAM` / `TRANG_CON` ở `frontend/src/App.jsx`.
@@ -45,15 +56,15 @@
 | POST | `/api/v1/phongBan/:id/boNhiem` | giamDoc | `{nhanVienId}`; người đang làm việc (không TAM_NGHI/DA_NGHI_VIEC) thuộc chính phòng đó, không tự bổ nhiệm; tự gán vai trò `quanLy` (người cũ bị gỡ nếu hết phòng); log `BO_NHIEM_TRUONG_BO_PHAN` + `TU_DONG_GAN_QUAN_LY` (theo người được bổ nhiệm) |
 | POST | `/api/v1/phongBan/:id/mienNhiem` | giamDoc | Gỡ `truongBoPhanId`, tự gỡ `quanLy` nếu hết phòng; log `MIEN_NHIEM_TRUONG_BO_PHAN` |
 | GET | `/api/v1/chucDanh` | Mọi vai trò | `?trangThai` |
-| POST / PATCH | `/api/v1/chucDanh`, `/chucDanh/:id` | HR | `{maChucDanh, tenChucDanh, capBac}` / sửa tên, cấp bậc; log `THEM_/SUA_CHUC_DANH` |
+| POST / PATCH | `/api/v1/chucDanh`, `/chucDanh/:id` | HR | `{maChucDanh, tenChucDanh, capBac}` / sửa tên, cấp bậc, `trangThai?` (cùng 1 transaction; rỗng/sai 400, ngừng khi còn vị trí 409 → không đổi gì); log `THEM_/SUA_CHUC_DANH` |
 | POST | `/api/v1/chucDanh/:id/doiTrangThai` | HR | Ngừng khi không còn vị trí `DANG_AP_DUNG` dùng chức danh (409) |
 | GET | `/api/v1/chucDanhPhongBan` | HR, giamDoc | `?phongBanId&trangThai`; vị trí kèm `dinhBien`, `soDangGiu`, `conTrong` (form thêm/điều chuyển) |
-| POST / PATCH | `/api/v1/chucDanhPhongBan`, `/chucDanhPhongBan/:id` | HR | `{phongBanId, chucDanhId, dinhBien 1-1000, ghiChu}` (trùng 409) / sửa định biên (≥ số đang giữ, 409), ghi chú; log `THEM_/SUA_VI_TRI` |
+| POST / PATCH | `/api/v1/chucDanhPhongBan`, `/chucDanhPhongBan/:id` | HR | `{phongBanId, chucDanhId, dinhBien 1-1000, ghiChu}` (trùng 409) / sửa định biên (≥ số đang giữ, 409), ghi chú, `trangThai?` (cùng 1 transaction, rỗng/sai 400); log `THEM_/SUA_VI_TRI` |
 | POST | `/api/v1/chucDanhPhongBan/:id/doiTrangThai` | HR | Ngừng khi không còn người giữ (409); áp dụng lại cần phòng ban + chức danh hoạt động |
 | GET | `/api/v1/nhanVien` | HR, giamDoc; quanLy (PM) | `?tuKhoa&phongBanId&trangThaiLamViec&trang&kichThuoc` (tối đa 100); không trả ngân hàng; tham số sai 400 |
 | GET | `/api/v1/nhanVien/toi` | Người có hồ sơ | Hồ sơ đầy đủ của mình |
 | PATCH | `/api/v1/nhanVien/toi` | Người có hồ sơ | Sửa `soDienThoai`, `diaChi`, `soTaiKhoanNganHang`, `tenNganHang` (`""` = xóa); log `CAP_NHAT_HO_SO_CA_NHAN` |
-| GET | `/api/v1/nhanVien/:id` | Mình; HR, giamDoc; quanLy (PM, ẩn ngân hàng) | 403 nếu ngoài phạm vi |
+| GET | `/api/v1/nhanVien/:id` | Mình; HR, giamDoc; quanLy (PM, ẩn ngân hàng) | 403 nếu ngoài phạm vi; HR/giamDoc nhận thêm `vaiTroTaiKhoan[]` |
 | POST | `/api/v1/nhanVien` | HR | Transaction: `nguoidung` (mật khẩu tạm) + vai trò `nhanVien` + `nhanvien` (sinh `NVxxxx`), kiểm tra định biên, đủ 15 tuổi; trả `taiKhoan.matKhauTam` một lần; log `THEM_NHAN_VIEN` + `RESET_MAT_KHAU_TAM` |
 | PATCH | `/api/v1/nhanVien/:id` | HR (trừ mình) | Sửa thông tin hồ sơ; log `SUA_NHAN_VIEN` |
 | POST | `/api/v1/nhanVien/:id/doiTrangThai` | HR (trừ mình) | `{trangThaiLamViec, lyDo}`; `DA_NGHI_VIEC` → khóa tài khoản (409 nếu đang là trưởng bộ phận), quay lại → mở khóa; log `DOI_TRANG_THAI_LAM_VIEC` |

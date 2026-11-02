@@ -146,10 +146,15 @@ export function HopThoaiChiTietHopDong({ hopDongId, onDong, onThayDoi }) {
   );
 }
 
-// HR lập hợp đồng mới. nhanVien: chọn sẵn (từ chi tiết nhân viên) hoặc nhập mã nhân viên id
+// HR lập hợp đồng mới. nhanVien: chọn sẵn (từ chi tiết nhân viên) hoặc tìm theo tên/mã.
+// Bỏ người đã nghỉ việc và chính HR đang đăng nhập (backend cũng chặn: 409 / 403).
 export function HopThoaiLapHopDong({ nhanVien, onDong, onDaTao }) {
+  const { nguoiDung } = useXacThuc();
   const truong = [
-    ...(nhanVien ? [] : [{ ten: 'nhanVienId', nhan: 'Mã số nhân viên (id)', kieu: 'number', batBuoc: true, ghiChu: 'Xem ở danh sách nhân viên' }]),
+    ...(nhanVien ? [] : [{
+      ten: 'nhanVienId', nhan: 'Nhân viên', kieu: 'nhanVien', batBuoc: true,
+      locNhanVien: { trangThai: ['THU_VIEC', 'CHINH_THUC', 'TAM_NGHI'], boQuaIds: [nguoiDung.nhanVienId] },
+    }]),
     { ten: 'loaiHopDong', nhan: 'Loại hợp đồng', kieu: 'select', luaChon: LUA_CHON_LOAI, batBuoc: true },
     { ten: 'ngayBatDau', nhan: 'Ngày bắt đầu', kieu: 'date', batBuoc: true },
     { ten: 'ngayKetThuc', nhan: 'Ngày kết thúc', kieu: 'date', ghiChu: 'Bỏ trống với hợp đồng không xác định thời hạn' },

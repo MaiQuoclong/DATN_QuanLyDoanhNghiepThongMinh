@@ -73,6 +73,7 @@ router.patch(
   kiemTraDuLieu({
     tenChucDanh: { nhan: 'Tên chức danh', toiThieu: 2, toiDa: 100 },
     capBac: { nhan: 'Cấp bậc', toiThieu: 2, toiDa: 50 },
+    trangThai: { nhan: 'Trạng thái', cacGiaTri: TRANG_THAI_CHUC_DANH },
   }),
   batLoiBatDongBo(coCauToChucController.suaChucDanh)
 );
@@ -96,6 +97,7 @@ router.patch(
   kiemTraDuLieu({
     dinhBien: { nhan: 'Định biên', kieu: 'soNguyenDuong' },
     ghiChu: { nhan: 'Ghi chú', toiDa: 255 },
+    trangThai: { nhan: 'Trạng thái', cacGiaTri: TRANG_THAI_VI_TRI },
   }),
   batLoiBatDongBo(coCauToChucController.suaViTri)
 );

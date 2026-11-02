@@ -307,6 +307,38 @@ describe('GET /api/v1/nhanVien/:id và /toi - chi tiết và phạm vi', () => {
   test('GET /toi chưa đăng nhập trả 401', async () => {
     expect((await goi('get', '/toi')).status).toBe(401);
   });
+
+  async function vaiTroTrongDb(nguoiDungId) {
+    const [d] = await pool.execute(
+      'SELECT v.maVaiTro FROM nguoidungvaitro nv JOIN vaitro v ON v.id = nv.vaiTroId WHERE nv.nguoiDungId = ?',
+      [nguoiDungId]
+    );
+    return d.map((x) => x.maVaiTro).sort();
+  }
+
+  test.each([['hr', 5], ['hr', 3], ['giamdoc', 1], ['giamdoc', 4]])('%s xem hồ sơ id %i có vaiTroTaiKhoan khớp CSDL', async (ten, id) => {
+    const res = await goi('get', `/${id}`, token[ten]);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data.vaiTroTaiKhoan)).toBe(true);
+    expect([...res.body.data.vaiTroTaiKhoan].sort()).toEqual(await vaiTroTrongDb(id));
+  });
+
+  test('vaiTroTaiKhoan phản ánh vai trò mới sau khi Admin phân quyền', async () => {
+    const gan = await request(app).put('/api/v1/nguoiDung/6/vaiTro').set('Authorization', `Bearer ${token.admin}`)
+      .send({ vaiTro: ['nhanVien', 'HR'] });
+    expect(gan.status).toBe(200);
+    const res = await goi('get', '/6', token.hr);
+    expect([...res.body.data.vaiTroTaiKhoan].sort()).toEqual(['HR', 'nhanVien']);
+  });
+
+  test.each([['quanly', 6], ['quanly', 5], ['nhanvien', 5], ['nhanvien2', 6], ['quanly', 3]])(
+    '%s xem hồ sơ id %i không có trường vaiTroTaiKhoan',
+    async (ten, id) => {
+      const res = await goi('get', `/${id}`, token[ten]);
+      expect(res.status).toBe(200);
+      expect(res.body.data).not.toHaveProperty('vaiTroTaiKhoan');
+    }
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -810,6 +842,29 @@ describe('POST /api/v1/nhanVien/:id/dieuChuyen', () => {
   test.each(['admin', 'giamdoc', 'quanly', 'nhanvien'])('%s điều chuyển trả 403', async (ten) => {
     expect((await chuyen(6, { chucDanhPhongBanId: 2 }, token[ten])).status).toBe(403);
   });
+
+  test('điều chuyển rồi đổi trạng thái liên tiếp (khóa phòng ban trước hồ sơ) vẫn đúng dữ liệu', async () => {
+    const dc = await chuyen(6, { chucDanhPhongBanId: 2 });
+    expect(dc.status).toBe(200);
+    expect(dc.body.data).toMatchObject({ id: 6, chucDanhPhongBanId: 2, phongBanId: 2 });
+    const tt = await goi('post', '/6/doiTrangThai', token.hr).send({ trangThaiLamViec: 'TAM_NGHI' });
+    expect(tt.status).toBe(200);
+    expect(tt.body.data).toMatchObject({ id: 6, trangThaiLamViec: 'TAM_NGHI', chucDanhPhongBanId: 2 });
+    expect(await demNhatKy('DIEU_CHUYEN_NHAN_VIEN', 4)).toBe(1);
+    expect(await demNhatKy('DOI_TRANG_THAI_LAM_VIEC', 4)).toBe(1);
+  });
+
+  test('điều chuyển và đổi trạng thái cùng một nhân viên song song: không 500, dữ liệu khớp kết quả', async () => {
+    const [dc, tt] = await Promise.all([
+      chuyen(6, { chucDanhPhongBanId: 2 }),
+      goi('post', '/6/doiTrangThai', token.hr).send({ trangThaiLamViec: 'CHINH_THUC' }),
+    ]);
+    expect([200, 409]).toContain(dc.status);
+    expect([200, 409]).toContain(tt.status);
+    const [d] = await pool.execute('SELECT chucDanhPhongBanId, trangThaiLamViec FROM nhanvien WHERE id = 6');
+    expect(d[0].chucDanhPhongBanId).toBe(dc.status === 200 ? 2 : 5);
+    expect(d[0].trangThaiLamViec).toBe(tt.status === 200 ? 'CHINH_THUC' : 'THU_VIEC');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -893,5 +948,27 @@ describe('Chạy song song', () => {
     expect([a.status, b.status]).toEqual([201, 201]);
     const ma = [a.body.data.nhanVien.maNhanVien, b.body.data.nhanVien.maNhanVien].sort();
     expect(ma).toEqual(mong);
+  });
+
+  test('4 request thêm cùng lúc vào vị trí còn đúng 1 chỗ, lặp 3 vòng: mỗi vòng đúng 1 thành công, không 500', async () => {
+    const demDangLam = async () => {
+      const [d] = await pool.execute(
+        "SELECT COUNT(*) AS n FROM nhanvien WHERE chucDanhPhongBanId = 5 AND trangThaiLamViec <> 'DA_NGHI_VIEC'"
+      );
+      return Number(d[0].n);
+    };
+    for (let vong = 0; vong < 3; vong += 1) {
+      const truoc = await demDangLam();
+      await datDinhBien(5, truoc + 1); // còn đúng 1 chỗ, tính từ CSDL
+      const soNd = await demBang('nguoidung');
+      const kq = await Promise.all([1, 2, 3, 4].map(() => themNhanVien(duLieuMoi())));
+      const ma = kq.map((r) => r.status).sort();
+      expect(ma).toEqual([201, 409, 409, 409]);
+      for (const r of kq.filter((x) => x.status === 409)) {
+        expect(r.body).toMatchObject({ success: false, code: 409, data: null });
+      }
+      expect(await demDangLam()).toBe(truoc + 1);
+      expect(await demBang('nguoidung')).toBe(soNd + 1);
+    }
   });
 });

@@ -2,6 +2,7 @@ const LoiUngDung = require('../utils/LoiUngDung');
 const { chayTransaction } = require('../config/ketNoiCsdl');
 const nguoiDungRepository = require('../repositories/nguoiDungRepository');
 const phongBanRepository = require('../repositories/phongBanRepository');
+const nhanVienRepository = require('../repositories/nhanVienRepository');
 const { themNhatKy, layDanhSachNhatKy } = require('../repositories/nhatKyRepository');
 const { taoMatKhauTam, bamMatKhau } = require('../utils/matKhauTam');
 const { TRANG_THAI_TAI_KHOAN } = require('../utils/trangThai');
@@ -14,7 +15,19 @@ function chanTuThaoTac(nguoiDung, nguoiDungId, thongBao) {
   if (nguoiDung.nguoiDungId === nguoiDungId) throw new LoiUngDung(403, thongBao);
 }
 
+// Giữ thứ tự khóa phongban -> nhanvien -> nguoidung (giống bổ nhiệm, đổi trạng thái lao động) để tránh deadlock:
+// đọc hồ sơ liên kết ngoài transaction, khóa phòng ban hiện tại + phòng đang làm trưởng, rồi nhân viên, rồi tài khoản.
 async function khoaTaiKhoanHoacLoi(nguoiDungId, ketNoi) {
+  const hoSo = await nguoiDungRepository.layHoSoLienKet(nguoiDungId);
+  if (hoSo) {
+    const phongLamTruong = await phongBanRepository.layIdPhongBanLamTruong(hoSo.nhanVienId);
+    await phongBanRepository.khoaCacPhongBan([hoSo.phongBanId, ...phongLamTruong], ketNoi);
+    await nhanVienRepository.khoaNhanVien(hoSo.nhanVienId, ketNoi);
+    const sauKhiKhoa = await nhanVienRepository.layTheoId(hoSo.nhanVienId, ketNoi);
+    if (sauKhiKhoa && sauKhiKhoa.phongBanId !== hoSo.phongBanId) {
+      throw new LoiUngDung(409, 'Nhân viên vừa được điều chuyển, vui lòng tải lại và thử lại');
+    }
+  }
   const taiKhoan = await nguoiDungRepository.khoaTaiKhoan(nguoiDungId, ketNoi);
   if (!taiKhoan) throw new LoiUngDung(404, 'Không tìm thấy tài khoản');
   return taiKhoan;

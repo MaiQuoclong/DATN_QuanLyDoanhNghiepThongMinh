@@ -96,7 +96,9 @@ function moTaThayDoi(hoSoCu, truong) {
 }
 
 // Vị trí phải đang áp dụng, phòng ban/chức danh đang hoạt động và còn định biên
+// Khóa phòng ban của vị trí trước (thứ tự phongban -> chucdanhphongban); luồng đã khóa sẵn thì khóa lại không tốn thêm
 async function kiemTraViTriTrong(chucDanhPhongBanId, boQuaNhanVienId, ketNoi) {
+  await phongBanRepository.khoaCacPhongBan([await phongBanRepository.layPhongBanCuaViTri(chucDanhPhongBanId)], ketNoi);
   const viTri = await phongBanRepository.khoaViTri(chucDanhPhongBanId, ketNoi);
   if (!viTri) throw new LoiUngDung(404, 'Không tìm thấy vị trí (chức danh trong phòng ban)');
   if (viTri.trangThai !== 'DANG_AP_DUNG' || viTri.trangThaiPhongBan !== 'DANG_HOAT_DONG'
@@ -120,6 +122,26 @@ async function layHoSoHoacLoi(id, ketNoi) {
 async function khoaVaLayHoSo(id, ketNoi) {
   if (!(await nhanVienRepository.khoaNhanVien(id, ketNoi))) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
   return layHoSoHoacLoi(id, ketNoi);
+}
+
+// Luồng có thể chạm phongban (kiểm tra trưởng bộ phận, khóa vị trí): khóa phongban trước rồi mới nhanvien,
+// cùng thứ tự với ngừng phòng ban / bổ nhiệm (phongBanRepository.khoaCacPhongBan) để tránh deadlock.
+// Trưởng bộ phận luôn thuộc chính phòng đó nên chỉ cần khóa phòng hiện tại (+ phòng đích khi điều chuyển).
+// Đọc trước bằng pool (ngoài transaction) để khoaNhanVien vẫn là câu đọc đầu tiên, không chốt ảnh chụp cũ.
+// Vị trí (cũ + đích) cũng khóa trước nhanvien, theo id tăng dần.
+async function khoaPhongBanRoiHoSo(id, viTriDich, ketNoi) {
+  const truoc = await nhanVienRepository.layTheoId(id);
+  if (!truoc) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
+  // Kèm các phòng đang làm trưởng (phòng ngừa dữ liệu cũ có trưởng không thuộc phòng)
+  const phongLamTruong = await phongBanRepository.layIdPhongBanLamTruong(id);
+  await phongBanRepository.khoaCacPhongBan([truoc.phongBanId, viTriDich?.phongBanId, ...phongLamTruong], ketNoi);
+  const viTriIds = [...new Set([truoc.chucDanhPhongBanId, viTriDich?.id].filter(Boolean))].sort((a, b) => a - b);
+  for (const viTriId of viTriIds) await phongBanRepository.khoaViTri(viTriId, ketNoi);
+  const hoSo = await khoaVaLayHoSo(id, ketNoi);
+  if (hoSo.phongBanId !== truoc.phongBanId || hoSo.chucDanhPhongBanId !== truoc.chucDanhPhongBanId) {
+    throw new LoiUngDung(409, 'Hồ sơ nhân viên vừa được người khác thay đổi, vui lòng tải lại và thử lại');
+  }
+  return hoSo;
 }
 
 // HR không sửa hồ sơ của chính mình (docs/phan-quyen.md quy tắc 1)
@@ -162,7 +184,13 @@ async function layChiTiet(nguoiDung, id) {
     duocXem = phamVi.includes(hoSo.phongBanId);
   }
   if (!duocXem) throw new LoiUngDung(403, 'Bạn không có quyền xem hồ sơ nhân viên này');
-  return locHoSo(hoSo, laMinh || toanCongTy);
+  const ketQua = locHoSo(hoSo, laMinh || toanCongTy);
+  // Vai trò tài khoản chỉ trả cho người xem toàn công ty: giao diện ẩn nút "Cấp mật khẩu tạm"
+  // khi HR mở hồ sơ người có vai trò cấp cao (backend vẫn chặn 403 ở nguoiDungService.datLaiMatKhau)
+  if (toanCongTy && hoSo.nguoiDungId) {
+    ketQua.vaiTroTaiKhoan = await nguoiDungRepository.layDanhSachVaiTro(hoSo.nguoiDungId);
+  }
+  return ketQua;
 }
 
 async function layHoSoCuaToi(nguoiDung) {
@@ -250,7 +278,7 @@ async function capNhatHoSo(nguoiDung, id, body, diaChiIP) {
 async function doiTrangThai(nguoiDung, id, { trangThaiLamViec, lyDo }, diaChiIP) {
   chanTuSua(nguoiDung, id);
   return chayTransaction(async (ketNoi) => {
-    const hoSo = await khoaVaLayHoSo(id, ketNoi);
+    const hoSo = await khoaPhongBanRoiHoSo(id, null, ketNoi);
     const trangThaiCu = hoSo.trangThaiLamViec;
     if (trangThaiCu === trangThaiLamViec) throw new LoiUngDung(400, 'Nhân viên đã ở trạng thái này');
     if (!(CHUYEN_TRANG_THAI_HOP_LE[trangThaiCu] ?? []).includes(trangThaiLamViec)) {
@@ -297,7 +325,10 @@ async function dieuChuyen(nguoiDung, id, { chucDanhPhongBanId, lyDo }, diaChiIP)
   chanTuSua(nguoiDung, id);
   const viTriMoiId = Number(chucDanhPhongBanId);
   return chayTransaction(async (ketNoi) => {
-    const hoSo = await khoaVaLayHoSo(id, ketNoi);
+    // Đọc ngoài transaction: an toàn vì phongBanId của vị trí không sửa được (suaViTri chỉ đổi định biên/ghi chú/trạng thái).
+    // Nếu sau này cho đổi phòng của vị trí thì phải đọc lại có khóa.
+    const phongBanDichId = await phongBanRepository.layPhongBanCuaViTri(viTriMoiId);
+    const hoSo = await khoaPhongBanRoiHoSo(id, phongBanDichId && { id: viTriMoiId, phongBanId: phongBanDichId }, ketNoi);
     if (hoSo.trangThaiLamViec === 'DA_NGHI_VIEC') {
       throw new LoiUngDung(409, 'Không thể điều chuyển nhân viên đã nghỉ việc');
     }
