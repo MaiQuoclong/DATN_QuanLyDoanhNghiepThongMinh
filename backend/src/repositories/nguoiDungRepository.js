@@ -126,6 +126,18 @@ async function layDanhSachTaiKhoan({ tuKhoa, trangThai, maVaiTro, viTri, soLuong
   return { items, tongSo: Number(dem.tongSo) };
 }
 
+// Hồ sơ liên kết với tài khoản, đọc không khóa (dùng trước transaction để biết cần khóa phòng ban/nhân viên nào)
+async function layHoSoLienKet(nguoiDungId) {
+  const [dong] = await pool.execute(
+    `SELECT nv.id AS nhanVienId, cdpb.phongBanId
+       FROM nhanvien nv
+       LEFT JOIN chucdanhphongban cdpb ON cdpb.id = nv.chucDanhPhongBanId
+      WHERE nv.nguoiDungId = ?`,
+    [nguoiDungId]
+  );
+  return dong[0] ?? null;
+}
+
 // Đọc tài khoản kèm hồ sơ và khóa dòng nguoidung (dùng trong transaction)
 async function khoaTaiKhoan(nguoiDungId, ketNoi) {
   const [dong] = await ketNoi.execute(
@@ -170,6 +182,7 @@ async function demAdminHoatDong(ketNoi) {
 module.exports = {
   layDanhSachTaiKhoan,
   khoaTaiKhoan,
+  layHoSoLienKet,
   layTatCaVaiTro,
   thayVaiTro,
   demAdminHoatDong,

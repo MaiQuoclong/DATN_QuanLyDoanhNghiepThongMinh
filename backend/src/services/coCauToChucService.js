@@ -75,6 +75,20 @@ async function khoaPhongBanHoacLoi(id, ketNoi) {
   return phongBan;
 }
 
+// Luồng có thể gỡ trưởng bộ phận (bổ nhiệm thay, miễn nhiệm, ngừng phòng) sẽ khóa thêm các phòng trưởng cũ đang làm trưởng
+// (thuHoiQuanLyNeuHetPhong). Khóa trước tất cả theo id tăng dần rồi mới khóa nhanvien/nguoidung; trưởng đổi giữa chừng -> 409.
+async function khoaPhongBanVaPhongCuaTruong(phongBanId, ketNoi) {
+  const truoc = await phongBanRepository.layPhongBanTheoId(phongBanId);
+  if (!truoc) throw new LoiUngDung(404, 'Không tìm thấy phòng ban');
+  const phongCuaTruong = truoc.truongBoPhanId ? await phongBanRepository.layIdPhongBanLamTruong(truoc.truongBoPhanId) : [];
+  await phongBanRepository.khoaCacPhongBan([phongBanId, ...phongCuaTruong], ketNoi);
+  const phongBan = await khoaPhongBanHoacLoi(phongBanId, ketNoi);
+  if (phongBan.truongBoPhanId !== truoc.truongBoPhanId) {
+    throw new LoiUngDung(409, 'Trưởng bộ phận vừa được người khác thay đổi, vui lòng tải lại và thử lại');
+  }
+  return phongBan;
+}
+
 async function kiemTraPhongBanCha(phongBanChaId, ketNoi) {
   const cha = await khoaPhongBanHoacLoi(phongBanChaId, ketNoi).catch((loi) => {
     if (loi.code === 404) throw new LoiUngDung(404, 'Không tìm thấy phòng ban cha');
@@ -126,7 +140,7 @@ async function suaPhongBan(nguoiDung, id, body, diaChiIP) {
 // Kích hoạt lại: phòng ban cha (nếu có) phải đang hoạt động.
 async function doiTrangThaiPhongBan(nguoiDung, id, trangThai, diaChiIP) {
   await chayTransaction(async (ketNoi) => {
-    const phongBan = await khoaPhongBanHoacLoi(id, ketNoi);
+    const phongBan = await khoaPhongBanVaPhongCuaTruong(id, ketNoi);
     if (phongBan.trangThai === trangThai) throw new LoiUngDung(400, 'Phòng ban đã ở trạng thái này');
     const truong = { trangThai };
     if (trangThai === 'NGUNG_HOAT_DONG') {
@@ -184,13 +198,17 @@ async function boNhiemTruongBoPhan(nguoiDung, phongBanId, nhanVienId, diaChiIP) 
   const nvId = Number(nhanVienId);
   if (nguoiDung.nhanVienId === nvId) throw new LoiUngDung(403, 'Không được tự bổ nhiệm chính mình');
   await chayTransaction(async (ketNoi) => {
-    const phongBan = await khoaPhongBanHoacLoi(phongBanId, ketNoi);
+    const phongBan = await khoaPhongBanVaPhongCuaTruong(phongBanId, ketNoi);
     if (phongBan.trangThai !== 'DANG_HOAT_DONG') throw new LoiUngDung(409, 'Phòng ban đã ngừng hoạt động');
     if (phongBan.truongBoPhanId === nvId) throw new LoiUngDung(400, 'Nhân viên đã là trưởng bộ phận này');
     if (!(await nhanVienRepository.khoaNhanVien(nvId, ketNoi))) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
     const nhanVien = await nhanVienRepository.layTheoId(nvId, ketNoi);
     if (nhanVien.trangThaiLamViec === 'DA_NGHI_VIEC' || nhanVien.trangThaiLamViec === 'TAM_NGHI') {
       throw new LoiUngDung(409, 'Chỉ bổ nhiệm nhân viên đang làm việc');
+    }
+    // Đọc trạng thái tài khoản có khóa (nhanvien -> nguoidung): Admin khóa song song không lọt qua
+    if (nhanVien.nguoiDungId) {
+      nhanVien.trangThaiTaiKhoan = await nguoiDungRepository.khoaVaLayTrangThai(nhanVien.nguoiDungId, ketNoi);
     }
     if (nhanVien.trangThaiTaiKhoan === 'KHOA') {
       throw new LoiUngDung(409, 'Tài khoản của nhân viên đang bị khóa, cần Admin mở khóa trước khi bổ nhiệm');
@@ -210,7 +228,7 @@ async function boNhiemTruongBoPhan(nguoiDung, phongBanId, nhanVienId, diaChiIP) 
 
 async function mienNhiemTruongBoPhan(nguoiDung, phongBanId, diaChiIP) {
   await chayTransaction(async (ketNoi) => {
-    const phongBan = await khoaPhongBanHoacLoi(phongBanId, ketNoi);
+    const phongBan = await khoaPhongBanVaPhongCuaTruong(phongBanId, ketNoi);
     if (!phongBan.truongBoPhanId) throw new LoiUngDung(400, 'Phòng ban chưa có trưởng bộ phận');
     if (nguoiDung.nhanVienId === phongBan.truongBoPhanId) throw new LoiUngDung(403, 'Không được tự miễn nhiệm chính mình');
     await thuHoiQuanLyNeuHetPhong(nguoiDung, phongBan.truongBoPhanId, phongBanId, diaChiIP, ketNoi);
@@ -238,6 +256,25 @@ async function themChucDanh(nguoiDung, { maChucDanh, tenChucDanh, capBac }, diaC
   return (await phongBanRepository.layDanhSachChucDanh({ id }))[0];
 }
 
+// trangThai tùy chọn trong PATCH: không gửi -> undefined; gửi rỗng/null/sai giá trị -> 400
+// (middleware kiemTraDuLieu bỏ qua trường không bắt buộc khi rỗng nên phải chặn ở đây)
+function layTrangThaiTuyChon(giaTri, cacGiaTri) {
+  if (giaTri === undefined) return undefined;
+  if (!cacGiaTri.includes(giaTri)) throw new LoiUngDung(400, `Trạng thái phải là một trong: ${cacGiaTri.join(', ')}`);
+  return giaTri;
+}
+
+// Ngừng chức danh khi không còn vị trí nào đang áp dụng chức danh đó (gọi trong transaction, chucDanh đã khóa)
+async function apDungTrangThaiChucDanh(nguoiDung, chucDanh, trangThai, diaChiIP, ketNoi) {
+  if (trangThai === 'NGUNG_HOAT_DONG' && (await phongBanRepository.demViTriApDungCuaChucDanh(chucDanh.id, ketNoi))) {
+    throw new LoiUngDung(409, 'Chức danh còn được dùng ở vị trí đang áp dụng, cần ngừng các vị trí đó trước');
+  }
+  await phongBanRepository.capNhatChucDanh(chucDanh.id, { trangThai }, ketNoi);
+  const hanhDong = trangThai === 'NGUNG_HOAT_DONG' ? 'NGUNG_CHUC_DANH' : 'KICH_HOAT_CHUC_DANH';
+  await themNhatKy(nguoiDung.nguoiDungId, hanhDong, diaChiIP, chucDanh.maChucDanh, ketNoi);
+}
+
+// Sửa tên/cấp bậc và (tùy chọn) trạng thái trong cùng một transaction: một phần lỗi thì không đổi gì
 async function suaChucDanh(nguoiDung, id, body, diaChiIP) {
   const truong = {};
   ['tenChucDanh', 'capBac'].forEach((cot) => {
@@ -245,27 +282,29 @@ async function suaChucDanh(nguoiDung, id, body, diaChiIP) {
     truong[cot] = String(body[cot]).trim();
     if (!truong[cot]) throw new LoiUngDung(400, `Trường ${cot} không được để trống`);
   });
-  if (Object.keys(truong).length === 0) throw new LoiUngDung(400, 'Không có thông tin nào để cập nhật');
+  const trangThaiMoi = layTrangThaiTuyChon(body.trangThai, TRANG_THAI_CHUC_DANH);
+  if (Object.keys(truong).length === 0 && trangThaiMoi === undefined) {
+    throw new LoiUngDung(400, 'Không có thông tin nào để cập nhật');
+  }
   await chayTransaction(async (ketNoi) => {
     const chucDanh = await khoaChucDanhHoacLoi(id, ketNoi);
-    await phongBanRepository.capNhatChucDanh(id, truong, ketNoi);
-    const thayDoi = Object.keys(truong).map((cot) => `${cot}: ${chucDanh[cot]} -> ${truong[cot]}`).join('; ');
-    await themNhatKy(nguoiDung.nguoiDungId, 'SUA_CHUC_DANH', diaChiIP, `${chucDanh.maChucDanh}: ${thayDoi}`, ketNoi);
+    const doiTrangThai = trangThaiMoi !== undefined && trangThaiMoi !== chucDanh.trangThai;
+    if (Object.keys(truong).length === 0 && !doiTrangThai) throw new LoiUngDung(400, 'Chức danh đã ở trạng thái này');
+    if (Object.keys(truong).length) {
+      await phongBanRepository.capNhatChucDanh(id, truong, ketNoi);
+      const thayDoi = Object.keys(truong).map((cot) => `${cot}: ${chucDanh[cot]} -> ${truong[cot]}`).join('; ');
+      await themNhatKy(nguoiDung.nguoiDungId, 'SUA_CHUC_DANH', diaChiIP, `${chucDanh.maChucDanh}: ${thayDoi}`, ketNoi);
+    }
+    if (doiTrangThai) await apDungTrangThaiChucDanh(nguoiDung, chucDanh, trangThaiMoi, diaChiIP, ketNoi);
   });
   return (await phongBanRepository.layDanhSachChucDanh({ id }))[0];
 }
 
-// Ngừng chức danh khi không còn vị trí nào đang áp dụng chức danh đó
 async function doiTrangThaiChucDanh(nguoiDung, id, trangThai, diaChiIP) {
   await chayTransaction(async (ketNoi) => {
     const chucDanh = await khoaChucDanhHoacLoi(id, ketNoi);
     if (chucDanh.trangThai === trangThai) throw new LoiUngDung(400, 'Chức danh đã ở trạng thái này');
-    if (trangThai === 'NGUNG_HOAT_DONG' && (await phongBanRepository.demViTriApDungCuaChucDanh(id, ketNoi))) {
-      throw new LoiUngDung(409, 'Chức danh còn được dùng ở vị trí đang áp dụng, cần ngừng các vị trí đó trước');
-    }
-    await phongBanRepository.capNhatChucDanh(id, { trangThai }, ketNoi);
-    const hanhDong = trangThai === 'NGUNG_HOAT_DONG' ? 'NGUNG_CHUC_DANH' : 'KICH_HOAT_CHUC_DANH';
-    await themNhatKy(nguoiDung.nguoiDungId, hanhDong, diaChiIP, chucDanh.maChucDanh, ketNoi);
+    await apDungTrangThaiChucDanh(nguoiDung, chucDanh, trangThai, diaChiIP, ketNoi);
   });
   return (await phongBanRepository.layDanhSachChucDanh({ id }))[0];
 }
@@ -280,7 +319,12 @@ function kiemTraDinhBien(dinhBien) {
   return so;
 }
 
+// khoaViTri JOIN phongban nên khóa cả dòng phongban: khóa phongban trước để giữ thứ tự
+// phongban -> chucdanhphongban như luồng điều chuyển (phongBanRepository.khoaCacPhongBan)
 async function khoaViTriHoacLoi(id, ketNoi) {
+  // Đọc ngoài transaction: an toàn vì phongBanId của vị trí không sửa được; nếu sau này cho đổi thì phải đọc lại có khóa
+  const phongBanId = await phongBanRepository.layPhongBanCuaViTri(id);
+  if (phongBanId) await phongBanRepository.khoaCacPhongBan([phongBanId], ketNoi);
   const viTri = await phongBanRepository.khoaViTri(id, ketNoi);
   if (!viTri) throw new LoiUngDung(404, 'Không tìm thấy vị trí');
   return viTri;
@@ -308,41 +352,55 @@ async function themViTri(nguoiDung, { phongBanId, chucDanhId, dinhBien, ghiChu }
   return layViTri(id);
 }
 
-// Không giảm định biên xuống dưới số người đang giữ vị trí
+// Ngừng vị trí khi không còn ai giữ; áp dụng lại khi phòng ban và chức danh đang hoạt động
+// (gọi trong transaction, viTri đã khóa)
+async function apDungTrangThaiViTri(nguoiDung, viTri, trangThai, diaChiIP, ketNoi) {
+  if (trangThai === 'NGUNG_AP_DUNG') {
+    const soDangGiu = await nhanVienRepository.demTheoViTri(viTri.id, null, ketNoi);
+    if (soDangGiu) throw new LoiUngDung(409, `Vị trí còn ${soDangGiu} người đang giữ, cần điều chuyển trước`);
+  } else if (viTri.trangThaiPhongBan !== 'DANG_HOAT_DONG' || viTri.trangThaiChucDanh !== 'DANG_HOAT_DONG') {
+    throw new LoiUngDung(409, 'Phòng ban hoặc chức danh của vị trí đã ngừng hoạt động');
+  }
+  await phongBanRepository.capNhatViTri(viTri.id, { trangThai }, ketNoi);
+  const hanhDong = trangThai === 'NGUNG_AP_DUNG' ? 'NGUNG_VI_TRI' : 'AP_DUNG_VI_TRI';
+  await themNhatKy(nguoiDung.nguoiDungId, hanhDong, diaChiIP, `${viTri.tenChucDanh} - ${viTri.tenPhongBan}`, ketNoi);
+}
+
+// Sửa định biên/ghi chú và (tùy chọn) trạng thái trong cùng một transaction.
+// Không giảm định biên xuống dưới số người đang giữ vị trí.
 async function suaViTri(nguoiDung, id, body, diaChiIP) {
   const truong = {};
   if (body.dinhBien !== undefined) truong.dinhBien = kiemTraDinhBien(body.dinhBien);
   if (body.ghiChu !== undefined) truong.ghiChu = body.ghiChu === null ? null : String(body.ghiChu).trim() || null;
-  if (Object.keys(truong).length === 0) throw new LoiUngDung(400, 'Không có thông tin nào để cập nhật');
+  const trangThaiMoi = layTrangThaiTuyChon(body.trangThai, TRANG_THAI_VI_TRI);
+  if (Object.keys(truong).length === 0 && trangThaiMoi === undefined) {
+    throw new LoiUngDung(400, 'Không có thông tin nào để cập nhật');
+  }
   await chayTransaction(async (ketNoi) => {
     const viTri = await khoaViTriHoacLoi(id, ketNoi);
-    if (truong.dinhBien !== undefined) {
-      const soDangGiu = await nhanVienRepository.demTheoViTri(id, null, ketNoi);
-      if (truong.dinhBien < soDangGiu) {
-        throw new LoiUngDung(409, `Định biên không được nhỏ hơn số người đang giữ vị trí (${soDangGiu})`);
+    const doiTrangThai = trangThaiMoi !== undefined && trangThaiMoi !== viTri.trangThai;
+    if (Object.keys(truong).length === 0 && !doiTrangThai) throw new LoiUngDung(400, 'Vị trí đã ở trạng thái này');
+    if (Object.keys(truong).length) {
+      if (truong.dinhBien !== undefined) {
+        const soDangGiu = await nhanVienRepository.demTheoViTri(id, null, ketNoi);
+        if (truong.dinhBien < soDangGiu) {
+          throw new LoiUngDung(409, `Định biên không được nhỏ hơn số người đang giữ vị trí (${soDangGiu})`);
+        }
       }
+      await phongBanRepository.capNhatViTri(id, truong, ketNoi);
+      const thayDoi = Object.keys(truong).map((cot) => `${cot}: ${viTri[cot] ?? 'trống'} -> ${truong[cot] ?? 'trống'}`).join('; ');
+      await themNhatKy(nguoiDung.nguoiDungId, 'SUA_VI_TRI', diaChiIP, `${viTri.tenChucDanh} - ${viTri.tenPhongBan}: ${thayDoi}`, ketNoi);
     }
-    await phongBanRepository.capNhatViTri(id, truong, ketNoi);
-    const thayDoi = Object.keys(truong).map((cot) => `${cot}: ${viTri[cot] ?? 'trống'} -> ${truong[cot] ?? 'trống'}`).join('; ');
-    await themNhatKy(nguoiDung.nguoiDungId, 'SUA_VI_TRI', diaChiIP, `${viTri.tenChucDanh} - ${viTri.tenPhongBan}: ${thayDoi}`, ketNoi);
+    if (doiTrangThai) await apDungTrangThaiViTri(nguoiDung, viTri, trangThaiMoi, diaChiIP, ketNoi);
   });
   return layViTri(id);
 }
 
-// Ngừng vị trí khi không còn ai giữ; áp dụng lại khi phòng ban và chức danh đang hoạt động
 async function doiTrangThaiViTri(nguoiDung, id, trangThai, diaChiIP) {
   await chayTransaction(async (ketNoi) => {
     const viTri = await khoaViTriHoacLoi(id, ketNoi);
     if (viTri.trangThai === trangThai) throw new LoiUngDung(400, 'Vị trí đã ở trạng thái này');
-    if (trangThai === 'NGUNG_AP_DUNG') {
-      const soDangGiu = await nhanVienRepository.demTheoViTri(id, null, ketNoi);
-      if (soDangGiu) throw new LoiUngDung(409, `Vị trí còn ${soDangGiu} người đang giữ, cần điều chuyển trước`);
-    } else if (viTri.trangThaiPhongBan !== 'DANG_HOAT_DONG' || viTri.trangThaiChucDanh !== 'DANG_HOAT_DONG') {
-      throw new LoiUngDung(409, 'Phòng ban hoặc chức danh của vị trí đã ngừng hoạt động');
-    }
-    await phongBanRepository.capNhatViTri(id, { trangThai }, ketNoi);
-    const hanhDong = trangThai === 'NGUNG_AP_DUNG' ? 'NGUNG_VI_TRI' : 'AP_DUNG_VI_TRI';
-    await themNhatKy(nguoiDung.nguoiDungId, hanhDong, diaChiIP, `${viTri.tenChucDanh} - ${viTri.tenPhongBan}`, ketNoi);
+    await apDungTrangThaiViTri(nguoiDung, viTri, trangThai, diaChiIP, ketNoi);
   });
   return layViTri(id);
 }
