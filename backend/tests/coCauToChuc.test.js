@@ -697,4 +697,245 @@ describe('Chạy song song', () => {
       expect(ngung.status === 200 && them.status === 201).toBe(false);
     }
   });
+
+  // Đếm nhân viên đang làm trong phòng + trạng thái phòng, đọc trực tiếp CSDL
+  async function trangThaiVaSoNv(pbId) {
+    const [d] = await pool.execute(
+      `SELECT pb.trangThai, (SELECT COUNT(*) FROM nhanvien nv JOIN chucdanhphongban c ON c.id = nv.chucDanhPhongBanId
+         WHERE c.phongBanId = pb.id AND nv.trangThaiLamViec <> 'DA_NGHI_VIEC') AS soNv
+         FROM phongban pb WHERE pb.id = ?`,
+      [pbId]
+    );
+    return { trangThai: d[0].trangThai, soNv: Number(d[0].soNv) };
+  }
+  const dieuChuyen = (nvId, chucDanhPhongBanId) => goi('post', `/nhanVien/${nvId}/dieuChuyen`, token.hr).send({ chucDanhPhongBanId });
+
+  test('ngừng phòng ban cùng lúc điều chuyển nhân viên RA khỏi phòng: không 500, phòng ngừng không còn nhân viên', async () => {
+    for (let lan = 0; lan < 4; lan += 1) {
+      const pb = await taoPhongBan();
+      const vt = await taoViTri(pb.id, 5, 3);
+      const them = await goi('post', '/nhanVien', token.hr).send(duLieuNhanVien(vt.id));
+      expect(them.status).toBe(201);
+      const nvId = them.body.data.nhanVien.id;
+      const [ngung, chuyen] = await Promise.all([doiTrangThai('phongBan', pb.id, 'NGUNG_HOAT_DONG'), dieuChuyen(nvId, 5)]);
+      expect([200, 409]).toContain(ngung.status);
+      expect([200, 409]).toContain(chuyen.status);
+      const kq = await trangThaiVaSoNv(pb.id);
+      if (kq.trangThai === 'NGUNG_HOAT_DONG') expect(kq.soNv).toBe(0);
+      // Ngừng thành công thì điều chuyển ra phải đã thành công trước đó
+      if (ngung.status === 200) expect(chuyen.status).toBe(200);
+      const [d] = await pool.execute('SELECT chucDanhPhongBanId FROM nhanvien WHERE id = ?', [nvId]);
+      expect(d[0].chucDanhPhongBanId).toBe(chuyen.status === 200 ? 5 : vt.id);
+    }
+  });
+
+  test('ngừng phòng ban cùng lúc điều chuyển nhân viên VÀO phòng: không 500, không cả hai cùng thành công', async () => {
+    for (let lan = 0; lan < 4; lan += 1) {
+      const pb = await taoPhongBan();
+      const vt = await taoViTri(pb.id, 5, 3);
+      const them = await goi('post', '/nhanVien', token.hr).send(duLieuNhanVien(5));
+      expect(them.status).toBe(201);
+      const nvId = them.body.data.nhanVien.id;
+      const [ngung, chuyen] = await Promise.all([doiTrangThai('phongBan', pb.id, 'NGUNG_HOAT_DONG'), dieuChuyen(nvId, vt.id)]);
+      expect([200, 409]).toContain(ngung.status);
+      expect([200, 409]).toContain(chuyen.status);
+      expect(ngung.status === 200 && chuyen.status === 200).toBe(false);
+      const kq = await trangThaiVaSoNv(pb.id);
+      if (kq.trangThai === 'NGUNG_HOAT_DONG') expect(kq.soNv).toBe(0);
+      expect(kq.soNv).toBe(chuyen.status === 200 ? 1 : 0);
+    }
+  });
+});
+
+// ===========================================================================
+describe('PATCH kèm trangThai trong cùng transaction', () => {
+  const suaViTri = (id, body) => goi('patch', `/chucDanhPhongBan/${id}`, token.hr).send(body);
+  const suaChucDanh = (id, body) => goi('patch', `/chucDanh/${id}`, token.hr).send(body);
+  async function layViTriDb(id) {
+    const [d] = await pool.execute('SELECT dinhBien, ghiChu, trangThai FROM chucdanhphongban WHERE id = ?', [id]);
+    return d[0];
+  }
+
+  test('đổi ghiChu + ngừng vị trí trống: 200, ghi cả SUA_VI_TRI và NGUNG_VI_TRI', async () => {
+    const vt = await taoViTri(4, 2, 2);
+    const res = await suaViTri(vt.id, { ghiChu: 'Tạm ngừng tuyển', trangThai: 'NGUNG_AP_DUNG' });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ success: true, code: 200 });
+    expect(res.body.data).toMatchObject({ id: vt.id, ghiChu: 'Tạm ngừng tuyển', trangThai: 'NGUNG_AP_DUNG' });
+    expect(await layViTriDb(vt.id)).toMatchObject({ ghiChu: 'Tạm ngừng tuyển', trangThai: 'NGUNG_AP_DUNG' });
+    expect(await demNhatKy('SUA_VI_TRI', 4)).toBe(1);
+    expect(await demNhatKy('NGUNG_VI_TRI', 4)).toBe(1);
+  });
+
+  test('đổi dinhBien + ngừng vị trí còn người giữ: 409, rollback dinhBien, không ghi SUA_VI_TRI', async () => {
+    const truoc = await layViTriDb(5);
+    const res = await suaViTri(5, { dinhBien: 20, trangThai: 'NGUNG_AP_DUNG' });
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ success: false, code: 409, data: null });
+    expect(await layViTriDb(5)).toEqual(truoc);
+    expect(await demNhatKy('SUA_VI_TRI')).toBe(0);
+    expect(await demNhatKy('NGUNG_VI_TRI')).toBe(0);
+  });
+
+  test('vị trí: chỉ gửi trangThai trùng hiện tại trả 400', async () => {
+    const res = await suaViTri(5, { trangThai: 'DANG_AP_DUNG' });
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ success: false, code: 400, data: null });
+    expect(await demNhatKy('SUA_VI_TRI')).toBe(0);
+  });
+
+  test.each(['PENDING', 'NGUNG_HOAT_DONG'])('vị trí: trangThai sai giá trị %p trả 400', async (trangThai) => {
+    const truoc = await layViTriDb(5);
+    const res = await suaViTri(5, { ghiChu: 'Không được lưu', trangThai });
+    expect(res.status).toBe(400);
+    expect(await layViTriDb(5)).toEqual(truoc);
+  });
+
+  // kiemTraDuLieu bỏ qua giá trị rỗng/null ở trường không bắt buộc, nhưng service vẫn coi body.trangThai !== undefined
+  test.each(['', '  ', null])('trangThai rỗng %p: không được ghi trạng thái rỗng vào CSDL', async (trangThai) => {
+    const vt = await taoViTri(4, 2, 2);
+    const cd = await taoChucDanh();
+    const r1 = await suaViTri(vt.id, { ghiChu: 'Ghi chú', trangThai });
+    const r2 = await suaChucDanh(cd.id, { tenChucDanh: 'Tên mới', trangThai });
+    expect(r1.status).toBe(400);
+    expect(r2.status).toBe(400);
+    expect(r1.body).toMatchObject({ success: false, code: 400, data: null });
+    expect((await layViTriDb(vt.id)).trangThai).toBe('DANG_AP_DUNG');
+    const [d] = await pool.execute('SELECT trangThai FROM chucdanh WHERE id = ?', [cd.id]);
+    expect(d[0].trangThai).toBe('DANG_HOAT_DONG');
+  });
+
+  test('vị trí: chỉ gửi trangThai khác hiện tại thì đổi trạng thái, không ghi SUA_VI_TRI', async () => {
+    const vt = await taoViTri(4, 2, 2);
+    const res = await suaViTri(vt.id, { trangThai: 'NGUNG_AP_DUNG' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.trangThai).toBe('NGUNG_AP_DUNG');
+    expect(await demNhatKy('SUA_VI_TRI')).toBe(0);
+    expect(await demNhatKy('NGUNG_VI_TRI', 4)).toBe(1);
+  });
+
+  test('chức danh: đổi tên + ngừng khi còn vị trí DANG_AP_DUNG trả 409, tên không đổi', async () => {
+    const cd = await taoChucDanh();
+    await taoViTri(4, cd.id, 1);
+    const res = await suaChucDanh(cd.id, { tenChucDanh: 'Tên không được lưu', trangThai: 'NGUNG_HOAT_DONG' });
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ success: false, code: 409, data: null });
+    const [d] = await pool.execute('SELECT tenChucDanh, trangThai FROM chucdanh WHERE id = ?', [cd.id]);
+    expect(d[0]).toEqual({ tenChucDanh: cd.tenChucDanh, trangThai: 'DANG_HOAT_DONG' });
+    expect(await demNhatKy('SUA_CHUC_DANH')).toBe(0);
+    expect(await demNhatKy('NGUNG_CHUC_DANH')).toBe(0);
+  });
+
+  test('chức danh: đổi tên + ngừng khi không còn vị trí áp dụng: 200, ghi SUA_CHUC_DANH và NGUNG_CHUC_DANH', async () => {
+    const cd = await taoChucDanh();
+    const res = await suaChucDanh(cd.id, { tenChucDanh: 'Tên mới', trangThai: 'NGUNG_HOAT_DONG' });
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ tenChucDanh: 'Tên mới', trangThai: 'NGUNG_HOAT_DONG' });
+    expect(await demNhatKy('SUA_CHUC_DANH', 4)).toBe(1);
+    expect(await demNhatKy('NGUNG_CHUC_DANH', 4)).toBe(1);
+  });
+
+  test('chức danh: chỉ gửi trangThai trùng hiện tại 400; trangThai sai giá trị 400', async () => {
+    const cd = await taoChucDanh();
+    expect((await suaChucDanh(cd.id, { trangThai: 'DANG_HOAT_DONG' })).status).toBe(400);
+    const sai = await suaChucDanh(cd.id, { tenChucDanh: 'Không lưu', trangThai: 'NGUNG_AP_DUNG' });
+    expect(sai.status).toBe(400);
+    expect(sai.body).toMatchObject({ success: false, code: 400, data: null });
+    const [d] = await pool.execute('SELECT tenChucDanh FROM chucdanh WHERE id = ?', [cd.id]);
+    expect(d[0].tenChucDanh).toBe(cd.tenChucDanh);
+  });
+});
+
+// ===========================================================================
+describe('Chạy song song: chức danh và bổ nhiệm', () => {
+  const dieuChuyenNv = (nvId, chucDanhPhongBanId) => goi('post', `/nhanVien/${nvId}/dieuChuyen`, token.hr).send({ chucDanhPhongBanId });
+  async function soViTriDangApDung(chucDanhId) {
+    const [d] = await pool.execute("SELECT COUNT(*) AS n FROM chucdanhphongban WHERE chucDanhId = ? AND trangThai = 'DANG_AP_DUNG'", [chucDanhId]);
+    return Number(d[0].n);
+  }
+  async function trangThaiChucDanh(id) {
+    const [d] = await pool.execute('SELECT trangThai FROM chucdanh WHERE id = ?', [id]);
+    return d[0].trangThai;
+  }
+  async function taoNv(vtId) {
+    const r = await goi('post', '/nhanVien', token.hr).send(duLieuNhanVien(vtId));
+    expect(r.status).toBe(201);
+    return r.body.data.nhanVien.id;
+  }
+
+  test('ngừng chức danh cùng lúc điều chuyển nhân viên vào vị trí dùng chức danh đó: không 500, nhất quán', async () => {
+    for (let lan = 0; lan < 4; lan += 1) {
+      const pb = await taoPhongBan();
+      const cd = await taoChucDanh();
+      const vt = await taoViTri(pb.id, cd.id, 3);
+      const nvId = await taoNv(5);
+      const [ngung, chuyen] = await Promise.all([
+        lan % 2 ? goi('patch', `/chucDanh/${cd.id}`, token.hr).send({ trangThai: 'NGUNG_HOAT_DONG' }) : doiTrangThai('chucDanh', cd.id, 'NGUNG_HOAT_DONG'),
+        dieuChuyenNv(nvId, vt.id),
+      ]);
+      expect([200, 409]).toContain(ngung.status);
+      expect([200, 409]).toContain(chuyen.status);
+      // Chức danh đã ngừng thì không còn vị trí DANG_AP_DUNG nào dùng nó
+      if ((await trangThaiChucDanh(cd.id)) === 'NGUNG_HOAT_DONG') expect(await soViTriDangApDung(cd.id)).toBe(0);
+      const [d] = await pool.execute('SELECT chucDanhPhongBanId FROM nhanvien WHERE id = ?', [nvId]);
+      expect(d[0].chucDanhPhongBanId).toBe(chuyen.status === 200 ? vt.id : 5);
+    }
+  });
+
+  test('ngừng chức danh cùng lúc tạo vị trí dùng chức danh đó: không 500, không cả hai cùng thành công', async () => {
+    for (let lan = 0; lan < 4; lan += 1) {
+      const pb = await taoPhongBan();
+      const cd = await taoChucDanh();
+      const [ngung, tao] = await Promise.all([
+        doiTrangThai('chucDanh', cd.id, 'NGUNG_HOAT_DONG'),
+        goi('post', '/chucDanhPhongBan', token.hr).send({ phongBanId: pb.id, chucDanhId: cd.id, dinhBien: 2 }),
+      ]);
+      expect([200, 409]).toContain(ngung.status);
+      expect([201, 409]).toContain(tao.status);
+      expect(ngung.status === 200 && tao.status === 201).toBe(false);
+      if ((await trangThaiChucDanh(cd.id)) === 'NGUNG_HOAT_DONG') expect(await soViTriDangApDung(cd.id)).toBe(0);
+    }
+  });
+
+  test('hai giám đốc bổ nhiệm ở hai phòng có cùng trưởng cũ: không 500, trạng thái cuối khớp phản hồi', async () => {
+    const tk2 = (await dangNhap('giamdoc2')).body.data.token;
+    for (let lan = 0; lan < 3; lan += 1) {
+      const pbA = await taoPhongBan();
+      const pbB = await taoPhongBan();
+      const vtA = await taoViTri(pbA.id, 5, 5);
+      const vtB = await taoViTri(pbB.id, 5, 5);
+      const x = await taoNv(vtA.id);
+      const y = await taoNv(vtA.id);
+      const z = await taoNv(vtB.id);
+      // Dựng trực tiếp: cùng một người (x) là trưởng cũ của cả hai phòng
+      await pool.execute('UPDATE phongban SET truongBoPhanId = ? WHERE id IN (?, ?)', [x, pbA.id, pbB.id]);
+      const [rA, rB] = await Promise.all([boNhiem(pbA.id, y), boNhiem(pbB.id, z, tk2)]);
+      expect([200, 409]).toContain(rA.status);
+      expect([200, 409]).toContain(rB.status);
+      for (const r of [rA, rB]) if (r.status === 409) expect(r.body).toMatchObject({ success: false, code: 409, data: null });
+      expect((await layPhongBan(pbA.id)).truongBoPhanId).toBe(rA.status === 200 ? y : x);
+      expect((await layPhongBan(pbB.id)).truongBoPhanId).toBe(rB.status === 200 ? z : x);
+    }
+  });
+
+  test('bổ nhiệm và miễn nhiệm cùng phòng cùng lúc: không 500, trạng thái cuối nhất quán', async () => {
+    const tk2 = (await dangNhap('giamdoc2')).body.data.token;
+    for (let lan = 0; lan < 4; lan += 1) {
+      const pb = await taoPhongBan();
+      const vt = await taoViTri(pb.id, 5, 5);
+      const a = await taoNv(vt.id);
+      const b = await taoNv(vt.id);
+      expect((await boNhiem(pb.id, a)).status).toBe(200);
+      const [bn, mn] = await Promise.all([boNhiem(pb.id, b), mienNhiem(pb.id, tk2)]);
+      expect([200, 400, 409]).toContain(bn.status);
+      expect([200, 400, 409]).toContain(mn.status);
+      const truong = (await layPhongBan(pb.id)).truongBoPhanId;
+      expect([null, a, b]).toContain(truong);
+      if (bn.status !== 200 && mn.status === 200) expect(truong).toBeNull();
+      if (bn.status === 200 && mn.status !== 200) expect(truong).toBe(b);
+      // Người cũ không còn là trưởng thì phải bị gỡ quanLy tự gán
+      const [nd] = await pool.execute('SELECT nguoiDungId FROM nhanvien WHERE id = ?', [a]);
+      if (truong !== a) expect(await layVaiTro(nd[0].nguoiDungId)).not.toContain('quanLy');
+    }
+  });
 });
