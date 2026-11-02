@@ -1,6 +1,7 @@
 const LoiUngDung = require('../utils/LoiUngDung');
 
 const MAU_NGAY = /^\d{4}-\d{2}-\d{2}$/;
+const MAU_GIO = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // Ngày dạng YYYY-MM-DD và có thật trên lịch (loại 2026-02-30)
 function laNgayHopLe(giaTri) {
@@ -11,7 +12,7 @@ function laNgayHopLe(giaTri) {
 
 // Kiểm tra req.body theo luật đơn giản, lỗi đầu tiên trả 400.
 // luat: { tenTruong: { nhan, batBuoc, toiThieu, toiDa, toiDaByte, mauKiemTra: RegExp, thongBaoMau,
-//                      kieu: 'soNguyenDuong' | 'ngay' | 'soTien', cacGiaTri: [...] } }
+//                      kieu: 'soNguyenDuong' | 'ngay' | 'gio' | 'soTien', cacGiaTri: [...] } }
 function kiemTraDuLieu(luat) {
   return (req, res, next) => {
     const body = req.body ?? {};
@@ -42,6 +43,9 @@ function kiemTraDuLieu(luat) {
       }
       if (quyTac.kieu === 'ngay' && !laNgayHopLe(giaTri)) {
         throw new LoiUngDung(400, `${nhan} phải là ngày hợp lệ dạng YYYY-MM-DD`);
+      }
+      if (quyTac.kieu === 'gio' && !MAU_GIO.test(giaTri)) {
+        throw new LoiUngDung(400, `${nhan} phải là giờ hợp lệ dạng HH:MM`);
       }
       if (quyTac.cacGiaTri && !quyTac.cacGiaTri.includes(giaTri)) {
         throw new LoiUngDung(400, `${nhan} chỉ nhận một trong các giá trị: ${quyTac.cacGiaTri.join(', ')}`);

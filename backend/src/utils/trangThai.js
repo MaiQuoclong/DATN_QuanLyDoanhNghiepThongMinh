@@ -8,6 +8,9 @@ const TRANG_THAI_TAI_KHOAN = ['DANG_HOAT_DONG', 'KHOA'];
 const LOAI_HOP_DONG = ['THU_VIEC', 'XAC_DINH_THOI_HAN', 'KHONG_XAC_DINH_THOI_HAN'];
 // hopdonglaodong.trangThai lưu HIEU_LUC / DA_CHAM_DUT; HET_HAN chỉ suy ra khi đọc (quá ngày kết thúc)
 const TRANG_THAI_HOP_DONG = ['HIEU_LUC', 'HET_HAN', 'DA_CHAM_DUT'];
+// banghichamcong: HOP_LE = tự chấm, DA_DIEU_CHINH = giờ đã sửa theo yêu cầu được duyệt (thiếu check-out suy ra từ gioRa NULL)
+const TRANG_THAI_CHAM_CONG = ['HOP_LE', 'DA_DIEU_CHINH'];
+const TRANG_THAI_DIEU_CHINH_CONG = ['CHO_DUYET', 'DA_DUYET', 'TU_CHOI'];
 
 module.exports = {
   TRANG_THAI_PHONG_BAN,
@@ -17,4 +20,6 @@ module.exports = {
   TRANG_THAI_TAI_KHOAN,
   LOAI_HOP_DONG,
   TRANG_THAI_HOP_DONG,
+  TRANG_THAI_CHAM_CONG,
+  TRANG_THAI_DIEU_CHINH_CONG,
 };
