@@ -1,0 +1,53 @@
+// Định dạng hiển thị dùng chung (số tiền, ngày) theo chuẩn Việt Nam
+const BO_DINH_DANG_TIEN = new Intl.NumberFormat('vi-VN');
+
+export function dinhDangTien(giaTri) {
+  if (giaTri === null || giaTri === undefined || giaTri === '') return '—';
+  return `${BO_DINH_DANG_TIEN.format(Number(giaTri))} đ`;
+}
+
+// 'YYYY-MM-DD' hoặc 'YYYY-MM-DD HH:mm:ss' -> 'DD/MM/YYYY' (không qua Date để tránh lệch múi giờ)
+export function dinhDangNgay(giaTri) {
+  if (!giaTri) return '—';
+  const [nam, thang, ngay] = String(giaTri).slice(0, 10).split('-');
+  return `${ngay}/${thang}/${nam}`;
+}
+
+export function dinhDangThoiGian(giaTri) {
+  if (!giaTri) return '—';
+  return `${dinhDangNgay(giaTri)} ${String(giaTri).slice(11, 16)}`;
+}
+
+export const NHAN_LOAI_HOP_DONG = {
+  THU_VIEC: 'Thử việc',
+  XAC_DINH_THOI_HAN: 'Xác định thời hạn',
+  KHONG_XAC_DINH_THOI_HAN: 'Không xác định thời hạn',
+};
+
+export const NHAN_GIOI_TINH = { NAM: 'Nam', NU: 'Nữ', KHAC: 'Khác' };
+
+export const NHAN_TRANG_THAI_LAM_VIEC = {
+  THU_VIEC: 'Thử việc',
+  CHINH_THUC: 'Chính thức',
+  TAM_NGHI: 'Tạm nghỉ',
+  DA_NGHI_VIEC: 'Đã nghỉ việc',
+};
+
+export const NHAN_HANH_DONG_HOP_DONG = {
+  TAO_MOI: 'Lập mới',
+  GIA_HAN: 'Gia hạn',
+  DIEU_CHINH: 'Điều chỉnh',
+  CHAM_DUT: 'Chấm dứt',
+};
+
+// Chuyển { ma: nhan } thành luaChon cho ThanhLoc / select
+export function thanhLuaChon(bang) {
+  return Object.entries(bang).map(([giaTri, nhan]) => ({ giaTri, nhan }));
+}
+
+// Bỏ trường rỗng trước khi gửi query
+export function locThamSo(thamSo) {
+  return Object.fromEntries(
+    Object.entries(thamSo).filter(([, giaTri]) => giaTri !== '' && giaTri !== undefined && giaTri !== null)
+  );
+}

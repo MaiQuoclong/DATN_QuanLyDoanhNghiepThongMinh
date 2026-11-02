@@ -32,6 +32,10 @@ Mỗi service có `.env.example` (commit) và `.env` (không commit).
 - Text-to-SQL chỉ `SELECT`, chạy bằng tài khoản DB chỉ đọc.
 - Trước khi sửa `settings.json` hoặc file cấu hình môi trường: giải thích thay đổi + lý do và chờ người dùng đồng ý.
 - Comment tiếng Việt cho nghiệp vụ nhân sự phức tạp.
+- Sản phẩm cuối phải chạy và test trơn tru trên web với đúng `database/schema.sql` hiện tại: mọi tính năng phải hoạt động mà không cần sửa CSDL hay xử lý trường hợp đặc biệt bằng tay. Nghiệp vụ thiếu cột/cờ thì giải quyết ở tầng code (suy ra từ dữ liệu sẵn có như `nhatkyhethong`), không đề xuất đổi schema.
+  - Dựng lại môi trường bằng một lệnh `npm run khoiTaoCsdl` (trong `backend/`: tạo database → `schema.sql` → `seed.sql`), không thao tác tay.
+  - Xong mỗi module phải bổ sung `database/seed.sql` đủ dữ liệu mẫu để demo trên web cho cả 5 vai trò.
+  - Test phải pass trên DB vừa dựng lại: mỗi test tự tạo và tự dọn dữ liệu, không phụ thuộc thứ tự chạy hay dữ liệu sót lại.
 
 ## Bảo mật
 - JWT + RBAC 5 vai trò: `Admin`, `giamDoc`, `quanLy`, `HR`, `nhanVien` (giữ đúng giá trị lưu trong bảng `vaitro`).
@@ -47,10 +51,11 @@ Mỗi service có `.env.example` (commit) và `.env` (không commit).
 ## Workflow
 1. Làm theo lát cắt dọc từng tính năng: DB → API → UI, trên nhánh `feature/ten-chuc-nang` (gạch ngang) tách từ `develop`, commit nhỏ theo Conventional Commits.
 2. Thứ tự: Auth/RBAC → Hồ sơ nhân sự & Hợp đồng → Chấm công/Phép → Lương → KPI/Khen thưởng → AI Agent.
-3. Xong một module: gọi sub-agent `reviewer`, sửa lỗi, rồi gọi `qa-tester` (tự cập nhật `docs/progress.md`).
+3. Xong **mỗi chức năng** trong một module (không đợi hết module): gọi `reviewer` rà toàn project → sửa hết lỗi → gọi `qa-tester` chạy test toàn project (tự cập nhật `docs/progress.md`) → sửa lỗi nếu có. Chỉ khi lượt này sạch mới làm chức năng tiếp theo của cùng module.
 4. Mỗi lần sửa code: tóm tắt file đã đổi và xác nhận không lệch schema.
 
 ## Quản lý context
+- Sau mỗi bước hoàn thành (code xong, reviewer xong, qa-tester xong), Claude tự cập nhật `docs/progress.md` (mục "Đang làm & việc tiếp theo", tiến độ, bảng API, số test) mà không đợi nhắc, để clear lịch sử bất cứ lúc nào vẫn làm tiếp được.
 - Khi hội thoại đã dài (nhiều file lớn đã đọc, nhiều vòng sửa) hoặc ngay sau khi xong một module, nhắc người dùng chạy `/context` để kiểm tra mức dùng token.
 - Nếu người dùng báo context ≥ 70%: tóm tắt trạng thái hiện tại (đang làm gì, file đã đổi, việc còn lại), cập nhật `docs/progress.md`, rồi đề xuất `/compact` hoặc mở phiên mới.
 ## Git Workflow & Branching Strategy (Quy trình quản lý mã nguồn Git)

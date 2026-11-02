@@ -1,0 +1,55 @@
+.boCucPhongBan {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.cayPhongBan {
+  padding: 8px;
+}
+
+.nutCay {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 34px;
+  padding-right: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mauChu);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nutCay:hover {
+  background: var(--mauNen);
+}
+
+.nutCay.dangChon {
+  background: var(--mauChinhNhat);
+  color: var(--mauChinh);
+  font-weight: 600;
+}
+
+.nutCay .muiTen {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+}
+
+.nutCay .tenNut {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .boCucPhongBan {
+    grid-template-columns: 1fr;
+  }
+}

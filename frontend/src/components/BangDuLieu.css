@@ -1,0 +1,84 @@
+.bangBoc {
+  overflow: auto;
+  max-height: calc(100vh - 260px);
+}
+
+.bangDuLieu {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.bangDuLieu th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fafbfc;
+  border-bottom: 1px solid var(--mauVien);
+  text-align: left;
+  padding: 0;
+}
+
+.tieuDeCot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: none;
+  color: var(--mauChu);
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tieuDeCot:disabled {
+  cursor: default;
+}
+
+.canPhai .tieuDeCot {
+  justify-content: flex-end;
+}
+
+.iconSapXep {
+  color: var(--mauChuPhu);
+  margin-left: auto;
+}
+
+.bangDuLieu td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--mauVien);
+}
+
+.bangDuLieu tbody tr:hover {
+  background: #fafbfc;
+}
+
+.bangDuLieu .canPhai {
+  text-align: right;
+}
+
+.cotHanhDong {
+  width: 44px;
+  text-align: center;
+}
+
+.nutHanhDong {
+  border: 0;
+  background: none;
+  color: var(--mauChuPhu);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.nutHanhDong:hover {
+  background: var(--mauNen);
+}
+
+.oRong {
+  text-align: center;
+  color: var(--mauChuPhu);
+  padding: 32px 12px;
+}

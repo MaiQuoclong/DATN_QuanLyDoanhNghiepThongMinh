@@ -11,8 +11,10 @@ const pool = mysql.createPool({
   dateStrings: true,
 });
 
-// Chạy nhiều câu lệnh trong một transaction: lỗi ở bất kỳ bước nào thì rollback toàn bộ
-async function chayTransaction(congViec) {
+const LOI_THU_LAI = ['ER_LOCK_DEADLOCK'];
+const SO_LAN_THU_TOI_DA = 3;
+
+async function chayMotLan(congViec) {
   const ketNoi = await pool.getConnection();
   try {
     await ketNoi.beginTransaction();
@@ -20,10 +22,23 @@ async function chayTransaction(congViec) {
     await ketNoi.commit();
     return ketQua;
   } catch (loi) {
-    await ketNoi.rollback();
+    // Rollback lỗi (vd. mất kết nối) không được che mất lỗi gốc
+    try { await ketNoi.rollback(); } catch { /* bỏ qua */ }
     throw loi;
   } finally {
     ketNoi.release();
+  }
+}
+
+// Chạy nhiều câu lệnh trong một transaction: lỗi ở bất kỳ bước nào thì rollback toàn bộ.
+// InnoDB hủy một bên khi deadlock (vd. hai HR cùng thêm nhân viên) -> tự chạy lại cả transaction.
+async function chayTransaction(congViec) {
+  for (let lan = 1; ; lan += 1) {
+    try {
+      return await chayMotLan(congViec);
+    } catch (loi) {
+      if (!LOI_THU_LAI.includes(loi.code) || lan >= SO_LAN_THU_TOI_DA) throw loi;
+    }
   }
 }
 

@@ -1,0 +1,52 @@
+.nutBam {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.nutBam:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.nutBam.chinh {
+  background: var(--mauChinh);
+  color: #fff;
+}
+
+.nutBam.chinh:hover:not(:disabled) {
+  background: var(--mauChinhDam);
+}
+
+.nutBam.phu {
+  background: var(--mauThe);
+  border-color: var(--mauVien);
+  color: var(--mauChu);
+}
+
+.nutBam.phu:hover:not(:disabled) {
+  background: var(--mauNen);
+}
+
+.nutBam.vang {
+  background: var(--mauNhan);
+  color: var(--mauThanhTren);
+}
+
+.nutBam.ma {
+  background: transparent;
+  color: var(--mauChuPhu);
+}
+
+.nutBam.ma:hover:not(:disabled) {
+  color: var(--mauChu);
+}

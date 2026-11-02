@@ -1,0 +1,50 @@
+.thanhLoc {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.oTimKiem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  background: var(--mauThe);
+  border: 1px solid var(--mauVien);
+  border-radius: 8px;
+  color: var(--mauChuPhu);
+  min-width: 220px;
+}
+
+.oTimKiem input {
+  border: 0;
+  outline: none;
+  flex: 1;
+  font-size: 13px;
+  background: transparent;
+}
+
+.oLoc {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--mauVien);
+  border-radius: 8px;
+  background: var(--mauThe);
+  font-size: 13px;
+  color: var(--mauChu);
+}
+
+.thanhLocPhai {
+  margin-left: auto;
+}
+
+.locNangCao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}

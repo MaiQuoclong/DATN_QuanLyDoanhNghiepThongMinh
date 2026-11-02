@@ -36,9 +36,13 @@ process.stdin.on('end', () => {
   }
 
   if (tenAgent === 'qa-tester') {
+    if (tenCongCu === 'NotebookEdit') {
+      chan('qa-tester không được sửa notebook.');
+    }
     if (tenCongCu === 'Write' || tenCongCu === 'Edit') {
+      // Tính theo gốc dự án (không theo cwd của phiên) để đúng cả khi phiên đứng trong thư mục con
       const duongDan = path
-        .relative(suKien.cwd || process.cwd(), thamSo.file_path || '')
+        .relative(process.env.CLAUDE_PROJECT_DIR || suKien.cwd || process.cwd(), thamSo.file_path || '')
         .split(path.sep)
         .join('/');
       const hopLe =

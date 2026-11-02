@@ -1,0 +1,25 @@
+.phanTrang {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--mauChuPhu);
+  font-size: 13px;
+}
+
+.phanTrang button {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--mauVien);
+  border-radius: 6px;
+  background: var(--mauThe);
+  cursor: pointer;
+}
+
+.phanTrang button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

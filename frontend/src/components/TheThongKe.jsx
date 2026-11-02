@@ -1,12 +1,12 @@
 import './TheThongKe.css';
 
-// Metrics card ở đầu trang. trangThai: 'thanhCong' | 'canhBao' | 'loi' | undefined
+// Thẻ số liệu: nhãn nhỏ, số lớn, dòng so sánh. trangThai: 'thanhCong' | 'canhBao' | 'loi' | undefined
 function TheThongKe({ tieuDe, giaTri, moTa, trangThai }) {
   return (
-    <div className={`theThongKe ${trangThai ?? ''}`}>
+    <div className="theThongKe the">
       <div className="theTieuDe">{tieuDe}</div>
       <div className="theGiaTri">{giaTri}</div>
-      {moTa && <div className="theMoTa">{moTa}</div>}
+      {moTa && <div className={`theMoTa ${trangThai ?? ''}`}>{moTa}</div>}
     </div>
   );
 }

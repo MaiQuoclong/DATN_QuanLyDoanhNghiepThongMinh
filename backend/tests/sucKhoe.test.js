@@ -29,4 +29,22 @@ describe('Xử lý lỗi chung', () => {
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({ success: false, code: 400, data: null });
   });
+
+  test('body JSON lớn hơn 1MB trả 413 với JSON chuẩn', async () => {
+    const res = await request(app)
+      .post('/api/v1/xacThuc/dangNhap')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ tenDangNhap: 'x'.repeat(1024 * 1024 + 10), matKhau: 'a' }));
+    expect(res.status).toBe(413);
+    expect(res.body).toEqual({ success: false, code: 413, message: expect.any(String), data: null });
+  });
+
+  test('body JSON dưới 1MB không bị chặn 413', async () => {
+    const res = await request(app)
+      .post('/api/v1/sucKhoe')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ duLieu: 'x'.repeat(1000) }));
+    expect(res.status).not.toBe(413); // body parse được, đi tới 404 route không tồn tại
+    expect(res.body.code).toBe(res.status);
+  });
 });
