@@ -12,6 +12,15 @@
 - [ ] Tầng AI Agent: RAG quy chế, Function Calling tạo đơn, Text-to-SQL báo cáo
 
 ## Đang làm & việc tiếp theo (cập nhật 2026-11-03)
+- **Nhánh `feature/cham-cong`** (từ `develop`): code xong chức năng 1 của module 3 (backend + frontend + seed), đã có test `chamCong.test.js` (qa-tester xong, 604/604 pass). Backend cũ 568/568 pass sau thay đổi, `vite build` pass, DB dựng lại bằng `npm run khoiTaoCsdl` OK.
+  - Backend: `config/thamSoNghiepVu.js` (ca 08:00-17:00, nghỉ trưa 12-13, đi muộn > 5 phút, OT ≥ 30 phút), `utils/tinhCong.js` (`tinhChiSoCong`; T7/CN toàn bộ là OT), `repositories/chamCongRepository.js`, `services/chamCongService.js`, `controllers/chamCongController.js`, `routes/chamCongRoutes.js` (`/chamCong`, `/dieuChinhCong`). `kiemTraDuLieu` thêm `kieu: 'gio'` (HH:MM); `thamSoTruyVan.layThang` (YYYY-MM); `trangThai.js` thêm `TRANG_THAI_CHAM_CONG` (`HOP_LE`, `DA_DIEU_CHINH`), `TRANG_THAI_DIEU_CHINH_CONG`.
+  - Nghiệp vụ: giờ check-in/out lấy giờ máy chủ; 1 bản ghi/ngày (409); TAM_NGHI/DA_NGHI_VIEC, chưa đến ngày vào làm, tài khoản không có hồ sơ → chặn. Chốt công suy ra từ `nhatkyhethong` `CHOT_CONG_THANG` (chiTiet = 'YYYY-MM'); chỉ chốt tháng đã kết thúc, không còn yêu cầu `CHO_DUYET`; chốt khóa toàn bộ `nhanvien` FOR UPDATE, các luồng ghi công khóa dòng nhân viên trước (thứ tự nhanvien → banghichamcong → yeucaudieuchinhchamcong). Duyệt: transaction cập nhật/tạo `banghichamcong` (`DA_DIEU_CHINH`, tính lại chỉ số) + yêu cầu `DA_DUYET`; ghi nhật ký `DUYET_DIEU_CHINH_CONG` / `TU_CHOI_DIEU_CHINH_CONG`. Không tự duyệt (403), quanLy ngoài phạm vi (403), đã xử lý (409).
+  - Frontend: `pages/chamCong/TrangLichCong.jsx` (check-in/out, thống kê, bảng ngày + dòng thời gian), `TrangDieuChinhCong.jsx` (tab Cần duyệt / Của tôi), `TrangBangCong.jsx` (bảng công, chi tiết từng người, HR chốt công); `components/chamCong/*`; `ChipTrangThai` thêm `DA_DIEU_CHINH`.
+  - Seed mục 9: chấm công từ đầu tháng (hiện tại − 2) đến hôm qua (bỏ T7/CN, hôm nay trống để demo check-in); 3 yêu cầu `CHO_DUYET` (NV0005 → quanly, NV0010 → quanly2, NV0007 hr2 → hr/giamdoc), 1 `DA_DUYET`, 1 `TU_CHOI`; tháng (hiện tại − 2) đã chốt bởi hr (để demo lương).
+  - QA (2026-11-03): `backend/tests/chamCong.test.js` 36 test pass (unit `tinhChiSoCong` 7 ca; 401/403; check-in/out 201/200/409, TAM_NGHI, chưa ngày vào làm; cuaToi; bangCong theo vai trò + `/:id` phạm vi; tạo yêu cầu 400/409; duyệt tạo/cập nhật bản ghi + tính lại chỉ số + nhật ký, tự duyệt/ngoài phạm vi 403, đã xử lý 409, rollback khi lỗi nhật ký; chốt công các nhánh 409 + song song 2 HR đúng 1 thành công). Toàn backend **604/604 pass** (`npm test` + `npm test -- --randomize` seed 654484774). Test dùng tháng cố định 2020-01/2020-05/2021-06 (nhân viên test vào làm 2020-01-06) để không đụng dữ liệu seed theo CURDATE(); dọn `yeucaudieuchinhchamcong`/`banghichamcong`/`nhatkyhethong` theo mốc id.
+  - Việc tiếp: hướng dẫn commit/PR → chức năng 2 Nghỉ phép.
+
+## Trước đó: rà soát sau module 2 (2026-11-03)
 - **Nhánh `feature/ra-soat-sau-module-2`**: sửa lỗi reviewer sau module 2. Backend **568/568 pass** (2026-11-03, `npm test` + `npm test -- --randomize` seed -1143620430; chạy trên DB hiện có vì hook qa-tester chặn `npm run khoiTaoCsdl` và `npx vite build` — người dùng cần tự chạy 2 lệnh này để xác nhận).
   1. `hopDongService.dieuChinhHopDong`: nhật ký `DIEU_CHINH_HOP_DONG` chỉ ghi `<cot>: đã thay đổi`, không lộ số tiền (giá trị cũ/mới nằm ở `lichsuhopdong`).
   2. `nhanVienService.dieuChuyen`: cho điều chuyển người `DA_NGHI_VIEC` (tái tuyển khi vị trí cũ đầy/ngừng); vị trí đích vẫn phải đang áp dụng + còn chỗ (409). Frontend chi tiết nhân viên luôn hiện nút Điều chuyển.
@@ -24,7 +33,7 @@
 
 ## Lộ trình Module 3 – Chấm công, Đơn từ & Lương (bắt đầu sau khi merge `feature/ra-soat-sau-module-2`)
 Quy trình: mỗi chức năng DB → API → UI → seed 5 vai trò → test → `reviewer` + `qa-tester` toàn project → sửa. Xong cả module: `reviewer` + `qa-tester` toàn project thêm 1 lượt; lỗi nhẹ ghi "Hạn chế đã biết" rồi hướng dẫn commit/PR `develop` → `main`. Tham số nghiệp vụ (giờ vào/ra, ngưỡng đi muộn, hệ số OT, tỷ lệ BH, giảm trừ, biểu thuế, N ngày nghỉ chuyển giamDoc) đặt ở `backend/src/config/thamSoNghiepVu.js`. Quyền theo `docs/phan-quyen.md` mục 5-7.
-1. **Chấm công & Điều chỉnh công** (`feature/cham-cong`, CHƯA LÀM): check-in/out (1 bản ghi/ngày, tính giờ thực tế, OT, đi muộn, về sớm); lịch công của tôi; bảng công tháng (HR, giamDoc; quanLy PM); yêu cầu điều chỉnh `CHO_DUYET` → duyệt/từ chối (giamDoc, HR trừ mình, quanLy PM, không tự duyệt) bằng transaction `yeucaudieuchinhchamcong` + `banghichamcong`; chốt công tháng (HR) ghi `nhatkyhethong` `CHOT_CONG_THANG`, tháng đã chốt chặn chấm/điều chỉnh/duyệt (409).
+1. **Chấm công & Điều chỉnh công** (`feature/cham-cong`, ĐÃ CODE, chờ review/test): check-in/out (1 bản ghi/ngày, tính giờ thực tế, OT, đi muộn, về sớm); lịch công của tôi; bảng công tháng (HR, giamDoc; quanLy PM); yêu cầu điều chỉnh `CHO_DUYET` → duyệt/từ chối (giamDoc, HR trừ mình, quanLy PM, không tự duyệt) bằng transaction `yeucaudieuchinhchamcong` + `banghichamcong`; chốt công tháng (HR) ghi `nhatkyhethong` `CHOT_CONG_THANG`, tháng đã chốt chặn chấm/điều chỉnh/duyệt (409).
 2. **Nghỉ phép** (`feature/nghi-phep`): HR quản lý `loainghiphep`, cấp `quyngayphep`; tạo đơn `CHO_DUYET` (mã `DNPyyyy-xxxx`, bỏ T7/CN, kiểm tra quỹ, không chồng lấn), hủy khi chưa duyệt; duyệt theo chuỗi duyệt (quy tắc 5) bằng transaction trạng thái + `soNgayDaNghi`; lịch nghỉ.
 3. **Lương** (`feature/luong`): HR lập bảng `BAN_NHAP` khi đã chốt công (transaction `bangtonghopluong` + `phieuluongnhanvien` từ hợp đồng, công, OT, nghỉ có lương, BH, thuế TNCN); HR sửa phiếu nháp (trừ mình); giamDoc duyệt/trả lại (người lập ≠ người duyệt); xem phiếu (mình; HR, giamDoc toàn bộ); báo cáo quỹ lương + Excel.
 
@@ -94,6 +103,19 @@ Quy trình: mỗi chức năng DB → API → UI → seed 5 vai trò → test �
 | POST | `/api/v1/hopDong/:id/giaHan` | HR (trừ mình) | `{ngayKetThucMoi, lyDo?}`; chỉ XĐTH đang hiệu lực (409), ngày mới > ngày cũ (400), ≤36 tháng; log `GIA_HAN_HOP_DONG` |
 | POST | `/api/v1/hopDong/:id/dieuChinh` | HR (trừ mình) | `{luongCoBan?, mucPhuCap?, duongDanFileHopDong?, lyDo}`; không đổi gì 400; chỉ `HIEU_LUC`; log `DIEU_CHINH_HOP_DONG` |
 | POST | `/api/v1/hopDong/:id/chamDut` | HR (trừ mình) | `{ngayChamDut, lyDo}`; ngày trong [bắt đầu, kết thúc]; đã chấm dứt 409; log `CHAM_DUT_HOP_DONG` |
+| GET | `/api/v1/chamCong/homNay` | Mọi vai trò (có hồ sơ) | Bản ghi hôm nay + giờ máy chủ + tham số ca |
+| POST | `/api/v1/chamCong/checkIn` | Mọi vai trò (có hồ sơ) | Giờ máy chủ; đã check-in / tháng đã chốt / TAM_NGHI, DA_NGHI_VIEC → 409; không có hồ sơ → 403 |
+| POST | `/api/v1/chamCong/checkOut` | Mọi vai trò (có hồ sơ) | Tính giờ thực tế, OT, đi muộn, về sớm; chưa check-in / đã check-out → 409 |
+| GET | `/api/v1/chamCong/cuaToi` | Mọi vai trò (có hồ sơ) | `?thang=YYYY-MM`; `items`, `tongHop`, `soNgayCongChuan`, `daChot` |
+| GET | `/api/v1/chamCong/bangCong` | HR, giamDoc, quanLy (PM) | `?thang&phongBanId&tuKhoa&trang&kichThuoc`; tổng hợp mỗi nhân viên |
+| GET | `/api/v1/chamCong/bangCong/:id` | Chính chủ, HR, giamDoc, quanLy (PM) | Công từng ngày của nhân viên `:id` trong tháng |
+| GET | `/api/v1/chamCong/chotCong` | HR, giamDoc, quanLy | Danh sách tháng đã chốt |
+| POST | `/api/v1/chamCong/chotCong` | HR | `{thang}`; chỉ tháng đã kết thúc, không còn CHO_DUYET; ghi `CHOT_CONG_THANG` (409 nếu đã chốt) |
+| GET | `/api/v1/dieuChinhCong` | HR, giamDoc, quanLy (PM) | `?trangThai&thang&phongBanId&tuKhoa`; mỗi dòng có `duocDuyet` |
+| GET | `/api/v1/dieuChinhCong/cuaToi` | Mọi vai trò (có hồ sơ) | Yêu cầu của mình |
+| POST | `/api/v1/dieuChinhCong` | Mọi vai trò (có hồ sơ) | `{ngayCanDieuChinh, gioVaoDeXuat?, gioRaDeXuat?, lyDoGiaiTrinh}` → `CHO_DUYET`; trùng ngày đang chờ / tháng đã chốt → 409 |
+| POST | `/api/v1/dieuChinhCong/:id/duyet` | giamDoc, HR, quanLy (PM); không tự duyệt | Transaction yêu cầu + `banghichamcong` (`DA_DIEU_CHINH`) |
+| POST | `/api/v1/dieuChinhCong/:id/tuChoi` | giamDoc, HR, quanLy (PM); không tự duyệt | `{lyDoTuChoi}` |
 
 ## Biến môi trường & lưu ý kỹ thuật
 - **Hợp đồng:** `HET_HAN` không lưu, suy ra khi đọc (`HIEU_LUC` + `ngayKetThuc < CURDATE()`); API trả `trangThai` (suy ra) và `trangThaiLuu`; `lichsuhopdong.trangThaiCu` ghi giá trị lưu thật. THU_VIEC ≤180 ngày, XĐTH ≤36 tháng (bắt buộc ngày kết thúc), KXĐ không có ngày kết thúc; ngày bắt đầu ≥ ngày vào làm và ≤ hôm nay+180. Chồng lấn chỉ xét hợp đồng `HIEU_LUC` (khóa dòng `nhanvien` trước rồi tới hợp đồng). Mã trùng do gap lock thì service thử lại tối đa 3 lần. Test rollback mock `hopDongRepository.themLichSu`; `themNhatKy` được destructure trong service nên `jest.spyOn` trên module nhật ký không có tác dụng.
