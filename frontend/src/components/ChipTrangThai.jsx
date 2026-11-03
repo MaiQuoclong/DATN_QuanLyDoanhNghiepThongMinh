@@ -21,6 +21,7 @@ const BANG_TRANG_THAI = {
   HET_HAN: ['Hết hạn', 'cam'],
   DA_CHAM_DUT: ['Đã chấm dứt', 'xam'],
   DA_DIEU_CHINH: ['Đã điều chỉnh', 'xanh'],
+  DA_HUY: ['Đã hủy', 'xam'],
 };
 
 // kieu: 'cham' (chấm tròn + chữ, dùng trong bảng) | 'chip' (nền nhạt, dùng ở header)

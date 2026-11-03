@@ -51,6 +51,8 @@ const danhSachMenu = [
       { duongDan: '', ten: 'Đơn của tôi' },
       { duongDan: 'duyetDon', ten: 'Duyệt đơn', vaiTro: ['giamDoc', 'quanLy'] },
       { duongDan: 'lichNghi', ten: 'Lịch nghỉ', vaiTro: QUAN_LY_NHAN_SU },
+      // HR quản lý loại nghỉ, cấp quỹ; giamDoc xem toàn bộ, quanLy xem phòng mình
+      { duongDan: 'quyPhep', ten: 'Quỹ phép', vaiTro: QUAN_LY_NHAN_SU },
     ],
   },
   {

@@ -137,19 +137,25 @@ INSERT INTO loainghiphep (id, maLoai, tenLoai, soNgayToiDa, coLuong, truVaoQuyPh
   (5, 'KHONG_LUONG',  'Nghỉ không lương',         NULL, 0, 0, 'Cần thỏa thuận với quản lý');
 
 -- ---------------------------------------------------------------------
--- 7. Quỹ phép năm 2026
+-- 7. Quỹ phép năm hiện tại (năm theo CURDATE(); soNgayDaNghi tính lại từ đơn đã duyệt ở mục 10)
 -- ---------------------------------------------------------------------
 INSERT INTO quyngayphep (nhanVienId, namHieuLuc, tongSoNgayPhep, soNgayDaNghi) VALUES
-  (1, 2026, 12.0, 2.0),
-  (2, 2026, 14.0, 0.0),
-  (3, 2026, 13.0, 3.5),
-  (4, 2026, 12.0, 1.0),
-  (5, 2026, 12.0, 0.0),
-  (6, 2026,  4.0, 0.0),
-  (7, 2026, 12.0, 0.5),
-  (8, 2026, 14.0, 1.0),
-  (9, 2026, 13.0, 0.0),
-  (10, 2026, 12.0, 0.0);
+  (1, YEAR(CURDATE()), 12.0, 0.0),
+  (2, YEAR(CURDATE()), 14.0, 0.0),
+  (3, YEAR(CURDATE()), 13.0, 0.0),
+  (4, YEAR(CURDATE()), 12.0, 0.0),
+  (5, YEAR(CURDATE()), 12.0, 0.0),
+  (6, YEAR(CURDATE()),  4.0, 0.0),
+  (7, YEAR(CURDATE()), 12.0, 0.0),
+  (8, YEAR(CURDATE()), 14.0, 0.0),
+  (9, YEAR(CURDATE()), 13.0, 0.0),
+  (10, YEAR(CURDATE()), 12.0, 0.0);
+-- Năm trước và năm sau (đơn mẫu theo CURDATE() có thể rơi sang năm khác vào cuối/đầu năm)
+INSERT INTO quyngayphep (nhanVienId, namHieuLuc, tongSoNgayPhep, soNgayDaNghi)
+SELECT q.nhanVienId, q.namHieuLuc + n.lech, q.tongSoNgayPhep, 0.0
+  FROM quyngayphep q CROSS JOIN (SELECT -1 AS lech UNION ALL SELECT 1) n
+  JOIN nhanvien nv ON nv.id = q.nhanVienId
+ WHERE nv.ngayVaoLam <= CONCAT(q.namHieuLuc + n.lech, '-12-31');
 
 -- ---------------------------------------------------------------------
 -- 8. Hợp đồng lao động + lịch sử (nguoiThucHienId = HR NV0004/NV0007; hợp đồng của HR và hợp đồng
@@ -249,3 +255,67 @@ INSERT INTO yeucaudieuchinhchamcong (banGhiChamCongId, nhanVienId, ngayCanDieuCh
 INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
   (4, 'CHOT_CONG_THANG', '127.0.0.1', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 MONTH), '%Y-%m'),
    TIMESTAMP(DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-02'), '09:00:00'));
+
+-- ---------------------------------------------------------------------
+-- 10. Đơn nghỉ phép (ngày tính theo CURDATE(); chuỗi duyệt docs/phan-quyen.md quy tắc 5)
+--     Chuỗi duyệt theo seed: PKT-PT, PKT -> quanly NV0003 · PKD -> quanly2 NV0009 · PNS (không trưởng), BGD,
+--     trưởng PKT/PKD -> giám đốc NV0002 · đơn > 5 ngày -> giamDoc. Mọi giamDoc duyệt được đơn (trừ của mình).
+-- ---------------------------------------------------------------------
+SET @thu2Toi = DATE_ADD(CURDATE(), INTERVAL (7 - WEEKDAY(CURDATE())) DAY);           -- thứ 2 tuần sau
+-- Cụm đơn chờ duyệt kéo dài tới @thu2Toi + 18: nếu vắt qua năm thì dời cả cụm sang thứ 2 đầu tiên của năm sau
+SET @dauNamSau = MAKEDATE(YEAR(@thu2Toi) + 1, 1);
+SET @thu2Toi = IF(YEAR(DATE_ADD(@thu2Toi, INTERVAL 18 DAY)) = YEAR(@thu2Toi), @thu2Toi,
+                  DATE_ADD(@dauNamSau, INTERVAL MOD(7 - WEEKDAY(@dauNamSau), 7) DAY));
+SET @dauThangTruoc = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01');
+SET @thu2ThangTruoc = DATE_ADD(@dauThangTruoc, INTERVAL MOD(7 - WEEKDAY(@dauThangTruoc), 7) + 7 DAY); -- thứ 2 tuần thứ hai
+SET @dauThangChot = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 MONTH), '%Y-%m-01');
+SET @thu2ThangChot = DATE_ADD(@dauThangChot, INTERVAL MOD(7 - WEEKDAY(@dauThangChot), 7) + 7 DAY);
+SET @thu2DauNam = DATE_ADD(MAKEDATE(YEAR(CURDATE()), 15), INTERVAL MOD(7 - WEEKDAY(MAKEDATE(YEAR(CURDATE()), 15)), 7) DAY);
+-- Đầu tháng 1 mốc trên còn ở tương lai: lùi về tuần trước tháng đã chốt (đơn đã duyệt phải ở quá khứ)
+SET @thu2DauNam = IF(@thu2DauNam < DATE_SUB(CURDATE(), INTERVAL 7 DAY), @thu2DauNam, DATE_SUB(@thu2ThangChot, INTERVAL 7 DAY));
+
+-- maDon tạm, đánh lại DNPyyyy-xxxx theo năm ngày bắt đầu ở cuối mục
+INSERT INTO dondexuatnghiphep (id, maDon, nhanVienId, loaiNghiPhepId, ngayBatDau, ngayKetThuc, soNgayNghi, lyDo,
+                               phuongThucTao, trangThai, nguoiDuyetId, lyDoTuChoi, thoiGianDuyet, ngayTao) VALUES
+  -- Chờ duyệt
+  (1, 'TAM-1', 5, 1, @thu2Toi, DATE_ADD(@thu2Toi, INTERVAL 1 DAY), 2.0, 'Về quê dự đám cưới người thân',
+   'FORM_GIAO_DIEN', 'CHO_DUYET', NULL, NULL, NULL, TIMESTAMP(CURDATE(), '08:30:00')),
+  (2, 'TAM-2', 10, 1, DATE_ADD(@thu2Toi, INTERVAL 2 DAY), DATE_ADD(@thu2Toi, INTERVAL 2 DAY), 1.0, 'Giải quyết việc gia đình',
+   'FORM_GIAO_DIEN', 'CHO_DUYET', NULL, NULL, NULL, TIMESTAMP(CURDATE(), '08:40:00')),
+  (3, 'TAM-3', 3, 1, DATE_ADD(@thu2Toi, INTERVAL 7 DAY), DATE_ADD(@thu2Toi, INTERVAL 8 DAY), 2.0, 'Đưa con đi khám sức khỏe định kỳ',
+   'FORM_GIAO_DIEN', 'CHO_DUYET', NULL, NULL, NULL, TIMESTAMP(CURDATE(), '09:00:00')),
+  (4, 'TAM-4', 7, 2, DATE_ADD(@thu2Toi, INTERVAL 3 DAY), DATE_ADD(@thu2Toi, INTERVAL 3 DAY), 1.0, 'Lịch tái khám theo chỉ định bác sĩ',
+   'FORM_GIAO_DIEN', 'CHO_DUYET', NULL, NULL, NULL, TIMESTAMP(CURDATE(), '09:10:00')),
+  (5, 'TAM-5', 6, 5, DATE_ADD(@thu2Toi, INTERVAL 7 DAY), DATE_ADD(@thu2Toi, INTERVAL 18 DAY), 10.0, 'Thi chứng chỉ và chuyển nhà trọ',
+   'FORM_GIAO_DIEN', 'CHO_DUYET', NULL, NULL, NULL, TIMESTAMP(CURDATE(), '09:20:00')),
+  -- Đã duyệt / từ chối / đã hủy
+  (6, 'TAM-6', 1, 1, @thu2ThangTruoc, DATE_ADD(@thu2ThangTruoc, INTERVAL 1 DAY), 2.0, 'Nghỉ phép đi du lịch cùng gia đình',
+   'FORM_GIAO_DIEN', 'DA_DUYET', 3, NULL, TIMESTAMP(DATE_SUB(@thu2ThangTruoc, INTERVAL 3 DAY), '10:00:00'), TIMESTAMP(DATE_SUB(@thu2ThangTruoc, INTERVAL 5 DAY), '08:00:00')),
+  (7, 'TAM-7', 4, 1, @thu2ThangChot, @thu2ThangChot, 1.0, 'Làm thủ tục hành chính cá nhân',
+   'FORM_GIAO_DIEN', 'DA_DUYET', 2, NULL, TIMESTAMP(DATE_SUB(@thu2ThangChot, INTERVAL 2 DAY), '10:00:00'), TIMESTAMP(DATE_SUB(@thu2ThangChot, INTERVAL 4 DAY), '08:00:00')),
+  (8, 'TAM-8', 9, 1, DATE_ADD(@thu2ThangTruoc, INTERVAL 3 DAY), DATE_ADD(@thu2ThangTruoc, INTERVAL 3 DAY), 0.5, 'Nghỉ buổi chiều đi họp phụ huynh',
+   'FORM_GIAO_DIEN', 'DA_DUYET', 2, NULL, TIMESTAMP(@thu2ThangTruoc, '10:00:00'), TIMESTAMP(DATE_SUB(@thu2ThangTruoc, INTERVAL 1 DAY), '08:00:00')),
+  (9, 'TAM-9', 8, 1, @thu2DauNam, @thu2DauNam, 1.0, 'Việc riêng',
+   'FORM_GIAO_DIEN', 'DA_DUYET', 2, NULL, TIMESTAMP(DATE_SUB(@thu2DauNam, INTERVAL 3 DAY), '10:00:00'), TIMESTAMP(DATE_SUB(@thu2DauNam, INTERVAL 4 DAY), '08:00:00')),
+  (10, 'TAM-10', 10, 1, DATE_ADD(@thu2ThangTruoc, INTERVAL 4 DAY), DATE_ADD(@thu2ThangTruoc, INTERVAL 4 DAY), 1.0, 'Nghỉ đi chơi cuối tuần dài',
+   'FORM_GIAO_DIEN', 'TU_CHOI', 9, 'Phòng đang chạy chiến dịch bán hàng, đề nghị dời sang tuần sau',
+   TIMESTAMP(@thu2ThangTruoc, '11:00:00'), TIMESTAMP(DATE_SUB(@thu2ThangTruoc, INTERVAL 2 DAY), '08:00:00')),
+  (11, 'TAM-11', 5, 1, DATE_ADD(@thu2Toi, INTERVAL 14 DAY), DATE_ADD(@thu2Toi, INTERVAL 14 DAY), 1.0, 'Đi khám răng',
+   'FORM_GIAO_DIEN', 'DA_HUY', NULL, NULL, NULL, TIMESTAMP(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '15:00:00'));
+
+UPDATE dondexuatnghiphep d
+   SET maDon = CONCAT('DNP', YEAR(d.ngayBatDau), '-', LPAD((
+         SELECT COUNT(*) FROM (SELECT id, ngayBatDau FROM dondexuatnghiphep) x
+          WHERE YEAR(x.ngayBatDau) = YEAR(d.ngayBatDau) AND x.id <= d.id), 4, '0'));
+
+-- Ngày nghỉ cả ngày đã duyệt thì không có bản ghi chấm công (đơn nửa ngày vẫn giữ)
+DELETE cc FROM banghichamcong cc
+  JOIN dondexuatnghiphep d ON d.nhanVienId = cc.nhanVienId AND cc.ngayChamCong BETWEEN d.ngayBatDau AND d.ngayKetThuc
+ WHERE d.trangThai = 'DA_DUYET' AND d.soNgayNghi >= 1;
+
+-- Quỹ phép: số ngày đã nghỉ = tổng đơn đã duyệt thuộc loại trừ quỹ trong năm
+UPDATE quyngayphep q
+   SET q.soNgayDaNghi = (SELECT COALESCE(SUM(d.soNgayNghi), 0) FROM dondexuatnghiphep d
+                           JOIN loainghiphep l ON l.id = d.loaiNghiPhepId
+                          WHERE d.nhanVienId = q.nhanVienId AND d.trangThai = 'DA_DUYET'
+                            AND l.truVaoQuyPhepNam = 1 AND YEAR(d.ngayBatDau) = q.namHieuLuc);
