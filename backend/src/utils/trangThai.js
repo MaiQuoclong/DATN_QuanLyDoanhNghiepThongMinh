@@ -11,6 +11,11 @@ const TRANG_THAI_HOP_DONG = ['HIEU_LUC', 'HET_HAN', 'DA_CHAM_DUT'];
 // banghichamcong: HOP_LE = tự chấm, DA_DIEU_CHINH = giờ đã sửa theo yêu cầu được duyệt (thiếu check-out suy ra từ gioRa NULL)
 const TRANG_THAI_CHAM_CONG = ['HOP_LE', 'DA_DIEU_CHINH'];
 const TRANG_THAI_DIEU_CHINH_CONG = ['CHO_DUYET', 'DA_DUYET', 'TU_CHOI'];
+// dondexuatnghiphep: DA_HUY = người gửi tự hủy khi đơn còn chờ duyệt (giữ lại lịch sử, không xóa dòng)
+const TRANG_THAI_DON_NGHI_PHEP = ['CHO_DUYET', 'DA_DUYET', 'TU_CHOI', 'DA_HUY'];
+const TRANG_THAI_LOAI_NGHI_PHEP = ['DANG_AP_DUNG', 'NGUNG_AP_DUNG'];
+// phuongThucTao: tạo trên form hoặc qua trợ lý AI (Function Calling)
+const PHUONG_THUC_TAO_DON = ['FORM_GIAO_DIEN', 'AI_CHAT'];
 
 module.exports = {
   TRANG_THAI_PHONG_BAN,
@@ -22,4 +27,7 @@ module.exports = {
   TRANG_THAI_HOP_DONG,
   TRANG_THAI_CHAM_CONG,
   TRANG_THAI_DIEU_CHINH_CONG,
+  TRANG_THAI_DON_NGHI_PHEP,
+  TRANG_THAI_LOAI_NGHI_PHEP,
+  PHUONG_THUC_TAO_DON,
 };

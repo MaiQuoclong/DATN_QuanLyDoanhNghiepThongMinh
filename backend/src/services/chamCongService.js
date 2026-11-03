@@ -5,6 +5,7 @@ const chamCongRepository = require('../repositories/chamCongRepository');
 const nhanVienRepository = require('../repositories/nhanVienRepository');
 const phongBanRepository = require('../repositories/phongBanRepository');
 const nhatKyRepository = require('../repositories/nhatKyRepository');
+const nghiPhepRepository = require('../repositories/nghiPhepRepository');
 const { tinhChiSoCong, laCuoiTuan } = require('../utils/tinhCong');
 
 const TRANG_THAI_KHONG_CHAM_CONG = ['TAM_NGHI', 'DA_NGHI_VIEC'];
@@ -189,6 +190,12 @@ async function chotCong(nguoiDung, thang, diaChiIP) {
     const soChoDuyet = await chamCongRepository.demYeuCauChoDuyetTrongKhoang(tuNgay, denNgay, ketNoi);
     if (soChoDuyet > 0) {
       throw new LoiUngDung(409, `Tháng ${thang} còn ${soChoDuyet} yêu cầu điều chỉnh công chờ duyệt, cần xử lý trước khi chốt`);
+    }
+    // Đơn nghỉ chờ duyệt trong tháng không duyệt được sau khi chốt -> bảng công/lương thiếu ngày nghỉ
+    const donChoDuyet = await nghiPhepRepository.layDonChoDuyetTrongKhoang(tuNgay, denNgay, ketNoi);
+    if (donChoDuyet.length > 0) {
+      const danhSach = donChoDuyet.slice(0, 5).map((d) => `${d.maDon} (${d.maNhanVien})`).join(', ');
+      throw new LoiUngDung(409, `Tháng ${thang} còn ${donChoDuyet.length} đơn nghỉ phép chờ duyệt: ${danhSach}${donChoDuyet.length > 5 ? ', ...' : ''}. Cần duyệt, từ chối hoặc người gửi hủy trước khi chốt`);
     }
     // Ngày thiếu check-out bị khóa ở 0 giờ công sau khi chốt -> lương sai, bắt buộc xử lý trước
     const soThieuCheckOut = await chamCongRepository.demNgayThieuCheckOutTrongKhoang(tuNgay, denNgay, ketNoi);

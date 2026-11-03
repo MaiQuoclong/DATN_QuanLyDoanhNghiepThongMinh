@@ -10,4 +10,11 @@ const THAM_SO_CHAM_CONG = {
   nguongLamThemPhut: 30, // ở lại sau giờ ra ca từ 30 phút trở lên mới tính OT
 };
 
-module.exports = { THAM_SO_CHAM_CONG };
+// Nghỉ phép: chuỗi duyệt theo docs/phan-quyen.md quy tắc 5
+const THAM_SO_NGHI_PHEP = {
+  soNgayChuyenGiamDoc: 5, // đơn nghỉ dài hơn 5 ngày làm việc chuyển thẳng giamDoc duyệt
+  soNgayPhepNamMacDinh: 12, // quỹ phép năm mặc định khi HR cấp hàng loạt
+  soNgayDatTruocToiDa: 365, // chỉ được tạo đơn bắt đầu trong vòng 365 ngày tới
+};
+
+module.exports = { THAM_SO_CHAM_CONG, THAM_SO_NGHI_PHEP };

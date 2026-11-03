@@ -16,6 +16,19 @@ async function layPhongBanQuanLy(nhanVienId) {
   return dong.map((d) => d.id);
 }
 
+// Cây phòng ban kèm trưởng bộ phận và trạng thái làm việc của trưởng (tính chuỗi duyệt đơn nghỉ phép)
+async function layCayPhongBan(ketNoi = pool) {
+  const [dong] = await ketNoi.query(
+    `SELECT pb.id, pb.phongBanChaId, pb.trangThai, pb.truongBoPhanId, t.maNhanVien AS maTruong, t.hoVaTen AS tenTruong,
+            t.trangThaiLamViec AS trangThaiTruong,
+            EXISTS (SELECT 1 FROM nguoidungvaitro ndvt JOIN vaitro vt ON vt.id = ndvt.vaiTroId
+                     WHERE ndvt.nguoiDungId = t.nguoiDungId AND vt.maVaiTro = 'quanLy') AS truongCoQuanLy
+       FROM phongban pb
+       LEFT JOIN nhanvien t ON t.id = pb.truongBoPhanId`
+  );
+  return dong.map((d) => ({ ...d, truongCoQuanLy: Boolean(d.truongCoQuanLy) }));
+}
+
 // Gọi trong transaction: FOR UPDATE chặn việc bổ nhiệm đúng lúc HR đang cho nghỉ/điều chuyển người đó
 async function layPhongBanLamTruong(nhanVienId, ketNoi) {
   const [dong] = await ketNoi.execute(
@@ -254,6 +267,7 @@ function capNhatViTri(id, truong, ketNoi) {
 }
 
 module.exports = {
+  layCayPhongBan,
   layPhongBanQuanLy,
   layPhongBanLamTruong,
   khoaCacPhongBan,
