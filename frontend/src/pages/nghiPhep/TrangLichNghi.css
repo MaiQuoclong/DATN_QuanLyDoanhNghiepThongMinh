@@ -1,0 +1,74 @@
+/* Lịch nghỉ tháng: hàng = nhân viên, cột = ngày. Đã duyệt xanh lá, chờ duyệt cam, cuối tuần xám */
+.luoiLichNghi {
+  overflow-x: auto;
+}
+
+.luoiLichNghi table {
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 100%;
+}
+
+.luoiLichNghi th,
+.luoiLichNghi td {
+  border: 1px solid var(--mauVien);
+  text-align: center;
+  padding: 0;
+  min-width: 26px;
+  height: 30px;
+}
+
+.luoiLichNghi th.cotTen,
+.luoiLichNghi td.cotTen {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 190px;
+  padding: 4px 8px;
+  text-align: left;
+  background: var(--mauThe);
+}
+
+.luoiLichNghi th {
+  background: var(--mauNen);
+  font-weight: 500;
+  color: var(--mauChuPhu);
+}
+
+.luoiLichNghi .cuoiTuan {
+  background: var(--mauTrungTinhNhat);
+}
+
+.luoiLichNghi .homNay {
+  outline: 2px solid var(--mauChinh);
+  outline-offset: -2px;
+}
+
+.luoiLichNghi td.daDuyet {
+  background: var(--mauThanhCong);
+  color: #fff;
+  cursor: pointer;
+}
+
+.luoiLichNghi td.choDuyet {
+  background: var(--mauCanhBao);
+  color: #fff;
+  cursor: pointer;
+}
+
+.chuThichLich {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--mauChuPhu);
+}
+
+.chuThichLich i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 5px;
+  border-radius: 3px;
+  vertical-align: -2px;
+}
