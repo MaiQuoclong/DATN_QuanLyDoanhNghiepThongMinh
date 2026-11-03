@@ -71,6 +71,8 @@ Quy trình bổ nhiệm: HR tiếp nhận tờ trình đề xuất, kiểm tra t
 | Duyệt / từ chối (trừ quỹ phép – transaction, theo chuỗi duyệt) | | ✓ | PM | | |
 | Lịch nghỉ | | ✓ | PM | ✓ | |
 
+Quy ước cài đặt (không đổi schema): người duyệt tính theo quy tắc 5 lúc đọc/duyệt (không lưu); trưởng bộ phận chỉ duyệt được khi có vai trò `quanLy`, đang làm việc và phòng đang hoạt động, nếu không thì đi lên phòng cha; đơn > 5 ngày làm việc (`THAM_SO_NGHI_PHEP.soNgayChuyenGiamDoc`) chuyển giamDoc. giamDoc duyệt mọi đơn trừ đơn của mình; khi không còn giamDoc nào khác đang hoạt động thì giamDoc được tự duyệt (ghi nhật ký). quanLy gọi duyệt đơn ngoài phạm vi nhận 404. Người gửi tự hủy đơn chờ duyệt → `trangThai = DA_HUY` (giữ lịch sử). Tháng đã chốt công không tạo/duyệt đơn; chốt công bị chặn khi tháng còn đơn `CHO_DUYET`.
+
 ## 7. Lương
 | Chức năng | Admin | giamDoc | quanLy | HR | nhanVien |
 |---|---|---|---|---|---|
