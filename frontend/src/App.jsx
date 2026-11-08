@@ -21,6 +21,8 @@ import TrangDonCuaToi from './pages/nghiPhep/TrangDonCuaToi';
 import TrangDuyetDon from './pages/nghiPhep/TrangDuyetDon';
 import TrangLichNghi from './pages/nghiPhep/TrangLichNghi';
 import TrangQuyPhep from './pages/nghiPhep/TrangQuyPhep';
+import TrangPhieuLuong from './pages/luong/TrangPhieuLuong';
+import TrangBangLuong from './pages/luong/TrangBangLuong';
 
 // Sinh route từ cấu hình menu (kèm tab con), giới hạn theo vai trò.
 // Tab đã làm lấy trang thật từ bảng dưới, tab chưa làm hiện TrangDangPhatTrien.
@@ -39,6 +41,8 @@ const TRANG_DA_LAM = {
   '/nghiPhep/duyetDon': TrangDuyetDon,
   '/nghiPhep/lichNghi': TrangLichNghi,
   '/nghiPhep/quyPhep': TrangQuyPhep,
+  '/luong': TrangPhieuLuong,
+  '/luong/bangLuong': TrangBangLuong,
 };
 // Trang con không có trên menu: [đường dẫn module, đường dẫn con, component, vai trò của tab cha]
 const TRANG_CON = [['/nhanSu', 'danhSach/:id', TrangChiTietNhanVien, 'danhSach']];
