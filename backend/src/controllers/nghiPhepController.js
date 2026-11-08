@@ -5,7 +5,7 @@ const {
   laySoNguyenDuong, layThang, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang,
 } = require('../utils/thamSoTruyVan');
 
-const thangHienTai = () => new Date().toLocaleDateString('sv-SE').slice(0, 7);
+const { thangHienTai } = require('../utils/ngayThang');
 
 function layIdTuDuongDan(req, nhan) {
   return laySoNguyenDuong(req.params.id, undefined, nhan);

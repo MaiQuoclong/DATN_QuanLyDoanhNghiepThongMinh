@@ -8,28 +8,29 @@ const phongBanRepository = require('../repositories/phongBanRepository');
 const nhatKyRepository = require('../repositories/nhatKyRepository');
 const { congNgay, tinhSoNgayNghi, layCacThang } = require('../utils/tinhNgayNghi');
 const { laNgayHopLe } = require('../middlewares/kiemTraDuLieu');
+const { ngayHomNay, khoangNgayCuaThang } = require('../utils/ngayThang');
+const { TRANG_THAI_LOAI_NGHI_PHEP } = require('../utils/trangThai');
 
 const TRANG_THAI_KHONG_NGHI_PHEP = ['TAM_NGHI', 'DA_NGHI_VIEC'];
 const SO_NGAY_TOI_DA_CUA_O = 99.5; // giới hạn nghiệp vụ cho quỹ/số ngày tối đa (cột DECIMAL(4,1) chứa tới 999.9), bước 0.5 ngày
 
-function ngayHomNay() {
-  return new Date().toLocaleDateString('sv-SE');
-}
 const namHienTai = () => Number(ngayHomNay().slice(0, 4));
 
-function khoangNgayCuaThang(thang) {
-  const [nam, soThang] = thang.split('-').map(Number);
-  const ngayCuoi = new Date(Date.UTC(nam, soThang, 0)).getUTCDate();
-  return { tuNgay: `${thang}-01`, denNgay: `${thang}-${String(ngayCuoi).padStart(2, '0')}` };
-}
 
 function xemToanCongTy(vaiTro) {
   return vaiTro.includes('HR') || vaiTro.includes('giamDoc');
 }
 
-async function layPhamVi(nguoiDung) {
+async function layPhamVi(nguoiDung, ketNoi) {
   if (xemToanCongTy(nguoiDung.vaiTro)) return null;
-  return phongBanRepository.layPhongBanQuanLy(nguoiDung.nhanVienId ?? 0);
+  return phongBanRepository.layPhongBanQuanLy(nguoiDung.nhanVienId ?? 0, ketNoi);
+}
+
+// Chuỗi không bắt buộc: null/rỗng -> null; không phải chuỗi -> 400 (tránh TypeError 500 khi gọi trim)
+function layChuoiTuyChon(giaTri, nhan) {
+  if (giaTri === undefined || giaTri === null) return null;
+  if (typeof giaTri !== 'string') throw new LoiUngDung(400, `${nhan} phải là chuỗi ký tự`);
+  return giaTri.trim() || null;
 }
 
 function canHoSo(nguoiDung) {
@@ -140,10 +141,10 @@ async function themLoai(nguoiDung, body, diaChiIP) {
   const loai = {
     maLoai,
     tenLoai: body.tenLoai.trim(),
-    soNgayToiDa: body.soNgayToiDa === undefined || body.soNgayToiDa === '' ? null : laySoNgay(body.soNgayToiDa, 'Số ngày tối đa'),
+    soNgayToiDa: body.soNgayToiDa === undefined || body.soNgayToiDa === '' || body.soNgayToiDa === null ? null : laySoNgay(body.soNgayToiDa, 'Số ngày tối đa'),
     coLuong: body.coLuong === undefined ? true : layLogic(body.coLuong, 'Có lương'),
     truVaoQuyPhepNam: body.truVaoQuyPhepNam === undefined ? true : layLogic(body.truVaoQuyPhepNam, 'Trừ vào quỹ phép năm'),
-    moTa: body.moTa?.trim() || null,
+    moTa: layChuoiTuyChon(body.moTa, 'Mô tả'),
   };
   if (loai.soNgayToiDa === 0) throw new LoiUngDung(400, 'Số ngày tối đa phải lớn hơn 0 (để trống nếu không giới hạn)');
   const id = await chayTransaction(async (ketNoi) => {
@@ -165,15 +166,21 @@ async function suaLoai(nguoiDung, id, body, diaChiIP) {
     const loai = await nghiPhepRepository.layLoaiTheoId(id, ketNoi, 'FOR UPDATE');
     if (!loai) throw new LoiUngDung(404, 'Không tìm thấy loại nghỉ phép');
     const moi = {};
-    if (body.tenLoai !== undefined) moi.tenLoai = body.tenLoai.trim();
+    if (body.tenLoai !== undefined) {
+      if (typeof body.tenLoai !== 'string' || body.tenLoai.trim().length < 2) throw new LoiUngDung(400, 'Tên loại nghỉ phép phải có ít nhất 2 ký tự');
+      moi.tenLoai = body.tenLoai.trim();
+    }
     if (body.soNgayToiDa !== undefined) {
-      moi.soNgayToiDa = body.soNgayToiDa === '' ? null : laySoNgay(body.soNgayToiDa, 'Số ngày tối đa');
+      moi.soNgayToiDa = body.soNgayToiDa === '' || body.soNgayToiDa === null ? null : laySoNgay(body.soNgayToiDa, 'Số ngày tối đa');
       if (moi.soNgayToiDa === 0) throw new LoiUngDung(400, 'Số ngày tối đa phải lớn hơn 0 (để trống nếu không giới hạn)');
     }
     if (body.coLuong !== undefined) moi.coLuong = layLogic(body.coLuong, 'Có lương');
     if (body.truVaoQuyPhepNam !== undefined) moi.truVaoQuyPhepNam = layLogic(body.truVaoQuyPhepNam, 'Trừ vào quỹ phép năm');
-    if (body.moTa !== undefined) moi.moTa = body.moTa?.trim() || null;
-    if (body.trangThai !== undefined) moi.trangThai = body.trangThai;
+    if (body.moTa !== undefined) moi.moTa = layChuoiTuyChon(body.moTa, 'Mô tả');
+    if (body.trangThai !== undefined) {
+      if (!TRANG_THAI_LOAI_NGHI_PHEP.includes(body.trangThai)) throw new LoiUngDung(400, 'Trạng thái loại nghỉ phép không hợp lệ');
+      moi.trangThai = body.trangThai;
+    }
 
     const thayDoi = Object.keys(moi).filter((cot) => moi[cot] !== loai[cot]);
     if (!thayDoi.length) throw new LoiUngDung(400, 'Không có thông tin nào thay đổi');
@@ -237,11 +244,13 @@ async function capQuyNam(nguoiDung, body, diaChiIP) {
 // HR sửa tổng số ngày phép của một người (trừ quỹ của mình); không được thấp hơn số đã nghỉ + đang chờ duyệt
 async function suaQuy(nguoiDung, id, body, diaChiIP) {
   const tongMoi = laySoNgay(body.tongSoNgayPhep, 'Tổng số ngày phép');
+  const lyDo = layChuoiTuyChon(body.lyDo, 'Lý do');
   const quyBanDau = await nghiPhepRepository.layQuyTheoId(id);
   if (!quyBanDau) throw new LoiUngDung(404, 'Không tìm thấy quỹ phép');
   if (quyBanDau.nhanVienId === nguoiDung.nhanVienId) throw new LoiUngDung(403, 'Bạn không được tự sửa quỹ phép của chính mình');
   await chayTransaction(async (ketNoi) => {
     const hoSo = await khoaNhanVienTonTai(quyBanDau.nhanVienId, ketNoi);
+    if (hoSo.trangThaiLamViec === 'DA_NGHI_VIEC') throw new LoiUngDung(409, 'Nhân viên đã nghỉ việc, không thể sửa quỹ phép');
     const quy = await nghiPhepRepository.layQuyTheoId(id, ketNoi, true);
     if (!quy) throw new LoiUngDung(404, 'Không tìm thấy quỹ phép');
     if (tongMoi === quy.tongSoNgayPhep) throw new LoiUngDung(400, 'Không có thông tin nào thay đổi');
@@ -252,7 +261,7 @@ async function suaQuy(nguoiDung, id, body, diaChiIP) {
     await nghiPhepRepository.capNhatTongQuy(id, tongMoi, ketNoi);
     await nhatKyRepository.themNhatKy(
       nguoiDung.nguoiDungId, 'SUA_QUY_PHEP', diaChiIP ?? null,
-      `${hoSo.maNhanVien} năm ${quy.namHieuLuc}: ${quy.tongSoNgayPhep} -> ${tongMoi}${body.lyDo?.trim() ? ` (${body.lyDo.trim()})` : ''}`, ketNoi
+      `${hoSo.maNhanVien} năm ${quy.namHieuLuc}: ${quy.tongSoNgayPhep} -> ${tongMoi}${lyDo ? ` (${lyDo})` : ''}`, ketNoi
     );
   });
   return nghiPhepRepository.layQuyTheoId(id);

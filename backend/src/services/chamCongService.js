@@ -7,24 +7,17 @@ const phongBanRepository = require('../repositories/phongBanRepository');
 const nhatKyRepository = require('../repositories/nhatKyRepository');
 const nghiPhepRepository = require('../repositories/nghiPhepRepository');
 const { tinhChiSoCong, laCuoiTuan } = require('../utils/tinhCong');
+const { ngayHomNay, khoangNgayCuaThang } = require('../utils/ngayThang');
 
 const TRANG_THAI_KHONG_CHAM_CONG = ['TAM_NGHI', 'DA_NGHI_VIEC'];
 
 // Ngày/giờ theo giờ máy chủ (không nhận từ client để nhân viên không tự sửa giờ chấm)
-function ngayHomNay() {
-  return new Date().toLocaleDateString('sv-SE');
-}
 function gioHienTai() {
   return new Date().toTimeString().slice(0, 8);
 }
 const thangCua = (ngay) => ngay.slice(0, 7);
 const chuanHoaGio = (gio) => (gio ? `${gio.slice(0, 5)}:00` : null);
 
-function khoangNgayCuaThang(thang) {
-  const [nam, soThang] = thang.split('-').map(Number);
-  const ngayCuoi = new Date(Date.UTC(nam, soThang, 0)).getUTCDate();
-  return { tuNgay: `${thang}-01`, denNgay: `${thang}-${String(ngayCuoi).padStart(2, '0')}`, ngayCuoi };
-}
 
 // Số ngày công chuẩn = số ngày thứ 2 - thứ 6 trong tháng (chưa trừ ngày lễ)
 function demNgayCongChuan(thang) {
@@ -53,9 +46,9 @@ function xemToanCongTy(vaiTro) {
 }
 
 // null = toàn công ty (HR, giamDoc); mảng = phòng ban quanLy phụ trách (docs/phan-quyen.md quy tắc 4)
-async function layPhamVi(nguoiDung) {
+async function layPhamVi(nguoiDung, ketNoi) {
   if (xemToanCongTy(nguoiDung.vaiTro)) return null;
-  return phongBanRepository.layPhongBanQuanLy(nguoiDung.nhanVienId ?? 0);
+  return phongBanRepository.layPhongBanQuanLy(nguoiDung.nhanVienId ?? 0, ketNoi);
 }
 
 async function chanThangDaChot(ngay, ketNoi) {
@@ -146,7 +139,7 @@ async function layCuaToi(nguoiDung, thang = thangCua(ngayHomNay())) {
 async function layBangCong(nguoiDung, { thang = thangCua(ngayHomNay()), phongBanId, tuKhoa, trang, kichThuoc }) {
   const { tuNgay, denNgay } = khoangNgayCuaThang(thang);
   const { items, tongSo } = await chamCongRepository.layBangCongThang({
-    tuNgay, denNgay, phamViPhongBanIds: await layPhamVi(nguoiDung), phongBanId, tuKhoa,
+    tuNgay, denNgay, homNay: ngayHomNay(), phamViPhongBanIds: await layPhamVi(nguoiDung), phongBanId, tuKhoa,
     viTri: (trang - 1) * kichThuoc, soLuong: kichThuoc,
   });
   const chot = await chamCongRepository.layThongTinChot(thang);
@@ -283,7 +276,7 @@ async function kiemTraQuyenDuyet(nguoiDung, id) {
 // Kiểm tra lại phạm vi trên hồ sơ đã khóa: nhân viên có thể vừa bị điều chuyển sau lần kiểm tra ngoài transaction
 async function khoaYeuCauChoDuyet(nguoiDung, id, nhanVienId, ketNoi) {
   const hoSo = await khoaNhanVienTonTai(nhanVienId, ketNoi);
-  const phamVi = await layPhamVi(nguoiDung);
+  const phamVi = await layPhamVi(nguoiDung, ketNoi);
   if (phamVi && !phamVi.includes(hoSo.phongBanId)) {
     throw new LoiUngDung(403, 'Bạn chỉ được duyệt yêu cầu của nhân viên thuộc phòng ban mình phụ trách');
   }

@@ -3,8 +3,8 @@ const { pool } = require('../config/ketNoiCsdl');
 // ===================== Phạm vi & kiểm tra dùng chung =====================
 
 // Phạm vi quanLy (docs/phan-quyen.md quy tắc 4): phòng ban mình làm trưởng + đệ quy các phòng ban con
-async function layPhongBanQuanLy(nhanVienId) {
-  const [dong] = await pool.execute(
+async function layPhongBanQuanLy(nhanVienId, ketNoi = pool) {
+  const [dong] = await ketNoi.execute(
     `WITH RECURSIVE cay AS (
         SELECT id FROM phongban WHERE truongBoPhanId = ?
         UNION
