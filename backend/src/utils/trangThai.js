@@ -20,8 +20,17 @@ const PHUONG_THUC_TAO_DON = ['FORM_GIAO_DIEN', 'AI_CHAT'];
 const TRANG_THAI_BANG_LUONG = ['BAN_NHAP', 'CHO_DUYET', 'DA_DUYET'];
 // quyetdinhkhenthuongkyluat.loaiQuyetDinh
 const LOAI_QUYET_DINH = ['KHEN_THUONG', 'KY_LUAT'];
+// kydanhgiakpi: DANG_MO (được tạo phiếu, chấm, nghiệm thu) -> DA_DONG (khóa toàn bộ phiếu của kỳ)
+const TRANG_THAI_KY_DANH_GIA = ['DANG_MO', 'DA_DONG'];
+// phieudanhgiakpi: BAN_NHAP (nhân viên tự chấm) -> CHO_DUYET (chờ nghiệm thu) -> DA_DUYET; trả lại -> BAN_NHAP
+const TRANG_THAI_PHIEU_KPI = ['BAN_NHAP', 'CHO_DUYET', 'DA_DUYET'];
+// phieudanhgiakpi.xepLoaiChung (ngưỡng ở config/thamSoNghiepVu.js THAM_SO_KPI)
+const XEP_LOAI_KPI = ['XUAT_SAC', 'TOT', 'KHA', 'TRUNG_BINH', 'YEU'];
 
 module.exports = {
+  TRANG_THAI_KY_DANH_GIA,
+  TRANG_THAI_PHIEU_KPI,
+  XEP_LOAI_KPI,
   TRANG_THAI_BANG_LUONG,
   LOAI_QUYET_DINH,
   TRANG_THAI_PHONG_BAN,
