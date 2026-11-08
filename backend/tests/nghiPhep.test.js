@@ -700,11 +700,14 @@ describe('Loại nghỉ phép (HR)', () => {
     for (const body of [
       { maLoai: 'A B', tenLoai: 'Sai mã' }, { maLoai: 'X', tenLoai: 'Ngắn' }, { tenLoai: 'Thiếu mã' },
       { maLoai: ma() + 'Z', tenLoai: 'Số âm', soNgayToiDa: -1 }, { maLoai: ma() + 'Y', tenLoai: 'Bước sai', soNgayToiDa: 1.3 },
-      { maLoai: ma() + 'W', tenLoai: 'Bằng 0', soNgayToiDa: 0 }, { maLoai: ma() + 'V', tenLoai: 'Null', soNgayToiDa: null },
-      { maLoai: ma() + 'U', tenLoai: 'Cờ sai', coLuong: 'co' },
+      { maLoai: ma() + 'W', tenLoai: 'Bằng 0', soNgayToiDa: 0 },
+      { maLoai: ma() + 'U', tenLoai: 'Cờ sai', coLuong: 'co' }, { maLoai: ma() + 'T', tenLoai: 'Mô tả số', moTa: 5 },
     ]) {
       expect([body, (await goi('post', '/loaiNghiPhep', token.hr).send(body)).status]).toEqual([body, 400]);
     }
+    const khongGioiHan = await goi('post', '/loaiNghiPhep', token.hr).send({ maLoai: ma() + 'V', tenLoai: 'Null', soNgayToiDa: null });
+    expect(khongGioiHan.status).toBe(201);
+    expect(khongGioiHan.body.data.soNgayToiDa).toBeNull();
   });
   test('thêm loại gửi truVaoQuyPhepNam/coLuong false tường minh -> trả false', async () => {
     const maLoai = ma() + 'F';
@@ -714,14 +717,20 @@ describe('Loại nghỉ phép (HR)', () => {
     const [[db]] = await pool.execute('SELECT truVaoQuyPhepNam, coLuong FROM loainghiphep WHERE maLoai = ?', [maLoai]);
     expect([Number(db.truVaoQuyPhepNam), Number(db.coLuong)]).toEqual([0, 0]);
   });
-  test('sửa không thay đổi -> 400; soNgayToiDa null -> 400; chuỗi rỗng -> không giới hạn', async () => {
+  test('sửa không thay đổi -> 400; soNgayToiDa null / chuỗi rỗng -> không giới hạn', async () => {
     const id = await taoLoai({ soNgayToiDa: 5 });
     expect((await goi('patch', `/loaiNghiPhep/${id}`, token.hr).send({ tenLoai: 'Loại thử' })).status).toBe(400);
-    expect((await goi('patch', `/loaiNghiPhep/${id}`, token.hr).send({ soNgayToiDa: null })).status).toBe(400);
-    const res = await goi('patch', `/loaiNghiPhep/${id}`, token.hr).send({ soNgayToiDa: '' });
+    const res = await goi('patch', `/loaiNghiPhep/${id}`, token.hr).send({ soNgayToiDa: null });
     expect(res.status).toBe(200);
     expect(res.body.data.soNgayToiDa).toBeNull();
-    expect(await layNhatKy('SUA_LOAI_NGHI_PHEP')).toHaveLength(1);
+    expect((await goi('patch', `/loaiNghiPhep/${id}`, token.hr).send({ soNgayToiDa: 3 })).status).toBe(200);
+    const rong = await goi('patch', `/loaiNghiPhep/${id}`, token.hr).send({ soNgayToiDa: '' });
+    expect(rong.status).toBe(200);
+    expect(rong.body.data.soNgayToiDa).toBeNull();
+    expect(await layNhatKy('SUA_LOAI_NGHI_PHEP')).toHaveLength(3);
+    for (const body of [{ moTa: 123 }, { moTa: { a: 1 } }, { moTa: ['x'] }]) {
+      expect([body, (await goi('patch', `/loaiNghiPhep/${id}`, token.hr).send(body)).status]).toEqual([body, 400]);
+    }
     expect((await goi('patch', `/loaiNghiPhep/${id}`, token.hr).send({ trangThai: 'PENDING' })).status).toBe(400);
     expect((await goi('patch', '/loaiNghiPhep/999999', token.hr).send({ tenLoai: 'Không có' })).status).toBe(404);
   });
@@ -733,6 +742,15 @@ describe('Loại nghỉ phép (HR)', () => {
     expect((await goi('patch', `/loaiNghiPhep/${id}`, token.hr).send({ coLuong: true })).status).toBe(409);
     expect((await goi('patch', `/loaiNghiPhep/${id}`, token.hr).send({ truVaoQuyPhepNam: true })).status).toBe(409);
     expect((await goi('patch', `/loaiNghiPhep/${id}`, token.hr).send({ tenLoai: 'Đổi tên được' })).status).toBe(200);
+  });
+  test('sửa tenLoai rỗng/null hoặc trangThai null/rỗng/giá trị lạ -> 400, dữ liệu không đổi', async () => {
+    const id = await taoLoai({ tenLoai: 'Tên gốc', trangThai: 'DANG_AP_DUNG' });
+    for (const body of [{ tenLoai: '' }, { tenLoai: null }, { trangThai: null }, { trangThai: '' }, { trangThai: 'LA_LUNG' }]) {
+      expect([body, (await goi('patch', `/loaiNghiPhep/${id}`, token.hr).send(body)).status]).toEqual([body, 400]);
+    }
+    const [[db]] = await pool.execute('SELECT tenLoai, trangThai FROM loainghiphep WHERE id = ?', [id]);
+    expect(db).toEqual({ tenLoai: 'Tên gốc', trangThai: 'DANG_AP_DUNG' });
+    expect(await layNhatKy('SUA_LOAI_NGHI_PHEP')).toHaveLength(0);
   });
 });
 
@@ -783,6 +801,22 @@ describe('Quỹ phép (HR)', () => {
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ tongSoNgayPhep: 4.5, soNgayDaNghi: 2 });
     expect(await layNhatKy('SUA_QUY_PHEP')).toHaveLength(1);
+  });
+  test('sửa quỹ phép của nhân viên đã nghỉ việc -> 409, quỹ không đổi', async () => {
+    const { nhanVien } = await taoNhanVien();
+    const quyId = await capQuy(nhanVien.id, 10, 0);
+    await pool.execute("UPDATE nhanvien SET trangThaiLamViec = 'DA_NGHI_VIEC' WHERE id = ?", [nhanVien.id]);
+    expect((await goi('patch', `/quyPhep/${quyId}`, token.hr).send({ tongSoNgayPhep: 12, lyDo: 'Thử' })).status).toBe(409);
+    expect(await layQuy(quyId)).toEqual({ tong: 10, daNghi: 0 });
+    expect(await layNhatKy('SUA_QUY_PHEP')).toHaveLength(0);
+  });
+  test('sửa quỹ với lyDo không phải chuỗi -> 400', async () => {
+    const { nhanVien } = await taoNhanVien();
+    const quyId = await capQuy(nhanVien.id, 10, 0);
+    for (const lyDo of [123, { a: 1 }, ['x']]) {
+      expect([lyDo, (await goi('patch', `/quyPhep/${quyId}`, token.hr).send({ tongSoNgayPhep: 11, lyDo })).status]).toEqual([lyDo, 400]);
+    }
+    expect(await layQuy(quyId)).toEqual({ tong: 10, daNghi: 0 });
   });
 });
 

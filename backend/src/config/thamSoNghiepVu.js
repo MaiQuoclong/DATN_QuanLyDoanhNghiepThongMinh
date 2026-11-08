@@ -17,4 +17,21 @@ const THAM_SO_NGHI_PHEP = {
   soNgayDatTruocToiDa: 365, // chỉ được tạo đơn bắt đầu trong vòng 365 ngày tới
 };
 
-module.exports = { THAM_SO_CHAM_CONG, THAM_SO_NGHI_PHEP };
+// Lương (docs/phan-quyen.md mục 7). Mức theo quy định hiện hành, đổi chính sách thì sửa tại đây.
+const THAM_SO_LUONG = {
+  soGioCongMotNgay: 8,
+  heSoLamThem: 1.5, // OT ngày thường = 150% đơn giá giờ
+  // Bảo hiểm bắt buộc phần người lao động đóng, tính trên lương cơ bản hợp đồng
+  tyLeBaoHiem: { bhxh: 0.08, bhyt: 0.015, bhtn: 0.01 },
+  mucTranDongBaoHiem: 46800000, // 20 lần lương cơ sở 2.340.000
+  // Luật BHXH: không làm việc, không hưởng lương từ 14 ngày làm việc trở lên trong tháng thì không đóng tháng đó
+  soNgayNghiKhongDongBaoHiem: 14,
+  giamTruBanThan: 11000000, // giảm trừ gia cảnh bản thân/tháng (schema không lưu người phụ thuộc)
+  // Biểu thuế TNCN lũy tiến từng phần theo tháng: [mức trần thu nhập tính thuế của bậc, thuế suất]
+  bieuThueTNCN: [
+    [5000000, 0.05], [10000000, 0.1], [18000000, 0.15], [32000000, 0.2],
+    [52000000, 0.25], [80000000, 0.3], [Infinity, 0.35],
+  ],
+};
+
+module.exports = { THAM_SO_CHAM_CONG, THAM_SO_NGHI_PHEP, THAM_SO_LUONG };

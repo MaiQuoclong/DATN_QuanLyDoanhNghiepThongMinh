@@ -16,8 +16,14 @@ const TRANG_THAI_DON_NGHI_PHEP = ['CHO_DUYET', 'DA_DUYET', 'TU_CHOI', 'DA_HUY'];
 const TRANG_THAI_LOAI_NGHI_PHEP = ['DANG_AP_DUNG', 'NGUNG_AP_DUNG'];
 // phuongThucTao: tạo trên form hoặc qua trợ lý AI (Function Calling)
 const PHUONG_THUC_TAO_DON = ['FORM_GIAO_DIEN', 'AI_CHAT'];
+// bangtonghopluong: BAN_NHAP (HR lập/sửa) -> CHO_DUYET (HR gửi) -> DA_DUYET (giamDoc duyệt); trả lại -> BAN_NHAP
+const TRANG_THAI_BANG_LUONG = ['BAN_NHAP', 'CHO_DUYET', 'DA_DUYET'];
+// quyetdinhkhenthuongkyluat.loaiQuyetDinh
+const LOAI_QUYET_DINH = ['KHEN_THUONG', 'KY_LUAT'];
 
 module.exports = {
+  TRANG_THAI_BANG_LUONG,
+  LOAI_QUYET_DINH,
   TRANG_THAI_PHONG_BAN,
   TRANG_THAI_CHUC_DANH,
   TRANG_THAI_VI_TRI,

@@ -79,7 +79,7 @@ async function layBanGhiTrongKhoang(nhanVienId, tuNgay, denNgay) {
 
 // Bảng công tháng: mỗi nhân viên một dòng tổng hợp. Lấy người đã vào làm trước cuối tháng và
 // còn làm việc, hoặc đã nghỉ nhưng vẫn có bản ghi trong tháng (để chốt lương tháng cuối).
-async function layBangCongThang({ tuNgay, denNgay, phamViPhongBanIds, phongBanId, tuKhoa, viTri, soLuong }) {
+async function layBangCongThang({ tuNgay, denNgay, homNay, phamViPhongBanIds, phongBanId, tuKhoa, viTri, soLuong }) {
   if (phamViPhongBanIds && phamViPhongBanIds.length === 0) return { items: [], tongSo: 0 };
   const dieuKien = [
     'nv.ngayVaoLam <= ?',
@@ -97,7 +97,7 @@ async function layBangCongThang({ tuNgay, denNgay, phamViPhongBanIds, phongBanId
   const [items] = await pool.query(
     `SELECT nv.id AS nhanVienId, nv.maNhanVien, nv.hoVaTen, cdpb.phongBanId, pb.tenPhongBan, nv.trangThaiLamViec,
             COUNT(cc.id) AS soNgayChamCong,
-            COALESCE(SUM(cc.gioRa IS NULL AND cc.ngayChamCong < CURDATE()), 0) AS soNgayThieuCheckOut,
+            COALESCE(SUM(cc.gioRa IS NULL AND cc.ngayChamCong < ?), 0) AS soNgayThieuCheckOut,
             COALESCE(SUM(cc.soGioLamThucTe), 0) AS tongGioLamThucTe,
             COALESCE(SUM(cc.soGioLamThemOT), 0) AS tongGioLamThem,
             COALESCE(SUM(cc.diMuon), 0) AS soLanDiMuon,
@@ -108,7 +108,7 @@ async function layBangCongThang({ tuNgay, denNgay, phamViPhongBanIds, phongBanId
       GROUP BY nv.id
       ORDER BY nv.maNhanVien
       LIMIT ? OFFSET ?`,
-    [tuNgay, denNgay, ...thamSo, soLuong, viTri]
+    [homNay, tuNgay, denNgay, ...thamSo, soLuong, viTri]
   );
   return {
     items: items.map((d) => ({

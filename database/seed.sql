@@ -319,3 +319,50 @@ UPDATE quyngayphep q
                            JOIN loainghiphep l ON l.id = d.loaiNghiPhepId
                           WHERE d.nhanVienId = q.nhanVienId AND d.trangThai = 'DA_DUYET'
                             AND l.truVaoQuyPhepNam = 1 AND YEAR(d.ngayBatDau) = q.namHieuLuc);
+
+-- ---------------------------------------------------------------------
+-- 11. Lương (công thức backend/src/utils/tinhLuong.js, tham số thamSoNghiepVu.js THAM_SO_LUONG)
+--     Tháng (hiện tại - 3): đã chốt công, bảng lương DA_DUYET (HR NV0004 lập, giám đốc NV0002 duyệt) -> mọi nhân viên
+--     có phiếu để xem. Tháng này không có dữ liệu chấm công chi tiết nên phiếu tính đủ công chuẩn, không OT.
+--     Tháng (hiện tại - 2): đã chốt công (mục 9), CHƯA có bảng lương -> HR demo lập bảng, giám đốc demo duyệt/trả lại.
+--     Quyết định khen thưởng / kỷ luật ban hành trong tháng (hiện tại - 2) tự vào cột thưởng/phạt khi lập bảng.
+-- ---------------------------------------------------------------------
+SET @dauThangLuong = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 3 MONTH), '%Y-%m-01');
+SET @cuoiThangLuong = LAST_DAY(@dauThangLuong);
+SET @congChuanLuong = (WITH RECURSIVE ngay AS (
+    SELECT @dauThangLuong AS d UNION ALL SELECT d + INTERVAL 1 DAY FROM ngay WHERE d < @cuoiThangLuong)
+  SELECT SUM(WEEKDAY(d) < 5) FROM ngay);
+
+INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
+  (4, 'CHOT_CONG_THANG', '127.0.0.1', DATE_FORMAT(@dauThangLuong, '%Y-%m'), TIMESTAMP(@cuoiThangLuong + INTERVAL 2 DAY, '09:00:00')),
+  (4, 'LAP_BANG_LUONG', '127.0.0.1', CONCAT('BL', DATE_FORMAT(@dauThangLuong, '%Y-%m')), TIMESTAMP(@cuoiThangLuong + INTERVAL 3 DAY, '09:00:00')),
+  (4, 'GUI_DUYET_BANG_LUONG', '127.0.0.1', DATE_FORMAT(@dauThangLuong, '%Y-%m'), TIMESTAMP(@cuoiThangLuong + INTERVAL 3 DAY, '15:00:00')),
+  (2, 'DUYET_BANG_LUONG', '127.0.0.1', DATE_FORMAT(@dauThangLuong, '%Y-%m'), TIMESTAMP(@cuoiThangLuong + INTERVAL 4 DAY, '10:00:00'));
+
+INSERT INTO bangtonghopluong (id, maBangLuong, thang, nam, tongChiPhiLuong, trangThai, nguoiLapId, nguoiDuyetId, ngayTao) VALUES
+  (1, CONCAT('BL', DATE_FORMAT(@dauThangLuong, '%Y-%m')), MONTH(@dauThangLuong), YEAR(@dauThangLuong), 0, 'DA_DUYET', 4, 2,
+   TIMESTAMP(@cuoiThangLuong + INTERVAL 3 DAY, '09:00:00'));
+
+-- Đủ công: lương theo công = lương cơ bản, phụ cấp đủ mức hợp đồng; BH 10.5% (trần 46.8 triệu); thuế lũy tiến 7 bậc
+INSERT INTO phieuluongnhanvien (bangTongHopLuongId, nhanVienId, soNgayCongThucTe, luongCoBan, luongLamThemOT,
+                                thuongKPI, tongPhuCap, khauTruBaoHiem, khauTruThueTNCN)
+SELECT 1, x.nhanVienId, @congChuanLuong, x.luongCoBan, 0, 0, x.mucPhuCap, x.baoHiem,
+       ROUND(GREATEST(0, LEAST(x.t, 5000000)) * 0.05 + GREATEST(0, LEAST(x.t, 10000000) - 5000000) * 0.10
+           + GREATEST(0, LEAST(x.t, 18000000) - 10000000) * 0.15 + GREATEST(0, LEAST(x.t, 32000000) - 18000000) * 0.20
+           + GREATEST(0, LEAST(x.t, 52000000) - 32000000) * 0.25 + GREATEST(0, LEAST(x.t, 80000000) - 52000000) * 0.30
+           + GREATEST(0, x.t - 80000000) * 0.35)
+  FROM (SELECT hd.nhanVienId, hd.luongCoBan, hd.mucPhuCap, ROUND(LEAST(hd.luongCoBan, 46800000) * 0.105) AS baoHiem,
+               hd.luongCoBan + hd.mucPhuCap - ROUND(LEAST(hd.luongCoBan, 46800000) * 0.105) - 11000000 AS t
+          FROM hopdonglaodong hd JOIN nhanvien nv ON nv.id = hd.nhanVienId
+         WHERE hd.trangThai = 'HIEU_LUC' AND hd.ngayBatDau <= @cuoiThangLuong
+           AND (hd.ngayKetThuc IS NULL OR hd.ngayKetThuc >= @dauThangLuong) AND nv.ngayVaoLam <= @cuoiThangLuong) x;
+
+UPDATE bangtonghopluong
+   SET tongChiPhiLuong = (SELECT SUM(luongCoBan + luongLamThemOT + thuongKPI + tongPhuCap) FROM phieuluongnhanvien WHERE bangTongHopLuongId = 1)
+ WHERE id = 1;
+
+INSERT INTO quyetdinhkhenthuongkyluat (soQuyetDinh, nhanVienId, loaiQuyetDinh, tieuDe, soTien, lyDo, ngayBanHanh, nguoiKyDuyetId) VALUES
+  (CONCAT('QD', YEAR(@thu2ThangChot), '-0001'), 5, 'KHEN_THUONG', 'Khen thưởng hoàn thành dự án trước hạn', 2000000.00,
+   'Hoàn thành module thanh toán sớm 2 tuần', @thu2ThangChot, 2),
+  (CONCAT('QD', YEAR(@thu2ThangChot), '-0002'), 10, 'KY_LUAT', 'Khiển trách đi muộn nhiều lần', 500000.00,
+   'Đi muộn quá 5 lần trong tháng không có lý do', @thu2ThangChot, 2);
