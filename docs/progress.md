@@ -7,11 +7,23 @@
   - [x] Cơ cấu tổ chức (`/api/v1/phongBan`, `/chucDanh`, `/chucDanhPhongBan`, bổ nhiệm/miễn nhiệm) — test `backend/tests/coCauToChuc.test.js` (101 test, pass). Toàn backend 417/417 pass (2026-11-01, `npm test` hai lần + `npm test -- --randomize`, seed 395550296).
   - [x] Hợp đồng lao động (`/api/v1/hopDong`) — test `backend/tests/hopDong.test.js` (96 test, pass). Sau đợt sửa lỗi reviewer: toàn backend 519/519 pass (2026-11-01, `npm test` + `npx jest --runInBand --randomize` seed -457478370; thêm test: chồng lấn với hợp đồng DA_CHAM_DUT, DUOC_PHAN_QUYEN chỉ khi đổi quanLy, sửa phòng con khi cha ngừng, nhật ký chỉ ghi trường đổi, DANG_NHAP_THAT_BAI không ghi chuỗi lạ). Trước đó 512/512 pass (2026-11-01, `npm test` hai lần + `npm test -- --randomize`, seed -574257199) trên CSDL vừa dựng lại bằng `npm run khoiTaoCsdl`. (2026-11-02: seed tính ngày hợp đồng 6, 7 theo `CURDATE()`, test đọc ngày thật từ DB.)
   - [x] Frontend module: Hồ sơ của tôi, Danh sách/Chi tiết nhân viên (`/nhanSu/danhSach/:id`), Hợp đồng (cảnh báo hết hạn, lịch sử, thao tác HR), Phòng ban (cây + vị trí + chức danh, bổ nhiệm), Hệ thống: Tài khoản (chỉ Admin), Nhật ký. `vite build` pass; chưa kiểm thử tự động giao diện.
-- [ ] Module Chấm công, Đơn từ hành chính & Lương (Chấm công, Nghỉ phép đã merge; Lương code xong + QA pass 2026-11-08 — test `backend/tests/luong.test.js` 39 test; toàn backend 696/696 pass; chờ reviewer cuối module rồi PR)
+- [x] Module Chấm công, Đơn từ hành chính & Lương (Chấm công PR #12, Nghỉ phép PR #13, Lương PR #15 đã merge — test `backend/tests/luong.test.js` 39 test)
 - [ ] Module Đánh giá KPI, Khen thưởng & Kỷ luật
+  - [x] Kỳ đánh giá + Chỉ tiêu KPI + Phiếu đánh giá KPI (`feature/kpi`, gộp 2 chức năng lộ trình 1-2) — QA 2026-11-08: `backend/tests/kpi.test.js` 48 test; toàn backend **744/744 pass** (10 suite). Test tự mở kỳ riêng (năm 2031+), dọn `chitietdanhgiakpi`/`phieudanhgiakpi`/`chitieukpi`/`kydanhgiakpi`/`nhatkyhethong` theo MAX(id) và đặt lại AUTO_INCREMENT; ca trưởng bộ phận tạm đặt `phongban.truongBoPhanId` của PKT-PT = NV0006 rồi đặt lại NULL. Lưu ý: chạy test từ ngoài `backend/` phải dùng `npm test --prefix backend` (dotenv đọc `.env` theo cwd).
 - [ ] Tầng AI Agent: RAG quy chế, Function Calling tạo đơn, Text-to-SQL báo cáo
 
 ## Đang làm & việc tiếp theo (cập nhật 2026-11-08)
+- **Nhánh `feature/kpi`: XONG, sẵn sàng commit.** Gộp chức năng 1 (Kỳ đánh giá & Chỉ tiêu) + 2 (Phiếu đánh giá) của lộ trình Module 4. Rà soát đầu lượt: reviewer 2 lượt + qa-tester toàn project sạch (696/696). Sau khi code: reviewer báo 2 trung bình + 3 nhẹ, đã sửa hết; qa-tester viết `kpi.test.js` (48 test); **toàn backend 744/744 pass trên DB vừa dựng lại** (`npm run khoiTaoCsdl` → `npm test`), `vite build` pass. Sửa thêm 4 lỗi nhẹ (LOCK IN SHARE MODE chỉ tiêu, thoát `\ % _` trong LIKE, tên kỳ >= 3 ký tự sau trim, suaPhieu không đổi gì -> 400): `kpi.test.js` +5 test (53), **toàn backend 749/749 pass** (2026-11-08, đã chạy tay trên DB vừa dựng lại bằng `npm run khoiTaoCsdl`; `vite build` pass). Chờ người dùng commit/push/PR `feature/kpi` → `develop`.
+- **Việc tiếp:** chức năng 3 Module 4 **Khen thưởng & Kỷ luật** (`feature/khen-thuong-ky-luat`, xem lộ trình) + nối thưởng KPI vào `phieuluongnhanvien.thuongKPI` (`luongService` hiện chỉ cộng khen thưởng − kỷ luật).
+- **KPI — thiết kế** (schema không đổi):
+  - Backend: `repositories/kpiRepository.js`, `services/kpiService.js`, `controllers/kpiController.js`, `routes/kpiRoutes.js` (`/kyDanhGiaKPI`, `/chiTieuKPI`, `/phieuDanhGiaKPI`); `THAM_SO_KPI` (thang 10, trọng số 0.01-100, ngưỡng xếp loại 9/8/6.5/5); `TRANG_THAI_KY_DANH_GIA` = DANG_MO/DA_DONG, `TRANG_THAI_PHIEU_KPI` = BAN_NHAP → CHO_DUYET → DA_DUYET (trả lại → BAN_NHAP), `XEP_LOAI_KPI`.
+  - Nghiệp vụ: chỉ tiêu `chucDanhPhongBanId` NULL = chỉ tiêu chung (chỉ HR); phiếu chép chỉ tiêu vị trí + chung với trọng số mặc định. Điểm tổng = Σ(điểm × trọng số)/Σ trọng số tính bằng SQL khi đọc (không có cột lưu); xếp loại lưu `xepLoaiChung` lúc nghiệm thu từ chính điểm SQL. Nghiệm thu: quanLy chấm PM trừ mình và trừ trưởng bộ phận; giamDoc chấm mọi phiếu trừ của mình. Không tạo phiếu cho chính mình và cho người có vai trò giamDoc (không có cấp nghiệm thu). Lý do trả lại ghi vào `nhanXetQuanLy` ("Trả lại: ..."). Đóng kỳ bị chặn khi còn phiếu CHO_DUYET; kỳ đóng khóa mọi thao tác phiếu. Khóa: kỳ (SHARE/UPDATE) → phiếu. Ngoài phạm vi → 404.
+  - Nhật ký: MO_KY_KPI, SUA_KY_KPI, DONG_KY_KPI, MO_LAI_KY_KPI, XOA_KY_KPI, THEM/SUA/XOA_CHI_TIEU_KPI, TAO/SUA/XOA_PHIEU_KPI, GUI_PHIEU_KPI, NGHIEM_THU_KPI, TRA_LAI_PHIEU_KPI.
+  - Frontend: menu `/kpi` 5 tab — Phiếu của tôi (mọi vai trò), Đánh giá / Chỉ tiêu / Kỳ đánh giá / Báo cáo (HR, giamDoc, quanLy); `components/kpi/HopThoaiPhieuKpi.jsx` đổi chế độ theo `phieu.quyen` (tuCham / nghiemThu / quanTri); báo cáo Recharts xếp loại theo phòng ban.
+  - Seed mục 13: kỳ 1 = quý trước (DA_DONG, 7 phiếu đã nghiệm thu đủ mức xếp loại), kỳ 2 = quý hiện tại (DANG_MO): NV0005/NV0010/NV0003 CHO_DUYET (quanly/quanly2/giamdoc nghiệm thu), NV0006/NV0004/NV0001 BAN_NHAP (tự chấm), NV0007 DA_DUYET; 11 chỉ tiêu (2 chung + theo vị trí). Mốc thời gian kẹp `LEAST(..., NOW())`.
+  - Hạn chế đã biết (KPI, nhẹ): (1) chưa nối thưởng KPI vào lương (việc tiếp); (2) phòng ban của phiếu/báo cáo là phòng hiện tại của nhân viên (schema không lưu lịch sử điều chuyển); (3) giamDoc không được đánh giá KPI trong hệ thống; (4) trang KPI chưa có trạng thái loading, dropdown phòng ban của quanLy liệt kê cả phòng ngoài phạm vi (kết quả rỗng).
+
+## Trước đó: chức năng Lương (đã merge PR #15)
 - **Việc tiếp (sau khi merge PR `feature/luong` → `develop` và PR `develop` → `main`):** bắt đầu **Module 4 – KPI, Khen thưởng & Kỷ luật**, chức năng 1 trên nhánh `feature/ky-danh-gia-kpi` (xem "Lộ trình Module 4" bên dưới).
 - **Sẵn sàng commit (2026-11-08):** reviewer 2 lượt (lượt 2 sạch nghiêm trọng/trung bình sau khi sửa bảo hiểm < 14 ngày công + tính lại BH khi sửa ngày công), qa-tester sạch: toàn backend **696/696 pass** (9 suite, `npm test` + `--randomize`) trên DB vừa dựng lại, `vite build` pass. Chờ người dùng commit/push/PR `feature/luong` → `develop`, rồi PR `develop` → `main` (xong module 3). Hạn chế nhẹ thêm: seed mục 11 chỉ lấy hợp đồng HIEU_LUC (code nhận cả DA_CHAM_DUT) — lệch nếu sau này seed thêm hợp đồng chấm dứt trong tháng (hiện tại − 3); tên file CSV lấy từ `maBangLuong` do code sinh (nếu cho nhập tay phải làm sạch header).
 - **Nhánh `feature/luong`** (từ `develop` `1227d43`, chưa commit): ĐÃ CODE XONG chức năng 3 Lương (backend + frontend + seed). Đang: reviewer rà → sửa → qa-tester viết `backend/tests/luong.test.js` + chạy toàn project. Xong = xong module 3 → hướng dẫn commit/push/PR `develop`, sau đó PR `develop` → `main`.
@@ -192,6 +204,28 @@ Quy trình: mỗi chức năng DB → API → UI → seed 5 vai trò → test �
 | GET | `/api/v1/phieuLuong/cuaToi` | Mọi vai trò | `?nam`; phiếu của mình thuộc bảng DA_DUYET |
 | GET | `/api/v1/phieuLuong/:id` | Mọi vai trò | Của mình (bảng DA_DUYET) hoặc HR/giamDoc; khác 404 |
 | PATCH | `/api/v1/phieuLuong/:id` | HR | Bảng BAN_NHAP, không phải phiếu của mình; `soNgayCongThucTe` (≤ công chuẩn, bước 0.5), `luongLamThemOT`, `thuongKPI` (cho phép âm), `tongPhuCap`; thuế tự tính lại; ghi SUA_PHIEU_LUONG |
+
+### Đánh giá KPI (`feature/kpi`, test `backend/tests/kpi.test.js` 53 test)
+| Method | Endpoint | Vai trò | Ghi chú |
+|---|---|---|---|
+| GET | `/api/v1/kyDanhGiaKPI` (`?trangThai`), `/:id` | Mọi vai trò | |
+| POST | `/api/v1/kyDanhGiaKPI` | HR | Tên duy nhất (409), ngày kết thúc > bắt đầu; ghi MO_KY_KPI |
+| PATCH | `/api/v1/kyDanhGiaKPI/:id` | HR | Chỉ kỳ DANG_MO (409); ghi SUA_KY_KPI |
+| POST | `/api/v1/kyDanhGiaKPI/:id/dong` · `/:id/moLai` | HR | Đóng bị 409 nếu còn phiếu CHO_DUYET; ghi DONG_KY_KPI / MO_LAI_KY_KPI |
+| DELETE | `/api/v1/kyDanhGiaKPI/:id` | HR | Chỉ kỳ chưa có phiếu (409); ghi XOA_KY_KPI |
+| GET | `/api/v1/chiTieuKPI` | HR, giamDoc, quanLy | quanLy: chỉ tiêu chung + phòng mình |
+| GET | `/api/v1/chiTieuKPI/viTri` | HR, quanLy | Vị trí gán được chỉ tiêu theo phạm vi |
+| POST/PATCH/DELETE | `/api/v1/chiTieuKPI(/:id)` | HR, quanLy (PM) | Chỉ tiêu chung chỉ HR (403); phòng khác 404; mã trùng 409; đã dùng thì không xóa/đổi vị trí (409) |
+| GET | `/api/v1/phieuDanhGiaKPI` | HR, giamDoc, quanLy (PM) | Phân trang, cờ `duocNghiemThu` |
+| GET | `/api/v1/phieuDanhGiaKPI/cuaToi` | Mọi vai trò | `?kyDanhGiaId` |
+| GET | `/api/v1/phieuDanhGiaKPI/baoCao` | HR, giamDoc, quanLy (PM) | `?kyDanhGiaId` bắt buộc; tổng hợp trạng thái/xếp loại/điểm TB theo phòng |
+| GET | `/api/v1/phieuDanhGiaKPI/:id` | Mọi vai trò | Chính chủ hoặc trong phạm vi; khác 404; kèm `quyen` |
+| POST | `/api/v1/phieuDanhGiaKPI` · `/taoHangLoat` | HR, quanLy (PM) | BAN_NHAP; không tự tạo cho mình (403); không tạo cho giamDoc (400, hàng loạt bỏ qua); trùng 409; kỳ đóng 409 |
+| PATCH/DELETE | `/api/v1/phieuDanhGiaKPI/:id` | HR, quanLy (PM) | Phiếu BAN_NHAP: mục tiêu, trọng số; ghi SUA_PHIEU_KPI / XOA_PHIEU_KPI |
+| PATCH | `/api/v1/phieuDanhGiaKPI/:id/tuCham` | Chính chủ | Điểm 0-10, 2 chữ số thập phân |
+| POST | `/api/v1/phieuDanhGiaKPI/:id/guiDuyet` | Chính chủ | Chấm đủ mới gửi (400); ghi GUI_PHIEU_KPI |
+| POST | `/api/v1/phieuDanhGiaKPI/:id/nghiemThu` | giamDoc, quanLy (PM) | Chấm đủ; điểm tổng theo trọng số → xếp loại THAM_SO_KPI; quanLy không chấm trưởng bộ phận; không tự chấm; ghi NGHIEM_THU_KPI |
+| POST | `/api/v1/phieuDanhGiaKPI/:id/traLai` | giamDoc, quanLy (PM) | `{lyDo}`; CHO_DUYET → BAN_NHAP; ghi TRA_LAI_PHIEU_KPI |
 
 ## Biến môi trường & lưu ý kỹ thuật
 - **Hợp đồng:** `HET_HAN` không lưu, suy ra khi đọc (`HIEU_LUC` + `ngayKetThuc < CURDATE()`); API trả `trangThai` (suy ra) và `trangThaiLuu`; `lichsuhopdong.trangThaiCu` ghi giá trị lưu thật. THU_VIEC ≤180 ngày, XĐTH ≤36 tháng (bắt buộc ngày kết thúc), KXĐ không có ngày kết thúc; ngày bắt đầu ≥ ngày vào làm và ≤ hôm nay+180. Chồng lấn chỉ xét hợp đồng `HIEU_LUC` (khóa dòng `nhanvien` trước rồi tới hợp đồng). Mã trùng do gap lock thì service thử lại tối đa 3 lần. Test rollback mock `hopDongRepository.themLichSu`; `themNhatKy` được destructure trong service nên `jest.spyOn` trên module nhật ký không có tác dụng.
