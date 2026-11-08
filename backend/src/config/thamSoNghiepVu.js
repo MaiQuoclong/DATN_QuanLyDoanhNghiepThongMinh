@@ -34,4 +34,14 @@ const THAM_SO_LUONG = {
   ],
 };
 
-module.exports = { THAM_SO_CHAM_CONG, THAM_SO_NGHI_PHEP, THAM_SO_LUONG };
+// KPI (docs/phan-quyen.md mục 8): điểm mỗi chỉ tiêu thang 0-10 (cột DECIMAL(4,2)).
+// Điểm tổng = trung bình có trọng số điểm nghiệm thu; xếp loại theo ngưỡng (xét từ cao xuống thấp).
+const THAM_SO_KPI = {
+  diemToiDa: 10,
+  trongSoToiDa: 100, // trọng số mỗi chỉ tiêu 0.01-100 (cột DECIMAL(5,2))
+  nguongXepLoai: [
+    [9, 'XUAT_SAC'], [8, 'TOT'], [6.5, 'KHA'], [5, 'TRUNG_BINH'], [0, 'YEU'],
+  ],
+};
+
+module.exports = { THAM_SO_CHAM_CONG, THAM_SO_NGHI_PHEP, THAM_SO_LUONG, THAM_SO_KPI };

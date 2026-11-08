@@ -65,7 +65,20 @@ const danhSachMenu = [
       { duongDan: 'bangLuong', ten: 'Bảng lương', vaiTro: ['giamDoc', 'HR'] },
     ],
   },
-  { duongDan: '/kpi', ten: 'KPI', bieuTuong: Target, vaiTro: TAT_CA },
+  {
+    duongDan: '/kpi',
+    ten: 'KPI',
+    bieuTuong: Target,
+    vaiTro: TAT_CA,
+    tab: [
+      { duongDan: '', ten: 'Phiếu của tôi' },
+      // HR, quanLy PM tạo phiếu; giamDoc, quanLy nghiệm thu; giamDoc/HR xem toàn bộ
+      { duongDan: 'danhGia', ten: 'Đánh giá', vaiTro: QUAN_LY_NHAN_SU },
+      { duongDan: 'chiTieu', ten: 'Chỉ tiêu', vaiTro: QUAN_LY_NHAN_SU },
+      { duongDan: 'kyDanhGia', ten: 'Kỳ đánh giá', vaiTro: QUAN_LY_NHAN_SU },
+      { duongDan: 'baoCao', ten: 'Báo cáo', vaiTro: QUAN_LY_NHAN_SU },
+    ],
+  },
   {
     duongDan: '/khenThuongKyLuat',
     ten: 'Khen thưởng - Kỷ luật',

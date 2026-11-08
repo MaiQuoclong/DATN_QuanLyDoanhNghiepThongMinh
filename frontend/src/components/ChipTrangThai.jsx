@@ -22,6 +22,13 @@ const BANG_TRANG_THAI = {
   DA_CHAM_DUT: ['Đã chấm dứt', 'xam'],
   DA_DIEU_CHINH: ['Đã điều chỉnh', 'xanh'],
   DA_HUY: ['Đã hủy', 'xam'],
+  DA_DONG: ['Đã đóng', 'xam'],
+  // Xếp loại KPI (phieudanhgiakpi.xepLoaiChung)
+  XUAT_SAC: ['Xuất sắc', 'xanh'],
+  TOT: ['Tốt', 'xanh'],
+  KHA: ['Khá', 'cam'],
+  TRUNG_BINH: ['Trung bình', 'cam'],
+  YEU: ['Yếu', 'do'],
 };
 
 // kieu: 'cham' (chấm tròn + chữ, dùng trong bảng) | 'chip' (nền nhạt, dùng ở header)
