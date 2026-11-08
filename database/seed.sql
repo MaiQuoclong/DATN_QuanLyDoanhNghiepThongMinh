@@ -366,3 +366,83 @@ INSERT INTO quyetdinhkhenthuongkyluat (soQuyetDinh, nhanVienId, loaiQuyetDinh, t
    'Hoàn thành module thanh toán sớm 2 tuần', @thu2ThangChot, 2),
   (CONCAT('QD', YEAR(@thu2ThangChot), '-0002'), 10, 'KY_LUAT', 'Khiển trách đi muộn nhiều lần', 500000.00,
    'Đi muộn quá 5 lần trong tháng không có lý do', @thu2ThangChot, 2);
+
+-- ---------------------------------------------------------------------
+-- 13. KPI: kỳ đánh giá, chỉ tiêu, phiếu (ngày theo CURDATE() để demo luôn đúng)
+--     Kỳ 1 = quý trước (DA_DONG, đã nghiệm thu), Kỳ 2 = quý hiện tại (DANG_MO).
+--     Điểm tổng = trung bình có trọng số điểm nghiệm thu; xếp loại theo THAM_SO_KPI (backend/src/config/thamSoNghiepVu.js):
+--     >= 9 XUAT_SAC, >= 8 TOT, >= 6.5 KHA, >= 5 TRUNG_BINH, còn lại YEU.
+--     Demo kỳ 2: nhanvien (NV0005) và nhanvien3 (NV0010) đã gửi -> quanly / quanly2 nghiệm thu;
+--     quanly (NV0003, trưởng PKT) đã gửi -> giamdoc nghiệm thu; nhanvien2, hr, admin đang tự chấm (BAN_NHAP);
+--     hr2 (NV0007) đã được giamdoc nghiệm thu. giamDoc không có phiếu.
+-- ---------------------------------------------------------------------
+SET @dauQuyNay = MAKEDATE(YEAR(CURDATE()), 1) + INTERVAL (QUARTER(CURDATE()) - 1) QUARTER;
+SET @dauQuyTruoc = @dauQuyNay - INTERVAL 1 QUARTER;
+
+INSERT INTO kydanhgiakpi (id, tenKyDanhGia, ngayBatDau, ngayKetThuc, trangThai) VALUES
+  (1, CONCAT('KPI Quý ', QUARTER(@dauQuyTruoc), '/', YEAR(@dauQuyTruoc)), @dauQuyTruoc, @dauQuyNay - INTERVAL 1 DAY, 'DA_DONG'),
+  (2, CONCAT('KPI Quý ', QUARTER(@dauQuyNay), '/', YEAR(@dauQuyNay)), @dauQuyNay, @dauQuyNay + INTERVAL 1 QUARTER - INTERVAL 1 DAY, 'DANG_MO');
+
+-- chucDanhPhongBanId NULL = chỉ tiêu chung mọi vị trí (chỉ HR định nghĩa)
+INSERT INTO chitieukpi (id, maChiTieu, tenChiTieu, moTa, donViDo, trongSoMacDinh, chucDanhPhongBanId) VALUES
+  (1,  'CHUNG-01', 'Tuân thủ nội quy, giờ giấc',     'Đi làm đúng giờ, chấp hành nội quy công ty', 'Điểm', 1.00, NULL),
+  (2,  'CHUNG-02', 'Tinh thần hợp tác',              'Phối hợp với đồng nghiệp và các phòng ban', 'Điểm', 1.00, NULL),
+  (3,  'LTV-01',   'Hoàn thành task đúng hạn',       'Tỷ lệ task hoàn thành đúng deadline trong kỳ', '%', 3.00, 5),
+  (4,  'LTV-02',   'Chất lượng mã nguồn',            'Số lỗi phát sinh sau khi bàn giao', 'Lỗi', 2.00, 5),
+  (5,  'NVKD-01',  'Doanh số',                       'Doanh số ký mới trong kỳ', 'Triệu đồng', 3.00, 8),
+  (6,  'NVKD-02',  'Khách hàng mới',                 'Số khách hàng mới ký hợp đồng', 'Khách hàng', 2.00, 8),
+  (7,  'CVNS-01',  'Tuyển dụng đúng hạn',            'Tỷ lệ vị trí tuyển đủ trước hạn', '%', 3.00, 2),
+  (8,  'CVNS-02',  'Xử lý hồ sơ, chế độ',            'Thời gian xử lý hồ sơ nhân sự trung bình', 'Ngày', 2.00, 2),
+  (9,  'QTHT-01',  'Độ sẵn sàng hệ thống',           'Uptime hệ thống nội bộ', '%', 3.00, 4),
+  (10, 'TPKT-01',  'Tiến độ dự án phòng Kỹ thuật',   'Tỷ lệ dự án bàn giao đúng hạn', '%', 3.00, 3),
+  (11, 'TPKD-01',  'Doanh số phòng Kinh doanh',      'Doanh số toàn phòng so với kế hoạch', '%', 3.00, 7);
+
+-- Phiếu id 1-7 kỳ 1 (đã nghiệm thu), id 8-14 kỳ 2. nguoiDanhGiaId: quanly (3) chấm PKT/PKT-PT, quanly2 (9) chấm PKD,
+-- giamdoc (2) chấm trưởng bộ phận và phòng không có quản lý (PNS, PKT là trưởng)
+INSERT INTO phieudanhgiakpi (id, kyDanhGiaId, nhanVienId, giaiTrinhNhanVien, nhanXetQuanLy, nguoiDanhGiaId, ngayNghiemThu, trangThai) VALUES
+  (1, 1, 1,  'Hệ thống vận hành ổn định cả quý', 'Hoàn thành tốt', 3, LEAST(TIMESTAMP(@dauQuyNay + INTERVAL 3 DAY, '09:00:00'), NOW()), 'DA_DUYET'),
+  (2, 1, 3,  'Bàn giao 4/5 dự án đúng hạn', 'Cần cải thiện tiến độ dự án lớn', 2, LEAST(TIMESTAMP(@dauQuyNay + INTERVAL 3 DAY, '10:00:00'), NOW()), 'DA_DUYET'),
+  (3, 1, 4,  'Tuyển đủ 6 vị trí', 'Làm việc hiệu quả', 2, LEAST(TIMESTAMP(@dauQuyNay + INTERVAL 3 DAY, '11:00:00'), NOW()), 'DA_DUYET'),
+  (4, 1, 5,  'Hoàn thành module thanh toán sớm', 'Xuất sắc, xứng đáng khen thưởng', 3, LEAST(TIMESTAMP(@dauQuyNay + INTERVAL 4 DAY, '09:00:00'), NOW()), 'DA_DUYET'),
+  (5, 1, 7,  'Hỗ trợ xử lý hồ sơ BHXH', 'Đạt yêu cầu', 2, LEAST(TIMESTAMP(@dauQuyNay + INTERVAL 4 DAY, '10:00:00'), NOW()), 'DA_DUYET'),
+  (6, 1, 9,  'Doanh số phòng đạt 92% kế hoạch', 'Khá, cần đẩy mạnh khách hàng mới', 2, LEAST(TIMESTAMP(@dauQuyNay + INTERVAL 4 DAY, '11:00:00'), NOW()), 'DA_DUYET'),
+  (7, 1, 10, 'Chưa đạt doanh số do thị trường chậm', 'Cần cải thiện, đi muộn nhiều', 9, LEAST(TIMESTAMP(@dauQuyNay + INTERVAL 5 DAY, '09:00:00'), NOW()), 'DA_DUYET'),
+  (8, 2, 5,  'Đã hoàn thành phần lớn task được giao', NULL, NULL, NULL, 'CHO_DUYET'),
+  (9, 2, 10, 'Đã ký thêm 3 khách hàng mới', NULL, NULL, NULL, 'CHO_DUYET'),
+  (10, 2, 3, 'Các dự án đang đúng tiến độ', NULL, NULL, NULL, 'CHO_DUYET'),
+  (11, 2, 6, NULL, NULL, NULL, NULL, 'BAN_NHAP'),
+  (12, 2, 4, NULL, NULL, NULL, NULL, 'BAN_NHAP'),
+  (13, 2, 1, NULL, NULL, NULL, NULL, 'BAN_NHAP'),
+  (14, 2, 7, 'Hoàn thành tốt các đợt tuyển dụng', 'Đạt kết quả tốt', 2, LEAST(GREATEST(TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '15:00:00'), TIMESTAMP(@dauQuyNay, '09:00:00')), NOW()), 'DA_DUYET');
+
+-- Chi tiết sinh từ chỉ tiêu của vị trí + chỉ tiêu chung (như API tạo phiếu). Điểm mẫu theo MOD để có nhiều mức xếp loại.
+-- Phiếu nháp: hr, admin chưa chấm; nhanvien2 (NV0006) mới chấm chỉ tiêu chung.
+INSERT INTO chitietdanhgiakpi (phieuDanhGiaKPIId, chiTieuKPIId, trongSo, mucTieu, ketQuaThucTe, diemTuCham, diemNghiemThu, nhanXet)
+SELECT p.id, ct.id, ct.trongSoMacDinh,
+       CASE WHEN ct.donViDo = '%' THEN '>= 95%' WHEN ct.donViDo = 'Lỗi' THEN '<= 5 lỗi' ELSE 'Theo kế hoạch' END,
+       CASE WHEN p.trangThai = 'BAN_NHAP' AND (p.nhanVienId <> 6 OR ct.chucDanhPhongBanId IS NOT NULL) THEN NULL
+            ELSE 'Đã thực hiện theo kế hoạch' END,
+       CASE WHEN p.trangThai = 'BAN_NHAP' AND (p.nhanVienId <> 6 OR ct.chucDanhPhongBanId IS NOT NULL) THEN NULL
+            ELSE 7.00 + MOD(p.nhanVienId * 3 + ct.id, 4) * 0.50 END,
+       CASE WHEN p.trangThai <> 'DA_DUYET' THEN NULL
+            WHEN p.nhanVienId = 5 THEN 9.50
+            WHEN p.nhanVienId = 10 THEN 4.50 + MOD(ct.id, 2)
+            WHEN p.nhanVienId = 9 THEN 7.00 + MOD(ct.id, 2) * 0.50
+            ELSE 8.00 + MOD(p.nhanVienId + ct.id, 3) * 0.50 END,
+       CASE WHEN p.trangThai = 'DA_DUYET' THEN 'Đã nghiệm thu' ELSE NULL END
+  FROM phieudanhgiakpi p
+  JOIN nhanvien nv ON nv.id = p.nhanVienId
+  JOIN chitieukpi ct ON ct.chucDanhPhongBanId = nv.chucDanhPhongBanId OR ct.chucDanhPhongBanId IS NULL;
+
+-- Xếp loại phiếu đã nghiệm thu từ điểm tổng theo trọng số
+UPDATE phieudanhgiakpi p
+  JOIN (SELECT phieuDanhGiaKPIId AS id, ROUND(SUM(diemNghiemThu * trongSo) / SUM(trongSo), 2) AS diem
+          FROM chitietdanhgiakpi GROUP BY phieuDanhGiaKPIId) d ON d.id = p.id
+   SET p.xepLoaiChung = CASE WHEN d.diem >= 9 THEN 'XUAT_SAC' WHEN d.diem >= 8 THEN 'TOT' WHEN d.diem >= 6.5 THEN 'KHA'
+                             WHEN d.diem >= 5 THEN 'TRUNG_BINH' ELSE 'YEU' END
+ WHERE p.trangThai = 'DA_DUYET';
+
+INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
+  (4, 'MO_KY_KPI', '127.0.0.1', CONCAT('KPI Quý ', QUARTER(@dauQuyTruoc), '/', YEAR(@dauQuyTruoc)), TIMESTAMP(@dauQuyTruoc, '08:30:00')),
+  (4, 'DONG_KY_KPI', '127.0.0.1', CONCAT('KPI Quý ', QUARTER(@dauQuyTruoc), '/', YEAR(@dauQuyTruoc)), LEAST(TIMESTAMP(@dauQuyNay + INTERVAL 6 DAY, '17:00:00'), NOW())),
+  (4, 'MO_KY_KPI', '127.0.0.1', CONCAT('KPI Quý ', QUARTER(@dauQuyNay), '/', YEAR(@dauQuyNay)), TIMESTAMP(@dauQuyNay, '08:30:00'));
