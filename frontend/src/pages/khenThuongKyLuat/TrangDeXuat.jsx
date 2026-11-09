@@ -18,7 +18,7 @@ const homNay = () => new Date().toLocaleDateString('en-CA');
 const truongDeXuat = (coNhanVien) => [
   ...(coNhanVien ? [{ ten: 'nhanVienId', nhan: 'Nhân viên', kieu: 'nhanVien', batBuoc: true, locNhanVien: { trangThai: ['THU_VIEC', 'CHINH_THUC'] } }] : []),
   { ten: 'loaiDeXuat', nhan: 'Loại', kieu: 'select', batBuoc: true, luaChon: thanhLuaChon(NHAN_LOAI_KTKL) },
-  { ten: 'soTienDeXuat', nhan: 'Số tiền đề xuất (VNĐ)', kieu: 'number' },
+  { ten: 'soTienDeXuat', nhan: 'Số tiền đề xuất (VNĐ)', kieu: 'number', ghiChu: 'Để trống = 0' },
   { ten: 'tieuDe', nhan: 'Tiêu đề', batBuoc: true, rongHet: true },
   { ten: 'lyDo', nhan: 'Lý do', kieu: 'textarea', batBuoc: true },
 ];
@@ -153,7 +153,12 @@ function TrangDeXuat() {
           truong={truongDeXuat(false)}
           giaTriBanDau={dangXem}
           onGui={async (g) => {
-            const body = Object.fromEntries(Object.entries(g).filter(([k, v]) => String(v) !== String(dangXem[k] ?? '')));
+            // Số tiền API trả dạng "1000000.00": so sánh theo giá trị số để không coi là đã đổi
+            const khacNhau = (k, v) => (k === 'soTienDeXuat'
+              ? Number(v || 0) !== Number(dangXem[k] || 0)
+              : String(v) !== String(dangXem[k] ?? ''));
+            const body = Object.fromEntries(Object.entries(g).filter(([k, v]) => khacNhau(k, v)));
+            if (!Object.keys(body).length) throw new Error('Không có thông tin nào thay đổi');
             xong((await goiApi.patch(`/deXuatKhenThuongKyLuat/${dangXem.id}`, body)).message);
           }}
           onDong={() => setCheDo(null)}

@@ -1,4 +1,4 @@
-const { THAM_SO_LUONG } = require('../config/thamSoNghiepVu');
+const { THAM_SO_LUONG, THAM_SO_KPI } = require('../config/thamSoNghiepVu');
 const { layNgayLamViec } = require('./tinhNgayNghi');
 const { khoangNgayCuaThang } = require('./ngayThang');
 
@@ -104,4 +104,17 @@ function lapPhieu({ luongCoBan, mucPhuCap, soNgayCongThucTe, tongGioLamThem, thu
   return phieu;
 }
 
-module.exports = { demNgayCongChuan, tinhNgayCong, tinhBaoHiem, tinhPhuCap, tinhThueTNCN, tinhChiTietPhieu, tinhThueChoPhieu, lapPhieu };
+// Số tháng dương lịch kỳ KPI trải qua (quý 01/01-31/03 -> 3); tối thiểu 1
+function demSoThangKy(ngayBatDau, ngayKetThuc) {
+  const [n1, t1] = String(ngayBatDau).split('-').map(Number);
+  const [n2, t2] = String(ngayKetThuc).split('-').map(Number);
+  return Math.max(1, (n2 - n1) * 12 + (t2 - t1) + 1);
+}
+
+// Thưởng KPI một phiếu đã nghiệm thu: K(xếp loại) × lương HĐ × tỷ lệ mục tiêu × số tháng kỳ, làm tròn đồng
+function tinhThuongKpi(xepLoai, luongCoBan, soThangKy) {
+  const heSo = THAM_SO_KPI.heSoThuong[xepLoai] ?? 0;
+  return lamTronDong(heSo * Number(luongCoBan) * THAM_SO_KPI.tyLeThuongMucTieu * soThangKy);
+}
+
+module.exports = { demSoThangKy, tinhThuongKpi, demNgayCongChuan, tinhNgayCong, tinhBaoHiem, tinhPhuCap, tinhThueTNCN, tinhChiTietPhieu, tinhThueChoPhieu, lapPhieu };

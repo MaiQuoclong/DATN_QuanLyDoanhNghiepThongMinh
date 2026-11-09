@@ -124,7 +124,9 @@ function TrangQuyetDinh() {
             const r = await goiApi.post('/quyetDinhKhenThuongKyLuat', locThamSo(g));
             setDangLap(false);
             setThongBao([r.message, r.data.canhBao].filter(Boolean).join('. '));
-            tai();
+            // Đang lọc năm khác năm ban hành thì chuyển bộ lọc sang năm đó để thấy quyết định vừa lập
+            const namBanHanh = String(g.ngayBanHanh ?? '').slice(0, 4);
+            if (loc.nam && namBanHanh && loc.nam !== namBanHanh) { setLoc((c) => ({ ...c, nam: namBanHanh })); setTrang(1); } else tai();
           }}
           onDong={() => setDangLap(false)}
         />

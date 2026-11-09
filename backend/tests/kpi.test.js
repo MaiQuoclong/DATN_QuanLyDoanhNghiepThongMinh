@@ -692,3 +692,57 @@ describe('Sửa lỗi nhẹ sau review KPI', () => {
     expect(ma).toEqual(expect.arrayContaining(['CHUNG-01', 'CHUNG-02', 'LTV-01', 'LTV-02']));
   });
 });
+
+// ---------------------------------------------------------------------------
+describe('Sửa lỗi nhẹ sau review KPI (lượt 2)', () => {
+  test('sửa phiếu gửi lại y hệt mucTieu/trongSo cũ -> 400 "Không có thông tin nào thay đổi", không ghi SUA_PHIEU_KPI', async () => {
+    const ky = await moKy();
+    const phieu = await taoPhieu(ky.id);
+    const res = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr)
+      .send({ chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, mucTieu: c.mucTieu, trongSo: c.trongSo })) });
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ success: false, code: 400, message: 'Không có thông tin nào thay đổi', data: null });
+    expect(await layNhatKy('SUA_PHIEU_KPI')).toHaveLength(0);
+    // trọng số dạng chuỗi tương đương số cũ cũng coi như không đổi
+    const res2 = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr)
+      .send({ chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, trongSo: String(c.trongSo) })) });
+    expect(res2.status).toBe(400);
+  });
+
+  test('sửa phiếu gửi đủ mọi mục nhưng chỉ một mục khác: chỉ mục đó đổi, ghi đúng 1 nhật ký SUA_PHIEU_KPI', async () => {
+    const ky = await moKy();
+    const phieu = await taoPhieu(ky.id);
+    const [dau, ...conLai] = phieu.chiTiet;
+    const body = { chiTiet: [{ id: dau.id, mucTieu: 'QA mục tiêu mới', trongSo: dau.trongSo },
+      ...conLai.map((c) => ({ id: c.id, mucTieu: c.mucTieu, trongSo: c.trongSo }))] };
+    const res = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr).send(body);
+    expect(res.status).toBe(200);
+    const moi = res.body.data.chiTiet;
+    expect(moi.find((c) => c.id === dau.id)).toMatchObject({ mucTieu: 'QA mục tiêu mới', trongSo: dau.trongSo });
+    for (const c of conLai) expect(moi.find((m) => m.id === c.id)).toMatchObject({ mucTieu: c.mucTieu, trongSo: c.trongSo });
+    expect(await layNhatKy('SUA_PHIEU_KPI')).toHaveLength(1);
+  });
+
+  test('trả lại phiếu: nhật ký TRA_LAI_PHIEU_KPI có chiTiet chứa lý do trả lại', async () => {
+    const ky = await moKy();
+    const phieu = await phieuChoDuyet(ky.id);
+    const res = await goi('post', `/phieuDanhGiaKPI/${phieu.id}/traLai`, token.quanly).send({ lyDo: 'QA thiếu minh chứng số liệu' });
+    expect(res.status).toBe(200);
+    const nk = await layNhatKy('TRA_LAI_PHIEU_KPI');
+    expect(nk).toHaveLength(1);
+    expect(nk[0].chiTiet).toContain('QA thiếu minh chứng số liệu');
+    expect(nk[0].chiTiet).toContain('NV0005');
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('nhatKyRepository.themNhatKy', () => {
+  const { themNhatKy } = require('../src/repositories/nhatKyRepository');
+  test('diaChiIP và chiTiet undefined -> ghi NULL, không lỗi', async () => {
+    await expect(themNhatKy(null, 'QA_NHAT_KY_UNDEFINED', undefined, undefined)).resolves.toBeUndefined();
+    await expect(themNhatKy(null, 'QA_NHAT_KY_UNDEFINED', undefined)).resolves.toBeUndefined();
+    const nk = await pool.execute('SELECT diaChiIP, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ?', [mocNhatKy, 'QA_NHAT_KY_UNDEFINED']);
+    expect(nk[0]).toHaveLength(2);
+    for (const d of nk[0]) expect(d).toEqual({ diaChiIP: null, chiTiet: null });
+  });
+});

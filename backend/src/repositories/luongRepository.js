@@ -205,6 +205,21 @@ async function layThuongPhatTrongThang(tuNgay, denNgay, ketNoi) {
   return new Map(dong.map((d) => [d.nhanVienId, Number(d.thuongPhat)]));
 }
 
+// Phiếu KPI đã nghiệm thu trong khoảng ngày (thưởng KPI trả vào lương tháng chứa ngayNghiemThu).
+// khoa = true khi sinh phiếu lương: khóa chia sẻ như layThuongPhatTrongThang để số liệu không đổi giữa chừng.
+async function layKpiNghiemThuTrongThang(tuNgay, denNgay, { ketNoi = pool, khoa = false, nhanVienIds = null } = {}) {
+  if (nhanVienIds && !nhanVienIds.length) return [];
+  const locNhanVien = nhanVienIds ? ` AND p.nhanVienId IN (${nhanVienIds.map(() => '?').join(', ')})` : '';
+  const [dong] = await ketNoi.execute(
+    `SELECT p.id, p.nhanVienId, p.xepLoaiChung, p.ngayNghiemThu, k.tenKyDanhGia, k.ngayBatDau, k.ngayKetThuc
+       FROM phieudanhgiakpi p JOIN kydanhgiakpi k ON k.id = p.kyDanhGiaId
+      WHERE p.trangThai = 'DA_DUYET' AND p.ngayNghiemThu >= ? AND p.ngayNghiemThu < DATE_ADD(?, INTERVAL 1 DAY)${locNhanVien}
+      ORDER BY p.id${khoa ? ' LOCK IN SHARE MODE' : ''}`,
+    [tuNgay, denNgay, ...(nhanVienIds ?? [])]
+  );
+  return dong;
+}
+
 // Người duyệt đã tham gia lập/tính lại/sửa phiếu của bảng hiện tại (tính từ lúc tạo bảng) -> không được duyệt
 async function daThamGiaLapBang(nguoiDungId, maBangLuong, ngayTaoBang, ketNoi) {
   const [dong] = await ketNoi.execute(
@@ -245,6 +260,7 @@ module.exports = {
   layChamCongTrongThang,
   layDonNghiDaDuyetTrongThang,
   layThuongPhatTrongThang,
+  layKpiNghiemThuTrongThang,
   layPhieuDaDuyetTheoNam,
   daThamGiaLapBang,
 };

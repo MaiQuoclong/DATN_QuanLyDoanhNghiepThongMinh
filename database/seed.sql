@@ -381,7 +381,11 @@ SET @dauQuyTruoc = @dauQuyNay - INTERVAL 1 QUARTER;
 
 INSERT INTO kydanhgiakpi (id, tenKyDanhGia, ngayBatDau, ngayKetThuc, trangThai) VALUES
   (1, CONCAT('KPI Quý ', QUARTER(@dauQuyTruoc), '/', YEAR(@dauQuyTruoc)), @dauQuyTruoc, @dauQuyNay - INTERVAL 1 DAY, 'DA_DONG'),
-  (2, CONCAT('KPI Quý ', QUARTER(@dauQuyNay), '/', YEAR(@dauQuyNay)), @dauQuyNay, @dauQuyNay + INTERVAL 1 QUARTER - INTERVAL 1 DAY, 'DANG_MO');
+  (2, CONCAT('KPI Quý ', QUARTER(@dauQuyNay), '/', YEAR(@dauQuyNay)), @dauQuyNay, @dauQuyNay + INTERVAL 1 QUARTER - INTERVAL 1 DAY, 'DANG_MO'),
+  -- Kỳ 3 = kỳ tháng (hiện tại - 3), nghiệm thu đầu tháng (hiện tại - 2): tháng đã chốt công, chưa có bảng lương
+  --        -> HR lập bảng lương tháng đó sẽ thấy thưởng KPI (NV0005 Xuất sắc, NV0009 Khá, NV0010 Yếu)
+  (3, CONCAT('KPI tháng ', DATE_FORMAT(@dauThangChot - INTERVAL 1 MONTH, '%m/%Y')), @dauThangChot - INTERVAL 1 MONTH,
+   @dauThangChot - INTERVAL 1 DAY, 'DA_DONG');
 
 -- chucDanhPhongBanId NULL = chỉ tiêu chung mọi vị trí (chỉ HR định nghĩa)
 INSERT INTO chitieukpi (id, maChiTieu, tenChiTieu, moTa, donViDo, trongSoMacDinh, chucDanhPhongBanId) VALUES
@@ -413,7 +417,10 @@ INSERT INTO phieudanhgiakpi (id, kyDanhGiaId, nhanVienId, giaiTrinhNhanVien, nha
   (11, 2, 6, NULL, NULL, NULL, NULL, 'BAN_NHAP'),
   (12, 2, 4, NULL, NULL, NULL, NULL, 'BAN_NHAP'),
   (13, 2, 1, NULL, NULL, NULL, NULL, 'BAN_NHAP'),
-  (14, 2, 7, 'Hoàn thành tốt các đợt tuyển dụng', 'Đạt kết quả tốt', 2, LEAST(GREATEST(TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '15:00:00'), TIMESTAMP(@dauQuyNay, '09:00:00')), NOW()), 'DA_DUYET');
+  (14, 2, 7, 'Hoàn thành tốt các đợt tuyển dụng', 'Đạt kết quả tốt', 2, LEAST(GREATEST(TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '15:00:00'), TIMESTAMP(@dauQuyNay, '09:00:00')), NOW()), 'DA_DUYET'),
+  (15, 3, 5,  'Hoàn thành vượt kế hoạch tháng', 'Xuất sắc', 3, TIMESTAMP(@dauThangChot + INTERVAL 2 DAY, '09:00:00'), 'DA_DUYET'),
+  (16, 3, 9,  'Doanh số đạt kế hoạch tháng', 'Đạt yêu cầu', 2, TIMESTAMP(@dauThangChot + INTERVAL 2 DAY, '10:00:00'), 'DA_DUYET'),
+  (17, 3, 10, 'Chưa đạt doanh số tháng', 'Cần cải thiện', 9, TIMESTAMP(@dauThangChot + INTERVAL 2 DAY, '11:00:00'), 'DA_DUYET');
 
 -- Chi tiết sinh từ chỉ tiêu của vị trí + chỉ tiêu chung (như API tạo phiếu). Điểm mẫu theo MOD để có nhiều mức xếp loại.
 -- Phiếu nháp: hr, admin chưa chấm; nhanvien2 (NV0006) mới chấm chỉ tiêu chung.

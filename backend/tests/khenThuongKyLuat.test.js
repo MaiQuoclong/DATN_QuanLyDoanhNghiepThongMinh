@@ -472,4 +472,70 @@ describe('Quyết định và bảng lương tháng ban hành', () => {
     const [[b]] = await pool.execute('SELECT trangThai FROM bangtonghopluong WHERE id = ?', [bangId]);
     expect(b.trangThai).toBe('DA_DUYET');
   });
+
+  test('kỷ luật phạt vượt thu nhập trên bảng BAN_NHAP: canhBao chứa "phạt vượt thu nhập bị bỏ" kèm mã NV', async () => {
+    const thang = '2020-05';
+    await pool.execute("INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, chiTiet) VALUES (4, 'CHOT_CONG_THANG', ?)", [thang]);
+    const lap = await goi('post', '/bangLuong', token.hr).send({ thang });
+    expect(lap.status).toBe(201);
+    const phat = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr)
+      .send(bodyQuyetDinh({ nhanVienId: NV_QUANLY, loaiQuyetDinh: 'KY_LUAT', soTien: 500000000, ngayBanHanh: '2020-05-20' }));
+    expect(phat.status).toBe(201);
+    expect(phat.body.data.canhBao).toEqual(expect.stringContaining('phạt vượt thu nhập bị bỏ'));
+    expect(phat.body.data.canhBao).toEqual(expect.stringContaining('NV0003'));
+    // Quyết định sau cùng tháng tính lại cả bảng: phạt của NV0003 vẫn bị cắt nên vẫn cảnh báo
+    const khen = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr)
+      .send(bodyQuyetDinh({ nhanVienId: NV_NHANVIEN, soTien: 100000, ngayBanHanh: '2020-05-21' }));
+    expect(khen.status).toBe(201);
+    expect(khen.body.data.canhBao).toEqual(expect.stringContaining('NV0003'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('Kiểm tra lại điều kiện tại thời điểm xử lý', () => {
+  test('lập quyết định với người ký giamDoc có tài khoản bị khóa -> 400, rollback; mở lại thì lập được', async () => {
+    const [[nk]] = await pool.execute(
+      'SELECT nd.id, nd.trangThai FROM nhanvien nv JOIN nguoidung nd ON nd.id = nv.nguoiDungId WHERE nv.id = ?', [NV_GIAMDOC2]);
+    const dx = await taoDeXuat();
+    const truoc = await demQuyetDinh();
+    await pool.execute("UPDATE nguoidung SET trangThai = 'BI_KHOA' WHERE id = ?", [nk.id]);
+    try {
+      const r1 = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr)
+        .send({ nguoiKyDuyetId: NV_GIAMDOC2, ngayBanHanh: NGAY_QUA_KHU });
+      expect(r1.status).toBe(400);
+      expect(r1.body).toMatchObject({ success: false, code: 400, data: null });
+      const r2 = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr).send(bodyQuyetDinh({ nguoiKyDuyetId: NV_GIAMDOC2 }));
+      expect(r2.status).toBe(400);
+      expect(await demQuyetDinh()).toBe(truoc);
+      expect((await layDeXuatDb(dx.id)).trangThai).toBe('CHO_DUYET');
+      const nguoiKy = await goi('get', '/quyetDinhKhenThuongKyLuat/nguoiKy', token.hr);
+      expect(nguoiKy.status).toBe(200);
+      const dsNguoiKy = Array.isArray(nguoiKy.body.data) ? nguoiKy.body.data : nguoiKy.body.data.items;
+      expect(dsNguoiKy.map((n) => n.id)).not.toContain(NV_GIAMDOC2);
+    } finally {
+      await pool.execute('UPDATE nguoidung SET trangThai = ? WHERE id = ?', [nk.trangThai, nk.id]);
+    }
+    const ok = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr)
+      .send({ nguoiKyDuyetId: NV_GIAMDOC2, ngayBanHanh: NGAY_QUA_KHU });
+    expect(ok.status).toBe(201);
+  });
+
+  test('quanLy sửa đề xuất khi nhân viên đã chuyển ra khỏi phòng mình -> bị chặn, không đổi dữ liệu', async () => {
+    const dx = await taoDeXuat();
+    const [[goc]] = await pool.execute('SELECT chucDanhPhongBanId FROM nhanvien WHERE id = ?', [NV_NHANVIEN]);
+    const [[khac]] = await pool.execute('SELECT chucDanhPhongBanId FROM nhanvien WHERE id = ?', [NV_NHANVIEN3]);
+    expect(khac.chucDanhPhongBanId).not.toBe(goc.chucDanhPhongBanId);
+    await pool.execute('UPDATE nhanvien SET chucDanhPhongBanId = ? WHERE id = ?', [khac.chucDanhPhongBanId, NV_NHANVIEN]);
+    try {
+      const res = await goi('patch', `/deXuatKhenThuongKyLuat/${dx.id}`, token.quanly).send({ tieuDe: 'Sửa sau khi chuyển phòng' });
+      expect([403, 404]).toContain(res.status);
+      expect(res.body).toMatchObject({ success: false, data: null });
+      expect((await layDeXuatDb(dx.id)).tieuDe).toBe('QA khen thưởng');
+      expect(await layNhatKy('SUA_DE_XUAT_KTKL')).toHaveLength(0);
+    } finally {
+      await pool.execute('UPDATE nhanvien SET chucDanhPhongBanId = ? WHERE id = ?', [goc.chucDanhPhongBanId, NV_NHANVIEN]);
+    }
+    const ok = await goi('patch', `/deXuatKhenThuongKyLuat/${dx.id}`, token.quanly).send({ tieuDe: 'Sửa khi đã về phòng' });
+    expect(ok.status).toBe(200);
+  });
 });

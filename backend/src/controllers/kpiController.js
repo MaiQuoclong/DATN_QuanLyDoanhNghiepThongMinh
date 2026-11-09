@@ -141,7 +141,7 @@ async function guiDuyet(req, res) {
 
 async function nghiemThu(req, res) {
   const phieu = await kpiService.nghiemThu(req.nguoiDung, layId(req, 'Mã phiếu'), req.body ?? {}, req.ip);
-  return thanhCong(res, phieu, `Đã nghiệm thu: ${phieu.diemTong} điểm`);
+  return thanhCong(res, phieu, [`Đã nghiệm thu: ${phieu.diemTong} điểm`, phieu.canhBao].filter(Boolean).join('. '));
 }
 
 async function traLai(req, res) {
