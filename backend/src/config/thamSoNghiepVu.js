@@ -42,6 +42,10 @@ const THAM_SO_KPI = {
   nguongXepLoai: [
     [9, 'XUAT_SAC'], [8, 'TOT'], [6.5, 'KHA'], [5, 'TRUNG_BINH'], [0, 'YEU'],
   ],
+  // Thưởng KPI = K(xếp loại) × M; M = lương hợp đồng × tyLeThuongMucTieu × số tháng của kỳ.
+  // K tối đa 1.3 (xếp loại là 5 mức cố định nên không cần trần). Trả một lần vào lương tháng nghiệm thu.
+  heSoThuong: { XUAT_SAC: 1.3, TOT: 1.1, KHA: 1.0, TRUNG_BINH: 0.5, YEU: 0 },
+  tyLeThuongMucTieu: 0.1, // 10% lương hợp đồng cho mỗi tháng của kỳ
 };
 
 module.exports = { THAM_SO_CHAM_CONG, THAM_SO_NGHI_PHEP, THAM_SO_LUONG, THAM_SO_KPI };

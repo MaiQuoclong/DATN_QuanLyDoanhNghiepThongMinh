@@ -5,6 +5,8 @@ const kpiRepository = require('../repositories/kpiRepository');
 const phongBanRepository = require('../repositories/phongBanRepository');
 const nhanVienRepository = require('../repositories/nhanVienRepository');
 const nhatKyRepository = require('../repositories/nhatKyRepository');
+const ktklRepository = require('../repositories/khenThuongKyLuatRepository');
+const luongService = require('./luongService');
 const { laNgayHopLe } = require('../middlewares/kiemTraDuLieu');
 
 // Quyền theo docs/phan-quyen.md mục 8 (Đánh giá KPI)
@@ -106,6 +108,10 @@ async function suaKy(nguoiDung, id, body, diaChiIP) {
     const thayDoi = Object.fromEntries(Object.entries(moi).filter(([k, v]) => v !== ky[k]));
     if (!Object.keys(thayDoi).length) throw new LoiUngDung(400, 'Không có thông tin nào thay đổi');
     kiemTraKhoangNgay(thayDoi.ngayBatDau ?? ky.ngayBatDau, thayDoi.ngayKetThuc ?? ky.ngayKetThuc);
+    // Số tháng của kỳ quyết định thưởng KPI đã vào lương: kỳ đã có phiếu nghiệm thu thì không đổi ngày
+    if ((thayDoi.ngayBatDau || thayDoi.ngayKetThuc) && await kpiRepository.demPhieuTheoTrangThai(id, 'DA_DUYET', ketNoi)) {
+      throw new LoiUngDung(409, 'Kỳ đã có phiếu nghiệm thu (thưởng KPI đã tính theo số tháng của kỳ), không thể đổi ngày');
+    }
     if (thayDoi.tenKyDanhGia && await kpiRepository.timKyTheoTen(thayDoi.tenKyDanhGia, id, ketNoi)) {
       throw new LoiUngDung(409, 'Tên kỳ đánh giá đã tồn tại');
     }
@@ -436,10 +442,17 @@ async function suaPhieu(nguoiDung, id, body, diaChiIP) {
       throw new LoiUngDung(403, 'Bạn không có quyền sửa mục tiêu của phiếu này');
     }
     let soMucThayDoi = 0;
-    for (const { muc } of layDanhSachChiTietBody(body, chiTiet)) {
+    for (const { muc, goc } of layDanhSachChiTietBody(body, chiTiet)) {
       const thayDoi = {};
-      if (muc.mucTieu !== undefined) thayDoi.mucTieu = layChuoi(muc.mucTieu, 'Mục tiêu');
-      if (muc.trongSo !== undefined) thayDoi.trongSo = layTrongSo(muc.trongSo);
+      // Chỉ cập nhật trường thực sự khác giá trị cũ (giao diện luôn gửi đủ mọi trường)
+      if (muc.mucTieu !== undefined) {
+        const mucTieu = layChuoi(muc.mucTieu, 'Mục tiêu');
+        if (mucTieu !== goc.mucTieu) thayDoi.mucTieu = mucTieu;
+      }
+      if (muc.trongSo !== undefined) {
+        const trongSo = layTrongSo(muc.trongSo);
+        if (Number(trongSo) !== Number(goc.trongSo)) thayDoi.trongSo = trongSo;
+      }
       if (!Object.keys(thayDoi).length) continue;
       soMucThayDoi += 1;
       await kpiRepository.capNhatChiTiet(id, muc.id, thayDoi, ketNoi);
@@ -515,8 +528,22 @@ async function kiemTraNguoiNghiemThu(nguoiDung, phieu, ketNoi) {
 }
 
 // Nghiệm thu: chấm đủ mọi chỉ tiêu -> điểm tổng theo trọng số -> xếp loại -> DA_DUYET (một transaction)
+// Thưởng KPI trả vào lương tháng chứa ngayNghiemThu. Bảng lương chỉ lập cho tháng đã kết thúc nên thường chưa có;
+// phòng trường hợp đã có (lệch giờ lúc giáp tháng): bảng nháp -> tính lại, bảng đã gửi duyệt/đã duyệt -> 409.
+// Khóa bảng lương trước phiếu KPI, cùng thứ tự khóa với lập/tính lại bảng lương (tránh deadlock).
+async function khoaBangLuongThangNghiemThu(bayGio, ketNoi) {
+  const [nam, thang] = String(bayGio).slice(0, 7).split('-').map(Number);
+  const bang = await ktklRepository.khoaBangLuongTheoThang(thang, nam, ketNoi);
+  if (bang && bang.trangThai !== 'BAN_NHAP') {
+    throw new LoiUngDung(409, `Bảng lương tháng ${thang}/${nam} đã gửi duyệt hoặc đã duyệt nên không thể cộng thưởng KPI, hãy trả lại bảng lương trước`);
+  }
+  return bang;
+}
+
 async function nghiemThu(nguoiDung, id, body, diaChiIP) {
   return chayTransaction(async (ketNoi) => {
+    const bayGio = await thoiGianHienTai(ketNoi);
+    const bangLuong = await khoaBangLuongThangNghiemThu(bayGio, ketNoi);
     const { phieu, chiTiet } = await khoaPhieuTrongKyMo(nguoiDung, id, 'CHO_DUYET', ketNoi);
     await kiemTraNguoiNghiemThu(nguoiDung, phieu, ketNoi);
     const capNhat = layDanhSachChiTietBody(body, chiTiet, { batBuocDu: true }).map(({ muc, goc }) => ({
@@ -533,12 +560,19 @@ async function nghiemThu(nguoiDung, id, body, diaChiIP) {
       nhanXetQuanLy: layChuoi(body.nhanXetQuanLy, 'Nhận xét chung', { toiDa: 5000 }),
       xepLoaiChung,
       nguoiDanhGiaId: nguoiDung.nhanVienId,
-      ngayNghiemThu: await thoiGianHienTai(ketNoi),
+      ngayNghiemThu: bayGio,
       trangThai: 'DA_DUYET',
     }, ketNoi);
     await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'NGHIEM_THU_KPI', diaChiIP,
       `${phieu.tenKyDanhGia}: ${phieu.maNhanVien} ${diemTong} ${xepLoaiChung}`, ketNoi);
-    return layChiTietPhieu(nguoiDung, id, ketNoi);
+    const ketQua = await layChiTietPhieu(nguoiDung, id, ketNoi);
+    if (bangLuong) {
+      const soPhieu = await luongService.tinhLaiBangNhapTrongGiaoDich(bangLuong, ketNoi);
+      await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'TINH_LAI_BANG_LUONG_KPI', diaChiIP,
+        `${bangLuong.maBangLuong}: ${soPhieu} (nghiệm thu KPI ${phieu.maNhanVien})`.slice(0, 1000), ketNoi);
+      ketQua.canhBao = `Đã tính lại bảng lương nháp ${bangLuong.maBangLuong} để cộng thưởng KPI`;
+    }
+    return ketQua;
   });
 }
 
@@ -549,7 +583,8 @@ async function traLai(nguoiDung, id, body, diaChiIP) {
     const { phieu } = await khoaPhieuTrongKyMo(nguoiDung, id, 'CHO_DUYET', ketNoi);
     await kiemTraNguoiNghiemThu(nguoiDung, phieu, ketNoi);
     await kpiRepository.capNhatPhieu(id, { trangThai: 'BAN_NHAP', nhanXetQuanLy: `Trả lại: ${lyDo}` }, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'TRA_LAI_PHIEU_KPI', diaChiIP, `${phieu.tenKyDanhGia}: ${phieu.maNhanVien}`, ketNoi);
+    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'TRA_LAI_PHIEU_KPI', diaChiIP,
+      `${phieu.tenKyDanhGia}: ${phieu.maNhanVien} - ${lyDo}`.slice(0, 1000), ketNoi);
     return layChiTietPhieu(nguoiDung, id, ketNoi);
   });
 }

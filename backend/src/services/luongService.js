@@ -6,6 +6,7 @@ const nhatKyRepository = require('../repositories/nhatKyRepository');
 const { khoangNgayCuaThang, thangHienTai } = require('../utils/ngayThang');
 const {
   demNgayCongChuan, tinhNgayCong, tinhChiTietPhieu, tinhThueChoPhieu, lapPhieu, tinhPhuCap, tinhBaoHiem,
+  demSoThangKy, tinhThuongKpi,
 } = require('../utils/tinhLuong');
 
 // Quyền theo docs/phan-quyen.md mục 7
@@ -21,6 +22,36 @@ function themChiTiet(phieu, ngayCongChuan) {
   return { ...phieu, ...tinhChiTietPhieu(phieu, ngayCongChuan) };
 }
 
+// Tổng thưởng KPI theo nhân viên từ các phiếu KPI nghiệm thu trong tháng (lương HĐ lấy từ phiếu lương / hợp đồng)
+function tongThuongKpiTheoNhanVien(cacPhieuKpi, luongCoBanTheoNhanVien) {
+  const tong = new Map();
+  for (const k of cacPhieuKpi) {
+    const luongCoBan = luongCoBanTheoNhanVien.get(k.nhanVienId);
+    if (luongCoBan === undefined) continue;
+    const tien = tinhThuongKpi(k.xepLoaiChung, luongCoBan, demSoThangKy(k.ngayBatDau, k.ngayKetThuc));
+    tong.set(k.nhanVienId, (tong.get(k.nhanVienId) ?? 0) + tien);
+  }
+  return tong;
+}
+
+// Tách cột thuongKPI (schema chỉ có một cột) thành thưởng KPI + phần còn lại (khen thưởng − kỷ luật, điều chỉnh tay của HR).
+// Tính lại khi đọc từ phiếu KPI nghiệm thu trong tháng của từng phiếu lương; một truy vấn cho mọi tháng (tránh N+1).
+async function themTachThuong(cacPhieu) {
+  if (!cacPhieu.length) return cacPhieu;
+  const cacThang = cacPhieu.map((p) => maThang(p.thang, p.nam)).sort();
+  const kpi = await luongRepository.layKpiNghiemThuTrongThang(
+    khoangNgayCuaThang(cacThang[0]).tuNgay,
+    khoangNgayCuaThang(cacThang[cacThang.length - 1]).denNgay,
+    { nhanVienIds: [...new Set(cacPhieu.map((p) => p.nhanVienId))] }
+  );
+  return cacPhieu.map((p) => {
+    const thang = maThang(p.thang, p.nam);
+    const kpiThang = kpi.filter((k) => k.nhanVienId === p.nhanVienId && String(k.ngayNghiemThu).slice(0, 7) === thang);
+    const thuongKpi = tongThuongKpiTheoNhanVien(kpiThang, new Map([[p.nhanVienId, p.luongCoBan]])).get(p.nhanVienId) ?? 0;
+    return { ...p, thuongKpi, thuongPhatKhac: Number(p.thuongKPI) - thuongKpi };
+  });
+}
+
 function themChiTietBang(bang) {
   return { ...bang, thangNam: maThang(bang.thang, bang.nam), ngayCongChuan: demNgayCongChuan(maThang(bang.thang, bang.nam)) };
 }
@@ -31,14 +62,17 @@ function themChiTietBang(bang) {
 async function sinhPhieu(bangId, thang, ketNoi) {
   const { tuNgay, denNgay } = khoangNgayCuaThang(thang);
   const ngayCongChuan = demNgayCongChuan(thang);
-  const [cacNhanVien, chamCong, donNghi, thuongPhat] = await Promise.all([
+  const [cacNhanVien, chamCong, donNghi, thuongPhat, phieuKpi] = await Promise.all([
     luongRepository.layNhanVienTinhLuong(tuNgay, denNgay, ketNoi),
     luongRepository.layChamCongTrongThang(tuNgay, denNgay, ketNoi),
     luongRepository.layDonNghiDaDuyetTrongThang(tuNgay, denNgay, ketNoi),
     luongRepository.layThuongPhatTrongThang(tuNgay, denNgay, ketNoi),
+    luongRepository.layKpiNghiemThuTrongThang(tuNgay, denNgay, { ketNoi, khoa: true }),
   ]);
   if (!cacNhanVien.length) throw new LoiUngDung(409, `Tháng ${thang} không có nhân viên nào có hợp đồng hiệu lực để tính lương`);
 
+  // Thưởng KPI cộng chung với khen thưởng − kỷ luật vào cột thuongKPI
+  const thuongKpi = tongThuongKpiTheoNhanVien(phieuKpi, new Map(cacNhanVien.map((nv) => [nv.nhanVienId, nv.luongCoBan])));
   let tong = 0;
   const biCat = [];
   for (const nv of cacNhanVien) {
@@ -53,7 +87,7 @@ async function sinhPhieu(bangId, thang, ketNoi) {
       mucPhuCap: nv.mucPhuCap,
       soNgayCongThucTe,
       tongGioLamThem: banGhi.reduce((s, c) => s + Number(c.soGioLamThemOT), 0),
-      thuongPhat: thuongPhat.get(nv.nhanVienId) ?? 0,
+      thuongPhat: (thuongPhat.get(nv.nhanVienId) ?? 0) + (thuongKpi.get(nv.nhanVienId) ?? 0),
     }, ngayCongChuan);
     if (phieu.phatBiCat) biCat.push(`${nv.maNhanVien} ${phieu.phatBiCat}`);
     await luongRepository.themPhieu(bangId, nv.nhanVienId, phieu, ketNoi);
@@ -108,7 +142,7 @@ async function layChiTietBang(id, boLoc) {
   const { items, tongSo } = await luongRepository.layPhieuTheoBang(id, boLoc);
   return {
     bangLuong: chiTiet,
-    items: items.map((p) => themChiTiet(p, chiTiet.ngayCongChuan)),
+    items: (await themTachThuong(items)).map((p) => themChiTiet(p, chiTiet.ngayCongChuan)),
     phanTrang: { trang: boLoc.trang, kichThuoc: boLoc.kichThuoc, tongSo },
   };
 }
@@ -284,13 +318,14 @@ async function layPhieu(nguoiDung, id) {
   if (!phieu || (!xemToanBo(nguoiDung.vaiTro) && !(laCuaMinh && phieu.trangThaiBangLuong === 'DA_DUYET'))) {
     throw new LoiUngDung(404, 'Không tìm thấy phiếu lương');
   }
-  return themChiTiet(phieu, demNgayCongChuan(maThang(phieu.thang, phieu.nam)));
+  const [coTach] = await themTachThuong([phieu]);
+  return themChiTiet(coTach, demNgayCongChuan(maThang(phieu.thang, phieu.nam)));
 }
 
 async function layPhieuCuaToi(nguoiDung, nam) {
   if (!nguoiDung.nhanVienId) return [];
   const cacPhieu = await luongRepository.layPhieuDaDuyetCuaNhanVien(nguoiDung.nhanVienId, nam);
-  return cacPhieu.map((p) => themChiTiet(p, demNgayCongChuan(maThang(p.thang, p.nam))));
+  return (await themTachThuong(cacPhieu)).map((p) => themChiTiet(p, demNgayCongChuan(maThang(p.thang, p.nam))));
 }
 
 // ===================== Báo cáo & xuất Excel =====================
@@ -337,11 +372,11 @@ async function xuatExcel(id) {
   const { ngayCongChuan, thangNam } = themChiTietBang(bang);
   const { items } = await luongRepository.layPhieuTheoBang(id);
   const tieuDe = ['Mã NV', 'Họ và tên', 'Phòng ban', 'Chức danh', 'Ngày công chuẩn', 'Ngày công thực tế', 'Lương cơ bản',
-    'Lương theo công', 'Lương làm thêm', 'Thưởng/Phạt', 'Phụ cấp', 'Tổng thu nhập', 'Bảo hiểm', 'Thuế TNCN', 'Thực lĩnh'];
-  const dong = items.map((goc) => {
+    'Lương theo công', 'Lương làm thêm', 'Thưởng/Phạt', 'Trong đó thưởng KPI', 'Trong đó khen thưởng - kỷ luật', 'Phụ cấp', 'Tổng thu nhập', 'Bảo hiểm', 'Thuế TNCN', 'Thực lĩnh'];
+  const dong = (await themTachThuong(items)).map((goc) => {
     const p = themChiTiet(goc, ngayCongChuan);
     return [p.maNhanVien, p.hoVaTen, p.tenPhongBan, p.tenChucDanh, ngayCongChuan, p.soNgayCongThucTe, p.luongCoBan,
-      p.luongTheoCong, p.luongLamThemOT, p.thuongKPI, p.tongPhuCap, p.tongThuNhap, p.khauTruBaoHiem, p.khauTruThueTNCN, p.thucLinh];
+      p.luongTheoCong, p.luongLamThemOT, p.thuongKPI, p.thuongKpi, p.thuongPhatKhac, p.tongPhuCap, p.tongThuNhap, p.khauTruBaoHiem, p.khauTruThueTNCN, p.thucLinh];
   });
   const noiDung = [tieuDe, ...dong].map((d) => d.map(oCsv).join(',')).join('\r\n');
   return { tenFile: `${bang.maBangLuong}_${thangNam}.csv`, noiDung: `﻿${noiDung}\r\n` };
