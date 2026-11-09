@@ -151,6 +151,13 @@ async function tinhLaiBang(nguoiDung, id, diaChiIP) {
   return themChiTietBang(await luongRepository.layBangTheoId(id));
 }
 
+// Tính lại phiếu của bảng nháp trong transaction của nơi gọi (bảng đã được khóa FOR UPDATE).
+// Dùng khi ban hành quyết định khen thưởng/kỷ luật vào tháng đang có bảng nháp, để khoản tiền không bị sót.
+async function tinhLaiBangNhapTrongGiaoDich(bang, ketNoi) {
+  await luongRepository.xoaPhieuTheoBang(bang.id, ketNoi);
+  return sinhPhieu(bang.id, maThang(bang.thang, bang.nam), ketNoi);
+}
+
 async function xoaBang(nguoiDung, id, diaChiIP) {
   await chayTransaction(async (ketNoi) => {
     const bang = await khoaBangTonTai(id, ketNoi);
@@ -345,6 +352,7 @@ module.exports = {
   layChiTietBang,
   lapBang,
   tinhLaiBang,
+  tinhLaiBangNhapTrongGiaoDich,
   xoaBang,
   guiDuyet,
   duyetBang,

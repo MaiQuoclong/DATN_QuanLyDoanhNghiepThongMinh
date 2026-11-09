@@ -193,13 +193,13 @@ describe('Đọc cơ cấu tổ chức', () => {
     expect((await goi('get', '/phongBan/0', token.hr)).status).toBe(400);
   });
 
-  test.each(['nhanvien', 'quanly', 'admin'])('%s xem chi tiết PKT-PT nhưng không thấy dinhBien/conTrong/ghiChu', async (ten) => {
+  test.each(['nhanvien', 'quanly', 'admin'])('%s xem chi tiết PKT-PT nhưng không thấy dinhBien/conTrong/soDangGiu/ghiChu', async (ten) => {
     const res = await goi('get', '/phongBan/4', token[ten]);
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ id: 4, tongQuanSo: 2 });
     expect(res.body.data.viTri).toHaveLength(1);
-    for (const cot of ['dinhBien', 'conTrong', 'ghiChu']) expect(res.body.data.viTri[0]).not.toHaveProperty(cot);
-    expect(res.body.data.viTri[0]).toMatchObject({ id: 5, soDangGiu: 2 });
+    for (const cot of ['dinhBien', 'conTrong', 'soDangGiu', 'ghiChu']) expect(res.body.data.viTri[0]).not.toHaveProperty(cot);
+    expect(res.body.data.viTri[0]).toMatchObject({ id: 5 });
   });
 
   test.each(['hr', 'giamdoc'])('%s thấy dinhBien/conTrong/ghiChu trong viTri', async (ten) => {

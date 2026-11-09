@@ -61,6 +61,7 @@ function TrangPhongBan() {
   const taiDanhSach = useCallback(() => {
     goiApi.get('/phongBan').then((kq) => {
       setDanhSach(kq.data);
+      setLoi('');
       setDangChon((cu) => cu ?? kq.data[0]?.id ?? null);
     }).catch((e) => setLoi(e.message));
     goiApi.get('/chucDanh').then((kq) => setChucDanh(kq.data)).catch(() => {});
@@ -69,7 +70,7 @@ function TrangPhongBan() {
 
   const taiChiTiet = useCallback(() => {
     if (!dangChon) return;
-    goiApi.get(`/phongBan/${dangChon}`).then((kq) => setChiTiet(kq.data)).catch((e) => setLoi(e.message));
+    goiApi.get(`/phongBan/${dangChon}`).then((kq) => { setChiTiet(kq.data); setLoi(''); }).catch((e) => setLoi(e.message));
   }, [dangChon]);
   useEffect(taiChiTiet, [taiChiTiet]);
 

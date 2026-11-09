@@ -577,14 +577,12 @@ describe('PATCH /api/v1/nhanVien/toi - tự sửa hồ sơ', () => {
     expect(nk[0].chiTiet).not.toContain('diaChi');
   });
 
-  test('gửi lại đúng giá trị cũ: nhật ký ghi "không có trường nào thay đổi"', async () => {
+  test('gửi lại đúng giá trị cũ: 200, không UPDATE và không ghi nhật ký rỗng', async () => {
     const [[cu]] = await pool.execute('SELECT soDienThoai, tenNganHang FROM nhanvien WHERE id = 5');
     const res = await goi('patch', '/toi', token.nhanvien).send({ soDienThoai: cu.soDienThoai, tenNganHang: cu.tenNganHang });
     expect(res.status).toBe(200);
     const nk = await layNhatKy('CAP_NHAT_HO_SO_CA_NHAN');
-    expect(nk).toHaveLength(1);
-    expect(nk[0].chiTiet).toContain('không có trường nào thay đổi');
-    expect(nk[0].chiTiet).not.toContain('soDienThoai');
+    expect(nk).toHaveLength(0);
   });
 
   test('chỉ gửi trường không cho phép trả 400', async () => {

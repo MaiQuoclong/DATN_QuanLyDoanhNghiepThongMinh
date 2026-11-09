@@ -55,6 +55,7 @@ router.post(
       nhan: 'Mật khẩu mới',
       batBuoc: true,
       toiThieu: 8,
+      khongTrim: true,
       toiDaByte: 72, // bcrypt chỉ dùng 72 byte đầu
       mauKiemTra: MAU_MAT_KHAU_MANH,
       thongBaoMau: 'Mật khẩu mới phải có cả chữ và số',

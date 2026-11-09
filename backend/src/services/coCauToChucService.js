@@ -8,7 +8,7 @@ const { TRANG_THAI_PHONG_BAN, TRANG_THAI_CHUC_DANH, TRANG_THAI_VI_TRI } = requir
 
 const DINH_BIEN_TOI_DA = 1000;
 // Định biên, chỗ trống, ghi chú là dữ liệu phục vụ tuyển dụng: chỉ HR, giamDoc xem
-const COT_CHI_HR = ['dinhBien', 'conTrong', 'ghiChu'];
+const COT_CHI_HR = ['dinhBien', 'conTrong', 'soDangGiu', 'ghiChu'];
 
 function xemDinhBien(vaiTro) {
   return vaiTro.includes('HR') || vaiTro.includes('giamDoc');

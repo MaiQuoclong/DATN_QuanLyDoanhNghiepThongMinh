@@ -335,8 +335,8 @@ SET @congChuanLuong = (WITH RECURSIVE ngay AS (
 
 INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
   (4, 'CHOT_CONG_THANG', '127.0.0.1', DATE_FORMAT(@dauThangLuong, '%Y-%m'), TIMESTAMP(@cuoiThangLuong + INTERVAL 2 DAY, '09:00:00')),
-  (4, 'LAP_BANG_LUONG', '127.0.0.1', CONCAT('BL', DATE_FORMAT(@dauThangLuong, '%Y-%m')), TIMESTAMP(@cuoiThangLuong + INTERVAL 3 DAY, '09:00:00')),
-  (4, 'GUI_DUYET_BANG_LUONG', '127.0.0.1', DATE_FORMAT(@dauThangLuong, '%Y-%m'), TIMESTAMP(@cuoiThangLuong + INTERVAL 3 DAY, '15:00:00')),
+  (4, 'LAP_BANG_LUONG', '127.0.0.1', CONCAT('BL', DATE_FORMAT(@dauThangLuong, '%Y-%m'), ': dữ liệu mẫu'), TIMESTAMP(@cuoiThangLuong + INTERVAL 3 DAY, '09:00:00')),
+  (4, 'GUI_DUYET_BANG_LUONG', '127.0.0.1', CONCAT('BL', DATE_FORMAT(@dauThangLuong, '%Y-%m')), TIMESTAMP(@cuoiThangLuong + INTERVAL 3 DAY, '15:00:00')),
   (2, 'DUYET_BANG_LUONG', '127.0.0.1', DATE_FORMAT(@dauThangLuong, '%Y-%m'), TIMESTAMP(@cuoiThangLuong + INTERVAL 4 DAY, '10:00:00'));
 
 INSERT INTO bangtonghopluong (id, maBangLuong, thang, nam, tongChiPhiLuong, trangThai, nguoiLapId, nguoiDuyetId, ngayTao) VALUES
@@ -361,10 +361,10 @@ UPDATE bangtonghopluong
    SET tongChiPhiLuong = (SELECT SUM(luongCoBan + luongLamThemOT + thuongKPI + tongPhuCap) FROM phieuluongnhanvien WHERE bangTongHopLuongId = 1)
  WHERE id = 1;
 
-INSERT INTO quyetdinhkhenthuongkyluat (soQuyetDinh, nhanVienId, loaiQuyetDinh, tieuDe, soTien, lyDo, ngayBanHanh, nguoiKyDuyetId) VALUES
-  (CONCAT('QD', YEAR(@thu2ThangChot), '-0001'), 5, 'KHEN_THUONG', 'Khen thưởng hoàn thành dự án trước hạn', 2000000.00,
+INSERT INTO quyetdinhkhenthuongkyluat (id, soQuyetDinh, nhanVienId, loaiQuyetDinh, tieuDe, soTien, lyDo, ngayBanHanh, nguoiKyDuyetId) VALUES
+  (1, CONCAT('QD', YEAR(@thu2ThangChot), '-0001'), 5, 'KHEN_THUONG', 'Khen thưởng hoàn thành dự án trước hạn', 2000000.00,
    'Hoàn thành module thanh toán sớm 2 tuần', @thu2ThangChot, 2),
-  (CONCAT('QD', YEAR(@thu2ThangChot), '-0002'), 10, 'KY_LUAT', 'Khiển trách đi muộn nhiều lần', 500000.00,
+  (2, CONCAT('QD', YEAR(@thu2ThangChot), '-0002'), 10, 'KY_LUAT', 'Khiển trách đi muộn nhiều lần', 500000.00,
    'Đi muộn quá 5 lần trong tháng không có lý do', @thu2ThangChot, 2);
 
 -- ---------------------------------------------------------------------
@@ -446,3 +446,35 @@ INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao
   (4, 'MO_KY_KPI', '127.0.0.1', CONCAT('KPI Quý ', QUARTER(@dauQuyTruoc), '/', YEAR(@dauQuyTruoc)), TIMESTAMP(@dauQuyTruoc, '08:30:00')),
   (4, 'DONG_KY_KPI', '127.0.0.1', CONCAT('KPI Quý ', QUARTER(@dauQuyTruoc), '/', YEAR(@dauQuyTruoc)), LEAST(TIMESTAMP(@dauQuyNay + INTERVAL 6 DAY, '17:00:00'), NOW())),
   (4, 'MO_KY_KPI', '127.0.0.1', CONCAT('KPI Quý ', QUARTER(@dauQuyNay), '/', YEAR(@dauQuyNay)), TIMESTAMP(@dauQuyNay, '08:30:00'));
+
+-- ---------------------------------------------------------------------
+-- 14. Khen thưởng - Kỷ luật: đề xuất (quanLy/giamDoc) -> HR từ chối hoặc lập quyết định (giamDoc ký)
+--     Quyết định 1-2 ở mục 11; quyết định 3 lập từ đề xuất 4. Ngày ban hành ở tháng chưa có bảng lương.
+-- ---------------------------------------------------------------------
+INSERT INTO quyetdinhkhenthuongkyluat (id, soQuyetDinh, nhanVienId, loaiQuyetDinh, tieuDe, soTien, lyDo, ngayBanHanh, nguoiKyDuyetId) VALUES
+  (3, CONCAT('QD', YEAR(@thu2ThangChot), '-0003'), 7, 'KHEN_THUONG', 'Khen thưởng sáng kiến quy trình tuyển dụng', 1500000.00,
+   'Rút ngắn thời gian tuyển dụng trung bình từ 30 xuống 20 ngày', @thu2ThangChot, 2);
+
+INSERT INTO dexuatkhenthuongkyluat (id, nguoiDeXuatId, nhanVienId, loaiDeXuat, tieuDe, lyDo, soTienDeXuat, trangThai,
+                                     nguoiXuLyId, ghiChuXuLy, quyetDinhId, ngayTao) VALUES
+  -- quanly (NV0003, Phòng Kỹ thuật) đề xuất khen NV0005: chờ HR xử lý
+  (1, 3, 5, 'KHEN_THUONG', 'Khen thưởng hỗ trợ khách hàng xuất sắc', 'Xử lý 40 yêu cầu hỗ trợ trong tháng, không có phản hồi xấu',
+   1000000.00, 'CHO_DUYET', NULL, NULL, NULL, LEAST(TIMESTAMP(CURDATE() - INTERVAL 2 DAY, '09:00:00'), NOW())),
+  -- quanly2 (NV0009, Phòng Kinh doanh) đề xuất kỷ luật NV0010: chờ HR xử lý
+  (2, 9, 10, 'KY_LUAT', 'Kỷ luật vi phạm quy trình báo giá', 'Gửi báo giá sai chiết khấu cho khách hàng mà không xin phê duyệt',
+   300000.00, 'CHO_DUYET', NULL, NULL, NULL, LEAST(TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '14:00:00'), NOW())),
+  -- quanly đề xuất khen NV0006 (thử việc): HR (NV0004) từ chối
+  (3, 3, 6, 'KHEN_THUONG', 'Khen thưởng nhân viên thử việc tích cực', 'Chủ động hỗ trợ đồng nghiệp trong đợt triển khai',
+   500000.00, 'TU_CHOI', 4, 'Chưa đủ căn cứ theo quy chế khen thưởng, đề nghị xét lại cuối kỳ thử việc', NULL,
+   LEAST(TIMESTAMP(CURDATE() - INTERVAL 10 DAY, '10:00:00'), NOW())),
+  -- giamDoc (NV0002) đề xuất khen NV0007: HR lập quyết định số 3
+  (4, 2, 7, 'KHEN_THUONG', 'Khen thưởng sáng kiến quy trình tuyển dụng', 'Rút ngắn thời gian tuyển dụng trung bình từ 30 xuống 20 ngày',
+   1500000.00, 'DA_DUYET', 4, 'Lập quyết định theo đề xuất', 3, TIMESTAMP(@thu2ThangChot - INTERVAL 3 DAY, '09:00:00'));
+
+INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
+  (2, 'TAO_DE_XUAT_KTKL', '127.0.0.1', 'KHEN_THUONG NV0007: Khen thưởng sáng kiến quy trình tuyển dụng', TIMESTAMP(@thu2ThangChot - INTERVAL 3 DAY, '09:00:00')),
+  (4, 'LAP_QUYET_DINH_KTKL', '127.0.0.1', CONCAT('QD', YEAR(@thu2ThangChot), '-0003 (KHEN_THUONG NV0007, 1500000) từ đề xuất #4'), TIMESTAMP(@thu2ThangChot, '10:00:00')),
+  (3, 'TAO_DE_XUAT_KTKL', '127.0.0.1', 'KHEN_THUONG NV0006: Khen thưởng nhân viên thử việc tích cực', LEAST(TIMESTAMP(CURDATE() - INTERVAL 10 DAY, '10:00:00'), NOW())),
+  (4, 'TU_CHOI_DE_XUAT_KTKL', '127.0.0.1', 'Đề xuất #3', LEAST(TIMESTAMP(CURDATE() - INTERVAL 9 DAY, '15:00:00'), NOW())),
+  (3, 'TAO_DE_XUAT_KTKL', '127.0.0.1', 'KHEN_THUONG NV0005: Khen thưởng hỗ trợ khách hàng xuất sắc', LEAST(TIMESTAMP(CURDATE() - INTERVAL 2 DAY, '09:00:00'), NOW())),
+  (9, 'TAO_DE_XUAT_KTKL', '127.0.0.1', 'KY_LUAT NV0010: Kỷ luật vi phạm quy trình báo giá', LEAST(TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '14:00:00'), NOW()));

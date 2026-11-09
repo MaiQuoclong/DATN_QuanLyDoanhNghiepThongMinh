@@ -29,6 +29,9 @@ const BANG_TRANG_THAI = {
   KHA: ['Khá', 'cam'],
   TRUNG_BINH: ['Trung bình', 'cam'],
   YEU: ['Yếu', 'do'],
+  // Khen thưởng - kỷ luật (loaiQuyetDinh / loaiDeXuat)
+  KHEN_THUONG: ['Khen thưởng', 'xanh'],
+  KY_LUAT: ['Kỷ luật', 'do'],
 };
 
 // kieu: 'cham' (chấm tròn + chữ, dùng trong bảng) | 'chip' (nền nhạt, dùng ở header)

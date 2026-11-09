@@ -30,7 +30,7 @@ function TrangBaoCaoKpi() {
     if (!kyId) return;
     goiApi.get('/phieuDanhGiaKPI/baoCao', { params: { kyDanhGiaId: kyId } })
       .then((kq) => { setBaoCao(kq.data); setLoi(''); })
-      .catch((e) => setLoi(e.message));
+      .catch((e) => { setBaoCao(null); setLoi(e.message); });
   }, [kyId]);
 
   const tong = baoCao?.tongHop;
@@ -60,6 +60,7 @@ function TrangBaoCaoKpi() {
         </label>
       </div>
       {loi && <div className="thongBao loi">{loi}</div>}
+      {!loi && dsKy.length === 0 && <div className="thongBao canhBao">Chưa có kỳ đánh giá nào</div>}
       {tong && (
         <>
           <div className="luoiThongKe" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>

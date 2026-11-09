@@ -144,14 +144,14 @@ function TrangBangCong() {
         <div>
           <h1 className="tieuDeTrang">Bảng công tháng</h1>
           <div className="chuPhu">
-            {ketQua ? `${ketQua.soNgayCongChuan} ngày công chuẩn · ${ketQua.phanTrang.tongSo} nhân viên` : 'Đang tải...'}
+            {ketQua ? `${ketQua.soNgayCongChuan} ngày công chuẩn · ${ketQua.phanTrang.tongSo} nhân viên` : (loi ? '' : 'Đang tải...')}
             {ketQua?.daChot && ` · Đã chốt lúc ${dinhDangThoiGian(ketQua.chot.thoiGianChot)} (${ketQua.chot.nguoiChot ?? '—'})`}
           </div>
         </div>
         <div className="hangNutPhai">
           <label className="truongForm">
             Tháng
-            <input type="month" value={thang} max={thangHienTai()} onChange={(e) => { if (e.target.value) { setThang(e.target.value); setTrang(1); } }} />
+            <input type="month" value={thang} max={thangHienTai()} onChange={(e) => { if (e.target.value) { setThang(e.target.value); setTrang(1); setKetQua(null); } }} />
           </label>
           {laHR && ketQua && !ketQua.daChot && (
             <NutBam

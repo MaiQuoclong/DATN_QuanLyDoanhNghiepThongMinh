@@ -103,6 +103,7 @@ Luồng: **quanLy đề xuất** (`dexuatkhenthuongkyluat`, `CHO_DUYET`) → **H
 | Tạo đề xuất cho nhân viên | | ✓ | PM (trừ mình) | | |
 | Xem đề xuất | | ✓ | Do mình tạo | ✓ | |
 | Từ chối / chuyển thành quyết định | | | | ✓ | |
+| Lập quyết định trực tiếp (HR chọn giamDoc ký, giamDoc tự ký) | | ✓ | | ✓ | |
 | Ký quyết định | | ✓ | | | |
 | Xem quyết định | Mình | ✓ | PM | ✓ | Mình |
 

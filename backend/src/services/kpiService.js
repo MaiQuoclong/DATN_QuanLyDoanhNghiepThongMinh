@@ -471,8 +471,10 @@ async function tuCham(nguoiDung, id, body) {
   return chayTransaction(async (ketNoi) => {
     const { phieu, chiTiet } = await khoaPhieuTrongKyMo(nguoiDung, id, 'BAN_NHAP', ketNoi);
     kiemTraChinhChu(nguoiDung, phieu);
+    let coThayDoi = false;
     if (body?.giaiTrinhNhanVien !== undefined) {
       await kpiRepository.capNhatPhieu(id, { giaiTrinhNhanVien: layChuoi(body.giaiTrinhNhanVien, 'Giải trình', { toiDa: 5000 }) }, ketNoi);
+      coThayDoi = true;
     }
     if (body?.chiTiet !== undefined) {
       for (const { muc } of layDanhSachChiTietBody(body, chiTiet)) {
@@ -481,11 +483,12 @@ async function tuCham(nguoiDung, id, body) {
         if (muc.diemTuCham !== undefined) {
           thayDoi.diemTuCham = muc.diemTuCham === null || muc.diemTuCham === '' ? null : layDiem(muc.diemTuCham, 'Điểm tự chấm');
         }
+        if (!Object.keys(thayDoi).length) continue;
+        coThayDoi = true;
         await kpiRepository.capNhatChiTiet(id, muc.id, thayDoi, ketNoi);
       }
-    } else if (body?.giaiTrinhNhanVien === undefined) {
-      throw new LoiUngDung(400, 'Không có thông tin nào thay đổi');
     }
+    if (!coThayDoi) throw new LoiUngDung(400, 'Không có thông tin nào thay đổi');
     return layChiTietPhieu(nguoiDung, id, ketNoi);
   });
 }

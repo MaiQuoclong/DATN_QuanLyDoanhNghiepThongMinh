@@ -84,11 +84,12 @@ function kiemTraNgayHoSo(ngaySinh, ngayVaoLam) {
 // Nhật ký thay đổi: dữ liệu cá nhân nhạy cảm che bớt (số tài khoản, SĐT giữ 4 số cuối; địa chỉ, ngân hàng chỉ ghi tên cột)
 const COT_CHE_SO = ['soTaiKhoanNganHang', 'soDienThoai'];
 const COT_CHI_GHI_TEN = ['diaChi', 'tenNganHang'];
+const KHONG_DOI = 'không có trường nào thay đổi';
 function moTaThayDoi(hoSoCu, truong) {
   const che = (giaTri) => (giaTri ? `****${String(giaTri).slice(-4)}` : 'trống');
   // Bỏ trường gửi lên nhưng giữ nguyên giá trị cũ để nhật ký không ghi sai "đã thay đổi"
   const cotDoi = Object.keys(truong).filter((cot) => String(hoSoCu[cot] ?? '') !== String(truong[cot] ?? ''));
-  if (cotDoi.length === 0) return 'không có trường nào thay đổi';
+  if (cotDoi.length === 0) return KHONG_DOI;
   return cotDoi.map((cot) => {
     if (COT_CHE_SO.includes(cot)) return `${cot}: ${che(hoSoCu[cot])} -> ${che(truong[cot])}`;
     if (COT_CHI_GHI_TEN.includes(cot)) return `${cot}: đã thay đổi`;
@@ -249,8 +250,11 @@ async function capNhatCoNhatKy(nguoiDung, id, truong, hanhDong, diaChiIP, kiemTr
   await chayTransaction(async (ketNoi) => {
     const hoSo = await khoaVaLayHoSo(id, ketNoi);
     if (kiemTraThem) await kiemTraThem(hoSo, ketNoi);
+    // Bấm lưu mà không đổi gì: không UPDATE, không ghi nhật ký rỗng
+    const moTa = moTaThayDoi(hoSo, truong);
+    if (moTa === KHONG_DOI) return;
     await nhanVienRepository.capNhat(id, truong, ketNoi);
-    await themNhatKy(nguoiDung.nguoiDungId, hanhDong, diaChiIP, `${hoSo.maNhanVien}: ${moTaThayDoi(hoSo, truong)}`, ketNoi);
+    await themNhatKy(nguoiDung.nguoiDungId, hanhDong, diaChiIP, `${hoSo.maNhanVien}: ${moTa}`, ketNoi);
   });
   return layHoSoHoacLoi(id);
 }

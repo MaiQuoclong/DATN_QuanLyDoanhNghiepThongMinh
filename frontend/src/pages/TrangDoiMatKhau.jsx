@@ -70,7 +70,7 @@ function TrangDoiMatKhau() {
           {batBuoc ? (
             <NutBam type="button" bienThe="ma" onClick={dangXuat}>Đăng xuất</NutBam>
           ) : (
-            <NutBam type="button" bienThe="phu" onClick={() => dieuHuong(-1)}>Hủy</NutBam>
+            <NutBam type="button" bienThe="phu" onClick={() => dieuHuong(window.history.state?.idx > 0 ? -1 : '/')}>Hủy</NutBam>
           )}
           <NutBam type="submit" bieuTuong={KeyRound} disabled={dangGui}>
             {dangGui ? 'Đang lưu...' : 'Đổi mật khẩu'}
