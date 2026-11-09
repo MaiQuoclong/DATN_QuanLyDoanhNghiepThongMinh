@@ -74,6 +74,10 @@ function TrangBaoCaoKpi() {
               trangThai={tong.theoXepLoai.YEU ? 'canhBao' : 'thanhCong'}
             />
           </div>
+          <div className="chuPhu" style={{ marginBottom: 16 }}>
+            Thưởng KPI = hệ số × 10% lương hợp đồng × số tháng của kỳ (Xuất sắc 1.3 · Tốt 1.1 · Khá 1.0 · Trung bình 0.5 · Yếu 0),
+            trả một lần vào bảng lương tháng nghiệm thu phiếu.
+          </div>
           {duLieuBieuDo.length > 0 && (
             <div className="the" style={{ padding: 16, marginBottom: 16 }}>
               <h3 style={{ marginTop: 0 }}>Phân bố xếp loại theo phòng ban</h3>

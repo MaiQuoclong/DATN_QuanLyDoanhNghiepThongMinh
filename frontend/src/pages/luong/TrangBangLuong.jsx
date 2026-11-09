@@ -90,7 +90,14 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
     { khoa: 'soNgayCongThucTe', tieuDe: 'Công', canPhai: true },
     { khoa: 'luongTheoCong', tieuDe: 'Lương theo công', canPhai: true, hienThi: (d) => dinhDangTien(d.luongTheoCong) },
     { khoa: 'luongLamThemOT', tieuDe: 'OT', canPhai: true, hienThi: (d) => dinhDangTien(d.luongLamThemOT) },
-    { khoa: 'thuongKPI', tieuDe: 'Thưởng/Phạt', canPhai: true, hienThi: (d) => dinhDangTien(d.thuongKPI) },
+    {
+      khoa: 'thuongKPI', tieuDe: 'Thưởng/Phạt', canPhai: true,
+      hienThi: (d) => (
+        <span title={d.thuongKpi !== undefined ? `Thưởng KPI ${dinhDangTien(d.thuongKpi)} · Khen thưởng − kỷ luật ${dinhDangTien(d.thuongPhatKhac)}` : undefined}>
+          {dinhDangTien(d.thuongKPI)}
+        </span>
+      ),
+    },
     { khoa: 'tongPhuCap', tieuDe: 'Phụ cấp', canPhai: true, hienThi: (d) => dinhDangTien(d.tongPhuCap) },
     { khoa: 'khauTruBaoHiem', tieuDe: 'BH', canPhai: true, hienThi: (d) => dinhDangTien(d.khauTruBaoHiem) },
     { khoa: 'khauTruThueTNCN', tieuDe: 'Thuế', canPhai: true, hienThi: (d) => dinhDangTien(d.khauTruThueTNCN) },
@@ -161,7 +168,7 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
           truong={[
             { ten: 'soNgayCongThucTe', nhan: `Ngày công (tối đa ${dangSua.ngayCongChuan}, bước 0.5)`, kieu: 'number', batBuoc: true },
             { ten: 'luongLamThemOT', nhan: 'Lương làm thêm', kieu: 'number', batBuoc: true },
-            { ten: 'thuongKPI', nhan: 'Thưởng / phạt', ghiChu: 'Số âm nếu là khoản phạt', batBuoc: true },
+            { ten: 'thuongKPI', nhan: 'Thưởng / phạt', ghiChu: 'Tổng thưởng KPI + khen thưởng − kỷ luật; số âm nếu là khoản phạt', batBuoc: true },
             { ten: 'tongPhuCap', nhan: 'Phụ cấp', kieu: 'number', batBuoc: true },
           ]}
           giaTriBanDau={Object.fromEntries(['soNgayCongThucTe', 'luongLamThemOT', 'thuongKPI', 'tongPhuCap'].map((k) => [k, String(dangSua[k])]))}
