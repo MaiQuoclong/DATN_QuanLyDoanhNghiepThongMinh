@@ -50,11 +50,12 @@ function kiemTraDuLieu(luat) {
       if (quyTac.cacGiaTri && !quyTac.cacGiaTri.includes(giaTri)) {
         throw new LoiUngDung(400, `${nhan} chỉ nhận một trong các giá trị: ${quyTac.cacGiaTri.join(', ')}`);
       }
-      // Đo độ dài sau khi trim vì service lưu giá trị đã trim
-      if (quyTac.toiThieu && giaTri.trim().length < quyTac.toiThieu) {
+      // Đo độ dài sau khi trim vì service lưu giá trị đã trim; khongTrim (mật khẩu) đo nguyên văn vì được băm nguyên văn
+      const doDai = quyTac.khongTrim ? giaTri.length : giaTri.trim().length;
+      if (quyTac.toiThieu && doDai < quyTac.toiThieu) {
         throw new LoiUngDung(400, `${nhan} phải có ít nhất ${quyTac.toiThieu} ký tự`);
       }
-      if (quyTac.toiDa && giaTri.length > quyTac.toiDa) {
+      if (quyTac.toiDa && doDai > quyTac.toiDa) {
         throw new LoiUngDung(400, `${nhan} không được vượt quá ${quyTac.toiDa} ký tự`);
       }
       if (quyTac.toiDaByte && Buffer.byteLength(giaTri, 'utf8') > quyTac.toiDaByte) {
