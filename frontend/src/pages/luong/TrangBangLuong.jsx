@@ -46,7 +46,11 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
   const bang = ketQua?.bangLuong;
   const laNhap = bang?.trangThai === 'BAN_NHAP';
 
+  // Khóa nút khi đang gửi để bấm đúp không gửi 2 lần (lần 2 bị 409 che mất thông báo thành công)
+  const [dangGui, setDangGui] = useState(false);
   const thucHien = async (hanhDong) => {
+    if (hanhDong === 'tinhLai' && !window.confirm('Tính lại sẽ bỏ mọi chỉnh sửa tay trên phiếu lương. Tiếp tục?')) return;
+    setDangGui(true);
     try {
       const kq = await goiApi.post(`/bangLuong/${bangId}/${hanhDong}`);
       setThongBao(kq.message);
@@ -55,6 +59,8 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
     } catch (e) {
       setThongBao('');
       setLoi(e.message);
+    } finally {
+      setDangGui(false);
     }
   };
 
@@ -111,9 +117,9 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
             <NutBam bienThe="phu" bieuTuong={Download} onClick={taiExcel}>Xuất Excel</NutBam>
             {laHR && laNhap && (
               <>
-                <NutBam bienThe="phu" bieuTuong={RefreshCw} onClick={() => thucHien('tinhLai')}>Tính lại</NutBam>
+                <NutBam bienThe="phu" bieuTuong={RefreshCw} disabled={dangGui} onClick={() => thucHien('tinhLai')}>Tính lại</NutBam>
                 <NutBam bienThe="phu" bieuTuong={Trash2} onClick={() => setDangXoa(true)}>Xóa</NutBam>
-                <NutBam bieuTuong={Send} onClick={() => thucHien('guiDuyet')}>Gửi duyệt</NutBam>
+                <NutBam bieuTuong={Send} disabled={dangGui} onClick={() => thucHien('guiDuyet')}>Gửi duyệt</NutBam>
               </>
             )}
             {laGiamDoc && bang.trangThai === 'CHO_DUYET' && (

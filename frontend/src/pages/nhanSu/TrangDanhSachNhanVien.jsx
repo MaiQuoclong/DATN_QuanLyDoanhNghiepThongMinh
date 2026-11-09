@@ -25,7 +25,9 @@ const COT = [
 // Vị trí còn trống (đang áp dụng, chưa đủ định biên) cho form thêm nhân viên / điều chuyển
 export async function layLuaChonViTri() {
   const kq = await goiApi.get('/chucDanhPhongBan', { params: { trangThai: 'DANG_AP_DUNG' } });
-  return kq.data.map((vt) => ({
+  // Chỉ vị trí còn chỗ, thuộc phòng ban và chức danh đang hoạt động (backend chặn các trường hợp khác bằng 409)
+  return kq.data.filter((vt) => (vt.conTrong ?? vt.dinhBien - vt.soDangGiu) > 0
+    && vt.trangThaiPhongBan !== 'NGUNG_HOAT_DONG' && vt.trangThaiChucDanh !== 'NGUNG_HOAT_DONG').map((vt) => ({
     giaTri: vt.id,
     nhan: `${vt.tenChucDanh} - ${vt.tenPhongBan} (còn ${vt.conTrong ?? vt.dinhBien - vt.soDangGiu}/${vt.dinhBien})`,
   }));

@@ -72,6 +72,7 @@ function TrangChiTietNhanVien() {
 
   useEffect(() => {
     setHoSo(null);
+    setLoi('');
     goiApi.get(`/nhanVien/${id}`).then((kq) => setHoSo(kq.data)).catch((e) => setLoi(e.message));
   }, [id]);
 

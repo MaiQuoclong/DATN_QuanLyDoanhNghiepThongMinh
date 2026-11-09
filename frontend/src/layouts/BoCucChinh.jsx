@@ -32,8 +32,8 @@ function BoCucChinh() {
     return () => document.removeEventListener('mousedown', dongKhiBamNgoai);
   }, []);
 
-  const xuLyDangXuat = () => {
-    dangXuat();
+  const xuLyDangXuat = async () => {
+    await dangXuat();
     dieuHuong('/dangNhap', { replace: true });
   };
 
