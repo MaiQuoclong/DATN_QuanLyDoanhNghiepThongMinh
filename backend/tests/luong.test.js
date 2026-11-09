@@ -555,7 +555,7 @@ describe('Xuất Excel và báo cáo', () => {
     expect(noiDung.charCodeAt(0)).toBe(0xfeff);
     const dong = noiDung.slice(1).split('\r\n');
     expect(dong[0]).toBe('Mã NV,Họ và tên,Phòng ban,Chức danh,Ngày công chuẩn,Ngày công thực tế,Lương cơ bản,Lương theo công,'
-      + 'Lương làm thêm,Thưởng/Phạt,Phụ cấp,Tổng thu nhập,Bảo hiểm,Thuế TNCN,Thực lĩnh');
+      + 'Lương làm thêm,Thưởng/Phạt,Trong đó thưởng KPI,Trong đó khen thưởng - kỷ luật,Phụ cấp,Tổng thu nhập,Bảo hiểm,Thuế TNCN,Thực lĩnh');
     const dongNv = dong.find((x) => x.startsWith(nv.maNhanVien));
     expect(dongNv).toContain('"\'=HYPERLINK(""x"")"');
     expect((await goi('get', '/bangLuong/99999999/xuatExcel', token.hr)).status).toBe(404);

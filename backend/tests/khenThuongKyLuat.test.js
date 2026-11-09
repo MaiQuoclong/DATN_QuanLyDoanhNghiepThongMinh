@@ -472,6 +472,23 @@ describe('Quyết định và bảng lương tháng ban hành', () => {
     const [[b]] = await pool.execute('SELECT trangThai FROM bangtonghopluong WHERE id = ?', [bangId]);
     expect(b.trangThai).toBe('DA_DUYET');
   });
+
+  test('kỷ luật phạt vượt thu nhập trên bảng BAN_NHAP: canhBao chứa "phạt vượt thu nhập bị bỏ" kèm mã NV', async () => {
+    const thang = '2020-05';
+    await pool.execute("INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, chiTiet) VALUES (4, 'CHOT_CONG_THANG', ?)", [thang]);
+    const lap = await goi('post', '/bangLuong', token.hr).send({ thang });
+    expect(lap.status).toBe(201);
+    const phat = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr)
+      .send(bodyQuyetDinh({ nhanVienId: NV_QUANLY, loaiQuyetDinh: 'KY_LUAT', soTien: 500000000, ngayBanHanh: '2020-05-20' }));
+    expect(phat.status).toBe(201);
+    expect(phat.body.data.canhBao).toEqual(expect.stringContaining('phạt vượt thu nhập bị bỏ'));
+    expect(phat.body.data.canhBao).toEqual(expect.stringContaining('NV0003'));
+    // Quyết định sau cùng tháng tính lại cả bảng: phạt của NV0003 vẫn bị cắt nên vẫn cảnh báo
+    const khen = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr)
+      .send(bodyQuyetDinh({ nhanVienId: NV_NHANVIEN, soTien: 100000, ngayBanHanh: '2020-05-21' }));
+    expect(khen.status).toBe(201);
+    expect(khen.body.data.canhBao).toEqual(expect.stringContaining('NV0003'));
+  });
 });
 
 // ---------------------------------------------------------------------------
