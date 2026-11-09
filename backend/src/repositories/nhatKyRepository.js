@@ -4,7 +4,7 @@ const { pool } = require('../config/ketNoiCsdl');
 async function themNhatKy(nguoiDungId, hanhDong, diaChiIP, chiTiet = null, ketNoi = pool) {
   await ketNoi.execute(
     'INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet) VALUES (?, ?, ?, ?)',
-    [nguoiDungId, hanhDong, diaChiIP, chiTiet]
+    [nguoiDungId, hanhDong, diaChiIP ?? null, chiTiet ?? null]
   );
 }
 

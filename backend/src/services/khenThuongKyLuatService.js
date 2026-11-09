@@ -272,6 +272,9 @@ async function ghiQuyetDinh(nguoiDung, noiDung, nhanVienId, nguoiKyDuyetId, diaC
     await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'TINH_LAI_BANG_LUONG_KTKL', diaChiIP,
       `${bangNhap.maBangLuong}: ${soPhieu} (áp dụng ${soQuyetDinh})`.slice(0, 1000), ketNoi);
     canhBao = `Đã tính lại bảng lương nháp ${bangNhap.maBangLuong} (các chỉnh sửa tay trên phiếu bị thay bằng số liệu tính lại)`;
+    // sinhPhieu trả "N phiếu; phạt vượt thu nhập bị bỏ: <mã NV> <số tiền>, ...": báo cho HR biết phạt không trừ đủ
+    const phanBiCat = String(soPhieu).split('; ')[1];
+    if (phanBiCat) canhBao += `. Lưu ý ${phanBiCat}`;
   }
   // Lương chỉ tính cho người có hợp đồng hiệu lực trong tháng: không có thì khoản tiền không vào phiếu nào
   if (noiDung.soTien > 0) {
