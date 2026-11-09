@@ -189,14 +189,17 @@ async function layDonNghiDaDuyetTrongThang(tuNgay, denNgay, ketNoi) {
   return dong.map((d) => ({ ...d, coLuong: Boolean(d.coLuong) }));
 }
 
-// Khen thưởng (+) / kỷ luật (−) có ngày ban hành trong tháng
+// Khen thưởng (+) / kỷ luật (−) có ngày ban hành trong tháng.
+// Đọc có khóa (luôn gọi trong transaction lập/tính lại bảng): thấy cả quyết định vừa commit khi lập bảng
+// chạy đồng thời với ban hành quyết định (đọc thường dùng snapshot cũ của REPEATABLE READ sẽ bỏ sót).
 async function layThuongPhatTrongThang(tuNgay, denNgay, ketNoi) {
   const [dong] = await ketNoi.execute(
     `SELECT nhanVienId,
             SUM(CASE WHEN loaiQuyetDinh = 'KHEN_THUONG' THEN soTien WHEN loaiQuyetDinh = 'KY_LUAT' THEN -soTien ELSE 0 END) AS thuongPhat
        FROM quyetdinhkhenthuongkyluat
       WHERE ngayBanHanh BETWEEN ? AND ?
-      GROUP BY nhanVienId`,
+      GROUP BY nhanVienId
+      LOCK IN SHARE MODE`,
     [tuNgay, denNgay]
   );
   return new Map(dong.map((d) => [d.nhanVienId, Number(d.thuongPhat)]));
