@@ -28,6 +28,7 @@ Mỗi service có `.env.example` (commit) và `.env` (không commit).
 
 ## Quy tắc bắt buộc
 - KHÔNG thay đổi cấu trúc, tên bảng, tên cột, kiểu dữ liệu trong `database/schema.sql`.
+- Hạn chế tối đa đụng vào CSDL gốc. Nếu thật sự phải thay đổi bất kỳ thứ gì liên quan `database/schema.sql` (thêm/sửa bảng, cột, kiểu, index, ràng buộc), phải **dừng lại, giải thích lý do + phương án thay thế ở tầng code, và chờ người dùng đồng ý** trước khi sửa.
 - Giá trị trạng thái dùng đúng như schema (`CHO_DUYET`, `BAN_NHAP`, ...), không dùng `PENDING`.
 - Text-to-SQL chỉ `SELECT`, chạy bằng tài khoản DB chỉ đọc.
 - Trước khi sửa `settings.json` hoặc file cấu hình môi trường: giải thích thay đổi + lý do và chờ người dùng đồng ý.
