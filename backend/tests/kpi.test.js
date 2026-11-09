@@ -11,7 +11,6 @@ const NV_NHANVIEN = 5;
 const NV_NHANVIEN2 = 6;
 const NV_NHANVIEN3 = 10;
 const NV_QUANLY = 3;
-const NV_QUANLY2 = 9;
 
 const token = {};
 let anhChup;
@@ -29,8 +28,11 @@ const goi = (phuongThuc, duongDan, tk) => {
 async function moKy() {
   demKy += 1;
   const nam = 2030 + demKy;
-  const res = await goi('post', '/kyDanhGiaKPI', token.hr)
-    .send({ tenKyDanhGia: `QA KPI ${Date.now() % 100000}-${demKy}`, ngayBatDau: `${nam}-01-01`, ngayKetThuc: `${nam}-03-31` });
+  const res = await goi('post', '/kyDanhGiaKPI', token.hr).send({
+    tenKyDanhGia: `QA KPI ${Date.now() % 100000}-${demKy}`,
+    ngayBatDau: `${nam}-01-01`,
+    ngayKetThuc: `${nam}-03-31`,
+  });
   expect(res.status).toBe(201);
   return res.body.data;
 }
@@ -42,8 +44,10 @@ async function taoPhieu(kyId, nhanVienId = NV_NHANVIEN, tk = token.hr) {
 // Nhân viên tự chấm đủ rồi gửi -> CHO_DUYET
 async function phieuChoDuyet(kyId, nhanVienId = NV_NHANVIEN, tkNhanVien = token.nhanvien) {
   const phieu = await taoPhieu(kyId, nhanVienId);
-  const r1 = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}/tuCham`, tkNhanVien)
-    .send({ giaiTrinhNhanVien: 'Đã làm', chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, diemTuCham: 8, ketQuaThucTe: 'Đạt' })) });
+  const r1 = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}/tuCham`, tkNhanVien).send({
+    giaiTrinhNhanVien: 'Đã làm',
+    chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, diemTuCham: 8, ketQuaThucTe: 'Đạt' })),
+  });
   expect(r1.status).toBe(200);
   const r2 = await goi('post', `/phieuDanhGiaKPI/${phieu.id}/guiDuyet`, tkNhanVien);
   expect(r2.status).toBe(200);
@@ -52,11 +56,14 @@ async function phieuChoDuyet(kyId, nhanVienId = NV_NHANVIEN, tkNhanVien = token.
 // Điểm theo mã chỉ tiêu cho NV0005: CHUNG-01 10, CHUNG-02 8, LTV-01 9, LTV-02 7 -> 59/7 = 8.43 TOT
 const DIEM_MAU = { 'CHUNG-01': 10, 'CHUNG-02': 8, 'LTV-01': 9, 'LTV-02': 7 };
 const bodyNghiemThu = (phieu, diem = (c) => DIEM_MAU[c.maChiTieu] ?? 8) => ({
-  nhanXetQuanLy: 'Tốt', chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, diemNghiemThu: diem(c), nhanXet: 'OK' })),
+  nhanXetQuanLy: 'Tốt',
+  chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, diemNghiemThu: diem(c), nhanXet: 'OK' })),
 });
 async function layNhatKy(hanhDong) {
-  const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id',
-    [mocNhatKy, hanhDong]);
+  const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id', [
+    mocNhatKy,
+    hanhDong,
+  ]);
   return d;
 }
 
@@ -111,7 +118,6 @@ describe('Unit xếp loại và điểm tổng KPI', () => {
     expect(xepLoaiTheoDiem(4.99)).toBe('YEU');
     expect(xepLoaiTheoDiem(0)).toBe('YEU');
   });
-
 });
 
 // ---------------------------------------------------------------------------
@@ -158,8 +164,15 @@ describe('Kỳ đánh giá KPI', () => {
 
   test('dữ liệu kỳ sai trả 400: thiếu tên, ngày sai, ngày kết thúc trước ngày bắt đầu', async () => {
     expect((await goi('post', '/kyDanhGiaKPI', token.hr).send({ ngayBatDau: '2040-01-01', ngayKetThuc: '2040-02-01' })).status).toBe(400);
-    expect((await goi('post', '/kyDanhGiaKPI', token.hr).send({ tenKyDanhGia: 'QA sai', ngayBatDau: '2040-13-01', ngayKetThuc: '2040-02-01' })).status).toBe(400);
-    const res = await goi('post', '/kyDanhGiaKPI', token.hr).send({ tenKyDanhGia: 'QA sai', ngayBatDau: '2040-03-01', ngayKetThuc: '2040-02-01' });
+    expect(
+      (await goi('post', '/kyDanhGiaKPI', token.hr).send({ tenKyDanhGia: 'QA sai', ngayBatDau: '2040-13-01', ngayKetThuc: '2040-02-01' }))
+        .status,
+    ).toBe(400);
+    const res = await goi('post', '/kyDanhGiaKPI', token.hr).send({
+      tenKyDanhGia: 'QA sai',
+      ngayBatDau: '2040-03-01',
+      ngayKetThuc: '2040-02-01',
+    });
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({ success: false, code: 400, data: null });
   });
@@ -167,7 +180,11 @@ describe('Kỳ đánh giá KPI', () => {
   test('trùng tên kỳ trả 409 (khi tạo và khi sửa)', async () => {
     const ky = await moKy();
     const ky2 = await moKy();
-    const res = await goi('post', '/kyDanhGiaKPI', token.hr).send({ tenKyDanhGia: ky.tenKyDanhGia, ngayBatDau: '2040-01-01', ngayKetThuc: '2040-02-01' });
+    const res = await goi('post', '/kyDanhGiaKPI', token.hr).send({
+      tenKyDanhGia: ky.tenKyDanhGia,
+      ngayBatDau: '2040-01-01',
+      ngayKetThuc: '2040-02-01',
+    });
     expect(res.status).toBe(409);
     expect((await goi('patch', `/kyDanhGiaKPI/${ky2.id}`, token.hr).send({ tenKyDanhGia: ky.tenKyDanhGia })).status).toBe(409);
   });
@@ -177,7 +194,7 @@ describe('Kỳ đánh giá KPI', () => {
     const res = await goi('patch', `/kyDanhGiaKPI/${ky.id}`, token.hr).send({ ngayKetThuc: ky.ngayKetThuc.slice(0, 4) + '-06-30' });
     expect(res.status).toBe(200);
     expect(res.body.data.ngayKetThuc).toBe(ky.ngayKetThuc.slice(0, 4) + '-06-30');
-    expect((await layNhatKy('SUA_KY_KPI'))).toHaveLength(1);
+    expect(await layNhatKy('SUA_KY_KPI')).toHaveLength(1);
     expect((await goi('patch', `/kyDanhGiaKPI/${ky.id}`, token.hr).send({ tenKyDanhGia: ky.tenKyDanhGia })).status).toBe(400);
     expect((await goi('patch', `/kyDanhGiaKPI/${ky.id}`, token.hr).send({ ngayKetThuc: '2000-01-01' })).status).toBe(400);
     expect((await goi('patch', '/kyDanhGiaKPI/999999', token.hr).send({ tenKyDanhGia: 'Không có' })).status).toBe(404);
@@ -260,10 +277,17 @@ describe('Chỉ tiêu KPI', () => {
   });
 
   test('quanLy thêm chỉ tiêu cho vị trí phòng mình; vị trí phòng khác 403; chỉ tiêu chung 403', async () => {
-    const ok = await goi('post', '/chiTieuKPI', token.quanly).send({ maChiTieu: 'QA-LTV', tenChiTieu: 'QA LTV', chucDanhPhongBanId: 5, trongSoMacDinh: 2 });
+    const ok = await goi('post', '/chiTieuKPI', token.quanly).send({
+      maChiTieu: 'QA-LTV',
+      tenChiTieu: 'QA LTV',
+      chucDanhPhongBanId: 5,
+      trongSoMacDinh: 2,
+    });
     expect(ok.status).toBe(201);
     expect(ok.body.data.phongBanId).toBe(4);
-    expect((await goi('post', '/chiTieuKPI', token.quanly).send({ maChiTieu: 'QA-KD', tenChiTieu: 'QA KD', chucDanhPhongBanId: 8 })).status).toBe(403);
+    expect(
+      (await goi('post', '/chiTieuKPI', token.quanly).send({ maChiTieu: 'QA-KD', tenChiTieu: 'QA KD', chucDanhPhongBanId: 8 })).status,
+    ).toBe(403);
     expect((await goi('post', '/chiTieuKPI', token.quanly).send({ maChiTieu: 'QA-CH', tenChiTieu: 'QA chung' })).status).toBe(403);
   });
 
@@ -279,9 +303,15 @@ describe('Chỉ tiêu KPI', () => {
   test('dữ liệu chỉ tiêu sai -> 400; trùng mã -> 409', async () => {
     expect((await goi('post', '/chiTieuKPI', token.hr).send({ tenChiTieu: 'Thiếu mã' })).status).toBe(400);
     expect((await goi('post', '/chiTieuKPI', token.hr).send({ maChiTieu: 'QA MA', tenChiTieu: 'Mã có dấu cách' })).status).toBe(400);
-    expect((await goi('post', '/chiTieuKPI', token.hr).send({ maChiTieu: 'QA-0', tenChiTieu: 'Trọng số 0', trongSoMacDinh: 0 })).status).toBe(400);
-    expect((await goi('post', '/chiTieuKPI', token.hr).send({ maChiTieu: 'QA-1', tenChiTieu: 'Trọng số lẻ', trongSoMacDinh: 1.234 })).status).toBe(400);
-    expect((await goi('post', '/chiTieuKPI', token.hr).send({ maChiTieu: 'QA-2', tenChiTieu: 'Vị trí sai', chucDanhPhongBanId: 'abc' })).status).toBe(400);
+    expect(
+      (await goi('post', '/chiTieuKPI', token.hr).send({ maChiTieu: 'QA-0', tenChiTieu: 'Trọng số 0', trongSoMacDinh: 0 })).status,
+    ).toBe(400);
+    expect(
+      (await goi('post', '/chiTieuKPI', token.hr).send({ maChiTieu: 'QA-1', tenChiTieu: 'Trọng số lẻ', trongSoMacDinh: 1.234 })).status,
+    ).toBe(400);
+    expect(
+      (await goi('post', '/chiTieuKPI', token.hr).send({ maChiTieu: 'QA-2', tenChiTieu: 'Vị trí sai', chucDanhPhongBanId: 'abc' })).status,
+    ).toBe(400);
     const trung = await goi('post', '/chiTieuKPI', token.hr).send({ maChiTieu: 'ltv-01', tenChiTieu: 'Trùng mã seed' });
     expect(trung.status).toBe(409);
     expect(trung.body).toMatchObject({ success: false, code: 409, data: null });
@@ -382,24 +412,32 @@ describe('Phiếu đánh giá KPI: tạo, sửa, xóa', () => {
     const ky = await moKy();
     const phieu = await taoPhieu(ky.id);
     const ctId = phieu.chiTiet[0].id;
-    const res = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr).send({ chiTiet: [{ id: ctId, mucTieu: '>= 99%', trongSo: 4 }] });
+    const res = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr).send({
+      chiTiet: [{ id: ctId, mucTieu: '>= 99%', trongSo: 4 }],
+    });
     expect(res.status).toBe(200);
     expect(res.body.data.chiTiet[0]).toMatchObject({ mucTieu: '>= 99%', trongSo: 4 });
     expect(await layNhatKy('SUA_PHIEU_KPI')).toHaveLength(1);
     expect((await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr).send({ chiTiet: [{ id: ctId, trongSo: 0 }] })).status).toBe(400);
     expect((await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr).send({ chiTiet: [{ id: 999999, trongSo: 1 }] })).status).toBe(400);
     expect((await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr).send({ chiTiet: [] })).status).toBe(400);
-    expect((await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.nhanvien).send({ chiTiet: [{ id: ctId, trongSo: 9 }] })).status).toBe(403);
+    expect((await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.nhanvien).send({ chiTiet: [{ id: ctId, trongSo: 9 }] })).status).toBe(
+      403,
+    );
   });
 
   test('quanLy phòng khác không sửa/xóa được phiếu (404); phiếu đã gửi không sửa/xóa được (409)', async () => {
     const ky = await moKy();
     const phieu = await taoPhieu(ky.id);
     const ctId = phieu.chiTiet[0].id;
-    expect((await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.quanly2).send({ chiTiet: [{ id: ctId, trongSo: 5 }] })).status).toBe(404);
+    expect((await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.quanly2).send({ chiTiet: [{ id: ctId, trongSo: 5 }] })).status).toBe(
+      404,
+    );
     expect((await goi('delete', `/phieuDanhGiaKPI/${phieu.id}`, token.quanly2)).status).toBe(404);
     const daGui = await phieuChoDuyet(ky.id, NV_NHANVIEN2, token.nhanvien2);
-    expect((await goi('patch', `/phieuDanhGiaKPI/${daGui.id}`, token.hr).send({ chiTiet: [{ id: daGui.chiTiet[0].id, trongSo: 5 }] })).status).toBe(409);
+    expect(
+      (await goi('patch', `/phieuDanhGiaKPI/${daGui.id}`, token.hr).send({ chiTiet: [{ id: daGui.chiTiet[0].id, trongSo: 5 }] })).status,
+    ).toBe(409);
     expect((await goi('delete', `/phieuDanhGiaKPI/${daGui.id}`, token.hr)).status).toBe(409);
   });
 
@@ -485,7 +523,16 @@ describe('Phiếu đánh giá KPI: tự chấm, gửi, nghiệm thu, trả lại
     expect((await goi('patch', url, token.nhanvien).send({ chiTiet: [{ id: phieu.chiTiet[0].id, diemTuCham: -1 }] })).status).toBe(400);
     expect((await goi('patch', url, token.nhanvien).send({ chiTiet: [{ id: phieu.chiTiet[0].id, diemTuCham: 7.123 }] })).status).toBe(400);
     const id0 = phieu.chiTiet[0].id;
-    expect((await goi('patch', url, token.nhanvien).send({ chiTiet: [{ id: id0, diemTuCham: 7 }, { id: id0, diemTuCham: 8 }] })).status).toBe(400);
+    expect(
+      (
+        await goi('patch', url, token.nhanvien).send({
+          chiTiet: [
+            { id: id0, diemTuCham: 7 },
+            { id: id0, diemTuCham: 8 },
+          ],
+        })
+      ).status,
+    ).toBe(400);
     expect((await goi('patch', url, token.nhanvien).send({})).status).toBe(400);
     expect((await goi('patch', url, token.nhanvien).send({ chiTiet: [{ id: id0, diemTuCham: 7 }] })).status).toBe(200);
     const gui = await goi('post', `/phieuDanhGiaKPI/${phieu.id}/guiDuyet`, token.nhanvien);
@@ -506,7 +553,13 @@ describe('Phiếu đánh giá KPI: tự chấm, gửi, nghiệm thu, trả lại
     const res = await goi('post', `/phieuDanhGiaKPI/${phieu.id}/nghiemThu`, token.quanly).send(bodyNghiemThu(phieu));
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ success: true, code: 200 });
-    expect(res.body.data).toMatchObject({ trangThai: 'DA_DUYET', diemTong: 8.43, xepLoaiChung: 'TOT', nguoiDanhGiaId: NV_QUANLY, nhanXetQuanLy: 'Tốt' });
+    expect(res.body.data).toMatchObject({
+      trangThai: 'DA_DUYET',
+      diemTong: 8.43,
+      xepLoaiChung: 'TOT',
+      nguoiDanhGiaId: NV_QUANLY,
+      nhanXetQuanLy: 'Tốt',
+    });
     expect(res.body.data.ngayNghiemThu).toBeTruthy();
     const nk = await layNhatKy('NGHIEM_THU_KPI');
     expect(nk).toHaveLength(1);
@@ -517,7 +570,12 @@ describe('Phiếu đánh giá KPI: tự chấm, gửi, nghiệm thu, trả lại
   });
 
   test('xếp loại theo các mức điểm: 9.5 XUAT_SAC, 7 KHA, 5 TRUNG_BINH, 4 YEU', async () => {
-    const cases = [[9.5, 'XUAT_SAC'], [7, 'KHA'], [5, 'TRUNG_BINH'], [4, 'YEU']];
+    const cases = [
+      [9.5, 'XUAT_SAC'],
+      [7, 'KHA'],
+      [5, 'TRUNG_BINH'],
+      [4, 'YEU'],
+    ];
     for (const [diem, xepLoai] of cases) {
       const ky = await moKy();
       const phieu = await phieuChoDuyet(ky.id);
@@ -596,7 +654,9 @@ describe('Phiếu đánh giá KPI: tự chấm, gửi, nghiệm thu, trả lại
     const ct = { chiTiet: [{ id: phieu.chiTiet[0].id, diemTuCham: 8 }] };
     expect((await goi('patch', `/phieuDanhGiaKPI/${phieu.id}/tuCham`, token.nhanvien).send(ct)).status).toBe(409);
     expect((await goi('post', `/phieuDanhGiaKPI/${phieu.id}/guiDuyet`, token.nhanvien)).status).toBe(409);
-    expect((await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr).send({ chiTiet: [{ id: phieu.chiTiet[0].id, trongSo: 2 }] })).status).toBe(409);
+    expect(
+      (await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr).send({ chiTiet: [{ id: phieu.chiTiet[0].id, trongSo: 2 }] })).status,
+    ).toBe(409);
     expect((await goi('delete', `/phieuDanhGiaKPI/${phieu.id}`, token.hr)).status).toBe(409);
     expect((await goi('post', '/phieuDanhGiaKPI', token.hr).send({ kyDanhGiaId: ky.id, nhanVienId: NV_NHANVIEN2 })).status).toBe(409);
     const xem = await goi('get', `/phieuDanhGiaKPI/${phieu.id}`, token.nhanvien);
@@ -626,7 +686,8 @@ describe('Báo cáo xếp loại KPI', () => {
   test('báo cáo: thiếu kỳ -> 400, kỳ không tồn tại -> 404, nhanVien/admin -> 403', async () => {
     expect((await goi('get', '/phieuDanhGiaKPI/baoCao', token.hr)).status).toBe(400);
     expect((await goi('get', '/phieuDanhGiaKPI/baoCao?kyDanhGiaId=999999', token.hr)).status).toBe(404);
-    for (const ten of ['nhanvien', 'admin']) expect((await goi('get', '/phieuDanhGiaKPI/baoCao?kyDanhGiaId=1', token[ten])).status).toBe(403);
+    for (const ten of ['nhanvien', 'admin'])
+      expect((await goi('get', '/phieuDanhGiaKPI/baoCao?kyDanhGiaId=1', token[ten])).status).toBe(403);
   });
 });
 
@@ -634,7 +695,11 @@ describe('Báo cáo xếp loại KPI', () => {
 describe('Sửa lỗi nhẹ sau review KPI', () => {
   test('tên kỳ dưới 3 ký tự sau khi trim bị 400 (tạo và sửa), không tạo/đổi bản ghi', async () => {
     for (const ten of ['ab', '   ab   ', '  ']) {
-      const res = await goi('post', '/kyDanhGiaKPI', token.hr).send({ tenKyDanhGia: ten, ngayBatDau: '2045-01-01', ngayKetThuc: '2045-02-01' });
+      const res = await goi('post', '/kyDanhGiaKPI', token.hr).send({
+        tenKyDanhGia: ten,
+        ngayBatDau: '2045-01-01',
+        ngayKetThuc: '2045-02-01',
+      });
       expect(res.status).toBe(400);
       expect(res.body).toMatchObject({ success: false, code: 400, data: null });
     }
@@ -652,8 +717,7 @@ describe('Sửa lỗi nhẹ sau review KPI', () => {
   test('sửa phiếu mà không mục nào có mucTieu/trongSo -> 400, không ghi nhật ký SUA_PHIEU_KPI', async () => {
     const ky = await moKy();
     const phieu = await taoPhieu(ky.id);
-    const res = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr)
-      .send({ chiTiet: phieu.chiTiet.map((c) => ({ id: c.id })) });
+    const res = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr).send({ chiTiet: phieu.chiTiet.map((c) => ({ id: c.id })) });
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({ success: false, code: 400, message: 'Không có thông tin nào thay đổi', data: null });
     expect(await layNhatKy('SUA_PHIEU_KPI')).toHaveLength(0);
@@ -698,14 +762,16 @@ describe('Sửa lỗi nhẹ sau review KPI (lượt 2)', () => {
   test('sửa phiếu gửi lại y hệt mucTieu/trongSo cũ -> 400 "Không có thông tin nào thay đổi", không ghi SUA_PHIEU_KPI', async () => {
     const ky = await moKy();
     const phieu = await taoPhieu(ky.id);
-    const res = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr)
-      .send({ chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, mucTieu: c.mucTieu, trongSo: c.trongSo })) });
+    const res = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr).send({
+      chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, mucTieu: c.mucTieu, trongSo: c.trongSo })),
+    });
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({ success: false, code: 400, message: 'Không có thông tin nào thay đổi', data: null });
     expect(await layNhatKy('SUA_PHIEU_KPI')).toHaveLength(0);
     // trọng số dạng chuỗi tương đương số cũ cũng coi như không đổi
-    const res2 = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr)
-      .send({ chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, trongSo: String(c.trongSo) })) });
+    const res2 = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr).send({
+      chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, trongSo: String(c.trongSo) })),
+    });
     expect(res2.status).toBe(400);
   });
 
@@ -713,8 +779,12 @@ describe('Sửa lỗi nhẹ sau review KPI (lượt 2)', () => {
     const ky = await moKy();
     const phieu = await taoPhieu(ky.id);
     const [dau, ...conLai] = phieu.chiTiet;
-    const body = { chiTiet: [{ id: dau.id, mucTieu: 'QA mục tiêu mới', trongSo: dau.trongSo },
-      ...conLai.map((c) => ({ id: c.id, mucTieu: c.mucTieu, trongSo: c.trongSo }))] };
+    const body = {
+      chiTiet: [
+        { id: dau.id, mucTieu: 'QA mục tiêu mới', trongSo: dau.trongSo },
+        ...conLai.map((c) => ({ id: c.id, mucTieu: c.mucTieu, trongSo: c.trongSo })),
+      ],
+    };
     const res = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}`, token.hr).send(body);
     expect(res.status).toBe(200);
     const moi = res.body.data.chiTiet;
@@ -741,7 +811,10 @@ describe('nhatKyRepository.themNhatKy', () => {
   test('diaChiIP và chiTiet undefined -> ghi NULL, không lỗi', async () => {
     await expect(themNhatKy(null, 'QA_NHAT_KY_UNDEFINED', undefined, undefined)).resolves.toBeUndefined();
     await expect(themNhatKy(null, 'QA_NHAT_KY_UNDEFINED', undefined)).resolves.toBeUndefined();
-    const nk = await pool.execute('SELECT diaChiIP, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ?', [mocNhatKy, 'QA_NHAT_KY_UNDEFINED']);
+    const nk = await pool.execute('SELECT diaChiIP, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ?', [
+      mocNhatKy,
+      'QA_NHAT_KY_UNDEFINED',
+    ]);
     expect(nk[0]).toHaveLength(2);
     for (const d of nk[0]) expect(d).toEqual({ diaChiIP: null, chiTiet: null });
   });

@@ -74,12 +74,7 @@ function BoCucChinh() {
             <Bell size={16} />
           </button>
           <div className="vungTaiKhoan" ref={vungMenu}>
-            <button
-              type="button"
-              className="anhDaiDien"
-              title={tenHienThi}
-              onClick={() => setMoMenuTaiKhoan((mo) => !mo)}
-            >
+            <button type="button" className="anhDaiDien" title={tenHienThi} onClick={() => setMoMenuTaiKhoan((mo) => !mo)}>
               {layChuCaiDau(tenHienThi)}
             </button>
             {moMenuTaiKhoan && (
@@ -87,11 +82,15 @@ function BoCucChinh() {
                 <div className="thongTinTaiKhoan">
                   <strong>{tenHienThi}</strong>
                   <span>{nguoiDung.maNhanVien ?? nguoiDung.email}</span>
-                  <span className="dsVaiTro">
-                    {nguoiDung.vaiTro.map((vt) => NHAN_VAI_TRO[vt] ?? vt).join(' · ')}
-                  </span>
+                  <span className="dsVaiTro">{nguoiDung.vaiTro.map((vt) => NHAN_VAI_TRO[vt] ?? vt).join(' · ')}</span>
                 </div>
-                <button type="button" onClick={() => { setMoMenuTaiKhoan(false); dieuHuong('/doiMatKhau'); }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoMenuTaiKhoan(false);
+                    dieuHuong('/doiMatKhau');
+                  }}
+                >
                   <KeyRound size={15} /> Đổi mật khẩu
                 </button>
                 <button type="button" className="dangXuat" onClick={xuLyDangXuat}>

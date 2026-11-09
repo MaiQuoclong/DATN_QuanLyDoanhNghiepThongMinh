@@ -34,8 +34,12 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
   const [dangDuyet, setDangDuyet] = useState(false);
 
   const tai = useCallback(() => {
-    goiApi.get(`/bangLuong/${bangId}`, { params: locThamSo({ tuKhoa, trang, kichThuoc: 20 }) })
-      .then((kq) => { setKetQua(kq.data); setLoi(''); })
+    goiApi
+      .get(`/bangLuong/${bangId}`, { params: locThamSo({ tuKhoa, trang, kichThuoc: 20 }) })
+      .then((kq) => {
+        setKetQua(kq.data);
+        setLoi('');
+      })
       .catch((e) => setLoi(e.message));
   }, [bangId, tuKhoa, trang]);
   useEffect(() => {
@@ -77,7 +81,11 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
       // responseType blob: body lỗi của backend là Blob JSON -> đọc lại để lấy thông báo tiếng Việt
       let thongBaoLoi = e.message;
       if (e instanceof Blob) {
-        try { thongBaoLoi = JSON.parse(await e.text()).message; } catch { /* giữ thông báo mặc định */ }
+        try {
+          thongBaoLoi = JSON.parse(await e.text()).message;
+        } catch {
+          /* giữ thông báo mặc định */
+        }
       }
       setThongBao('');
       setLoi(thongBaoLoi ?? 'Không tải được tệp Excel');
@@ -85,15 +93,31 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
   };
 
   const cot = [
-    { khoa: 'hoVaTen', tieuDe: 'Nhân viên', hienThi: (d) => <>{d.hoVaTen} <span className="chuPhu">{d.maNhanVien}</span></> },
+    {
+      khoa: 'hoVaTen',
+      tieuDe: 'Nhân viên',
+      hienThi: (d) => (
+        <>
+          {d.hoVaTen} <span className="chuPhu">{d.maNhanVien}</span>
+        </>
+      ),
+    },
     { khoa: 'tenPhongBan', tieuDe: 'Phòng ban' },
     { khoa: 'soNgayCongThucTe', tieuDe: 'Công', canPhai: true },
     { khoa: 'luongTheoCong', tieuDe: 'Lương theo công', canPhai: true, hienThi: (d) => dinhDangTien(d.luongTheoCong) },
     { khoa: 'luongLamThemOT', tieuDe: 'OT', canPhai: true, hienThi: (d) => dinhDangTien(d.luongLamThemOT) },
     {
-      khoa: 'thuongKPI', tieuDe: 'Thưởng/Phạt', canPhai: true,
+      khoa: 'thuongKPI',
+      tieuDe: 'Thưởng/Phạt',
+      canPhai: true,
       hienThi: (d) => (
-        <span title={d.thuongKpi !== undefined ? `Thưởng KPI ${dinhDangTien(d.thuongKpi)} · Khen thưởng − kỷ luật ${dinhDangTien(d.thuongPhatKhac)}` : undefined}>
+        <span
+          title={
+            d.thuongKpi !== undefined
+              ? `Thưởng KPI ${dinhDangTien(d.thuongKpi)} · Khen thưởng − kỷ luật ${dinhDangTien(d.thuongPhatKhac)}`
+              : undefined
+          }
+        >
           {dinhDangTien(d.thuongKPI)}
         </span>
       ),
@@ -108,7 +132,9 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
     <>
       <div className="dauTrangNghiepVu">
         <div>
-          <button type="button" className="lienKet" onClick={onQuayLai}><ArrowLeft size={14} /> Danh sách bảng lương</button>
+          <button type="button" className="lienKet" onClick={onQuayLai}>
+            <ArrowLeft size={14} /> Danh sách bảng lương
+          </button>
           <h1 className="tieuDeTrang">
             Bảng lương tháng {bang ? kyLuong(bang) : ''} {bang && <ChipTrangThai trangThai={bang.trangThai} kieu="chip" />}
           </h1>
@@ -121,18 +147,30 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
         </div>
         {bang && (
           <div className="hangNutPhai">
-            <NutBam bienThe="phu" bieuTuong={Download} onClick={taiExcel}>Xuất Excel</NutBam>
+            <NutBam bienThe="phu" bieuTuong={Download} onClick={taiExcel}>
+              Xuất Excel
+            </NutBam>
             {laHR && laNhap && (
               <>
-                <NutBam bienThe="phu" bieuTuong={RefreshCw} disabled={dangGui} onClick={() => thucHien('tinhLai')}>Tính lại</NutBam>
-                <NutBam bienThe="phu" bieuTuong={Trash2} onClick={() => setDangXoa(true)}>Xóa</NutBam>
-                <NutBam bieuTuong={Send} disabled={dangGui} onClick={() => thucHien('guiDuyet')}>Gửi duyệt</NutBam>
+                <NutBam bienThe="phu" bieuTuong={RefreshCw} disabled={dangGui} onClick={() => thucHien('tinhLai')}>
+                  Tính lại
+                </NutBam>
+                <NutBam bienThe="phu" bieuTuong={Trash2} onClick={() => setDangXoa(true)}>
+                  Xóa
+                </NutBam>
+                <NutBam bieuTuong={Send} disabled={dangGui} onClick={() => thucHien('guiDuyet')}>
+                  Gửi duyệt
+                </NutBam>
               </>
             )}
             {laGiamDoc && bang.trangThai === 'CHO_DUYET' && (
               <>
-                <NutBam bienThe="phu" bieuTuong={Undo2} onClick={() => setDangTraLai(true)}>Trả lại</NutBam>
-                <NutBam bieuTuong={Check} onClick={() => setDangDuyet(true)}>Duyệt</NutBam>
+                <NutBam bienThe="phu" bieuTuong={Undo2} onClick={() => setDangTraLai(true)}>
+                  Trả lại
+                </NutBam>
+                <NutBam bieuTuong={Check} onClick={() => setDangDuyet(true)}>
+                  Duyệt
+                </NutBam>
               </>
             )}
           </div>
@@ -145,7 +183,15 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
           <TheThongKe tieuDe="Số phiếu" giaTri={bang.soPhieu} moTa={laNhap && laHR ? 'Bấm một dòng để sửa phiếu' : 'Bấm một dòng để xem'} />
         </div>
       )}
-      <ThanhLoc tuKhoa={tuKhoa} onDoiTuKhoa={(v) => { setTuKhoa(v); setTrang(1); }} goiYTim="Mã hoặc tên nhân viên..." phanPhai={<span />} />
+      <ThanhLoc
+        tuKhoa={tuKhoa}
+        onDoiTuKhoa={(v) => {
+          setTuKhoa(v);
+          setTrang(1);
+        }}
+        goiYTim="Mã hoặc tên nhân viên..."
+        phanPhai={<span />}
+      />
       {loi && <div className="thongBao loi">{loi}</div>}
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
       <BangDuLieu
@@ -168,14 +214,23 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
           truong={[
             { ten: 'soNgayCongThucTe', nhan: `Ngày công (tối đa ${dangSua.ngayCongChuan}, bước 0.5)`, kieu: 'number', batBuoc: true },
             { ten: 'luongLamThemOT', nhan: 'Lương làm thêm', kieu: 'number', batBuoc: true },
-            { ten: 'thuongKPI', nhan: 'Thưởng / phạt', ghiChu: 'Tổng thưởng KPI + khen thưởng − kỷ luật; số âm nếu là khoản phạt', batBuoc: true },
+            {
+              ten: 'thuongKPI',
+              nhan: 'Thưởng / phạt',
+              ghiChu: 'Tổng thưởng KPI + khen thưởng − kỷ luật; số âm nếu là khoản phạt',
+              batBuoc: true,
+            },
             { ten: 'tongPhuCap', nhan: 'Phụ cấp', kieu: 'number', batBuoc: true },
           ]}
-          giaTriBanDau={Object.fromEntries(['soNgayCongThucTe', 'luongLamThemOT', 'thuongKPI', 'tongPhuCap'].map((k) => [k, String(dangSua[k])]))}
+          giaTriBanDau={Object.fromEntries(
+            ['soNgayCongThucTe', 'luongLamThemOT', 'thuongKPI', 'tongPhuCap'].map((k) => [k, String(dangSua[k])]),
+          )}
           onGui={async (giaTri) => {
-            const body = Object.fromEntries(Object.entries(giaTri)
-              .map(([k, v]) => [k, Number(v)])
-              .filter(([k, v]) => v !== dangSua[k]));
+            const body = Object.fromEntries(
+              Object.entries(giaTri)
+                .map(([k, v]) => [k, Number(v)])
+                .filter(([k, v]) => v !== dangSua[k]),
+            );
             if (Object.values(body).some(Number.isNaN)) throw new Error('Các khoản phải là số');
             await goiApi.patch(`/phieuLuong/${dangSua.id}`, body);
             setDangSua(null);
@@ -203,24 +258,36 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
         <HopThoai
           tieuDe={`Duyệt bảng lương tháng ${kyLuong(bang)}?`}
           onDong={() => setDangDuyet(false)}
-          chanTrang={(
+          chanTrang={
             <>
-              <NutBam bienThe="phu" onClick={() => setDangDuyet(false)}>Hủy</NutBam>
-              <NutBam bieuTuong={Check} onClick={() => { setDangDuyet(false); thucHien('duyet'); }}>Duyệt</NutBam>
+              <NutBam bienThe="phu" onClick={() => setDangDuyet(false)}>
+                Hủy
+              </NutBam>
+              <NutBam
+                bieuTuong={Check}
+                onClick={() => {
+                  setDangDuyet(false);
+                  thucHien('duyet');
+                }}
+              >
+                Duyệt
+              </NutBam>
             </>
-          )}
+          }
         >
-          Sau khi duyệt, {bang.soPhieu} phiếu lương được công bố cho nhân viên và không thể sửa, tính lại hay xóa.
-          Tổng chi phí lương: <strong>{dinhDangTien(bang.tongChiPhiLuong)}</strong>.
+          Sau khi duyệt, {bang.soPhieu} phiếu lương được công bố cho nhân viên và không thể sửa, tính lại hay xóa. Tổng chi phí lương:{' '}
+          <strong>{dinhDangTien(bang.tongChiPhiLuong)}</strong>.
         </HopThoai>
       )}
       {dangXoa && (
         <HopThoai
           tieuDe={`Xóa bảng lương tháng ${kyLuong(bang)}?`}
           onDong={() => setDangXoa(false)}
-          chanTrang={(
+          chanTrang={
             <>
-              <NutBam bienThe="phu" onClick={() => setDangXoa(false)}>Hủy</NutBam>
+              <NutBam bienThe="phu" onClick={() => setDangXoa(false)}>
+                Hủy
+              </NutBam>
               <NutBam
                 bieuTuong={Trash2}
                 onClick={async () => {
@@ -236,7 +303,7 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
                 Xóa
               </NutBam>
             </>
-          )}
+          }
         >
           Toàn bộ {bang.soPhieu} phiếu nháp sẽ bị xóa. Có thể lập lại bảng cho tháng này sau.
         </HopThoai>
@@ -252,17 +319,25 @@ function DanhSachBang({ laHR, onChon, thongBaoBanDau }) {
   const [dsBang, setDsBang] = useState([]);
   const [thangDaChot, setThangDaChot] = useState([]);
   const [loi, setLoi] = useState('');
-  const [thongBao, setThongBao] = useState(thongBaoBanDau ?? '');
+  const [thongBao] = useState(thongBaoBanDau ?? '');
   const [dangLap, setDangLap] = useState(false);
 
   const tai = useCallback(() => {
-    goiApi.get('/bangLuong', { params: locThamSo({ nam }) })
-      .then((kq) => { setDsBang(kq.data); setLoi(''); })
+    goiApi
+      .get('/bangLuong', { params: locThamSo({ nam }) })
+      .then((kq) => {
+        setDsBang(kq.data);
+        setLoi('');
+      })
       .catch((e) => setLoi(e.message));
   }, [nam]);
   useEffect(tai, [tai]);
   useEffect(() => {
-    if (laHR) goiApi.get('/chamCong/chotCong').then((kq) => setThangDaChot(kq.data)).catch(() => {});
+    if (laHR)
+      goiApi
+        .get('/chamCong/chotCong')
+        .then((kq) => setThangDaChot(kq.data))
+        .catch(() => {});
   }, [laHR]);
 
   // Tháng đã chốt công nhưng chưa có bảng lương
@@ -292,10 +367,18 @@ function DanhSachBang({ laHR, onChon, thongBaoBanDau }) {
             Năm
             <select value={nam} onChange={(e) => setNam(e.target.value)}>
               <option value="">Tất cả</option>
-              {[namHienTai - 2, namHienTai - 1, namHienTai].map((n) => <option key={n} value={n}>{n}</option>)}
+              {[namHienTai - 2, namHienTai - 1, namHienTai].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
             </select>
           </label>
-          {laHR && <NutBam bieuTuong={FilePlus} onClick={() => setDangLap(true)}>Lập bảng lương</NutBam>}
+          {laHR && (
+            <NutBam bieuTuong={FilePlus} onClick={() => setDangLap(true)}>
+              Lập bảng lương
+            </NutBam>
+          )}
         </div>
       </div>
       {loi && <div className="thongBao loi">{loi}</div>}
@@ -305,13 +388,20 @@ function DanhSachBang({ laHR, onChon, thongBaoBanDau }) {
       {dangLap && (
         <HopThoaiBieuMau
           tieuDe="Lập bảng lương"
-          moTa={thangLapDuoc.length
-            ? 'Phiếu được sinh từ hợp đồng hiệu lực, chấm công, đơn nghỉ đã duyệt và quyết định khen thưởng/kỷ luật trong tháng.'
-            : 'Không còn tháng nào đã chốt công mà chưa có bảng lương. Hãy chốt công tháng ở mục Chấm công trước.'}
-          truong={[{
-            ten: 'thang', nhan: 'Tháng (đã chốt công)', kieu: 'select', batBuoc: true,
-            luaChon: thangLapDuoc.map((t) => ({ giaTri: t, nhan: `${t.slice(5)}/${t.slice(0, 4)}` })),
-          }]}
+          moTa={
+            thangLapDuoc.length
+              ? 'Phiếu được sinh từ hợp đồng hiệu lực, chấm công, đơn nghỉ đã duyệt và quyết định khen thưởng/kỷ luật trong tháng.'
+              : 'Không còn tháng nào đã chốt công mà chưa có bảng lương. Hãy chốt công tháng ở mục Chấm công trước.'
+          }
+          truong={[
+            {
+              ten: 'thang',
+              nhan: 'Tháng (đã chốt công)',
+              kieu: 'select',
+              batBuoc: true,
+              luaChon: thangLapDuoc.map((t) => ({ giaTri: t, nhan: `${t.slice(5)}/${t.slice(0, 4)}` })),
+            },
+          ]}
           giaTriBanDau={{ thang: thangLapDuoc[0] ?? '' }}
           nhanNutGui="Lập bảng"
           onGui={async (giaTri) => {
@@ -334,8 +424,12 @@ function BaoCaoQuyLuong() {
   const [loi, setLoi] = useState('');
 
   useEffect(() => {
-    goiApi.get('/bangLuong/baoCao', { params: { nam } })
-      .then((kq) => { setBaoCao(kq.data); setLoi(''); })
+    goiApi
+      .get('/bangLuong/baoCao', { params: { nam } })
+      .then((kq) => {
+        setBaoCao(kq.data);
+        setLoi('');
+      })
       .catch((e) => setLoi(e.message));
   }, [nam]);
 
@@ -360,19 +454,29 @@ function BaoCaoQuyLuong() {
         <label className="truongForm">
           Năm
           <select value={nam} onChange={(e) => setNam(Number(e.target.value))}>
-            {[namHienTai - 2, namHienTai - 1, namHienTai].map((n) => <option key={n} value={n}>{n}</option>)}
+            {[namHienTai - 2, namHienTai - 1, namHienTai].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
           </select>
         </label>
       </div>
       {loi && <div className="thongBao loi">{loi}</div>}
       <div style={LUOI_THE}>
-        <TheThongKe tieuDe="Tổng quỹ lương" giaTri={dinhDangTien(baoCao?.tongNam ?? 0)} moTa={`${baoCao?.theoThang.length ?? 0} kỳ đã duyệt`} />
+        <TheThongKe
+          tieuDe="Tổng quỹ lương"
+          giaTri={dinhDangTien(baoCao?.tongNam ?? 0)}
+          moTa={`${baoCao?.theoThang.length ?? 0} kỳ đã duyệt`}
+        />
         <TheThongKe tieuDe="Bảo hiểm người lao động" giaTri={dinhDangTien(tong('tongBaoHiem'))} />
         <TheThongKe tieuDe="Thuế TNCN" giaTri={dinhDangTien(tong('tongThue'))} />
         <TheThongKe tieuDe="Tổng thực lĩnh" giaTri={dinhDangTien(tong('tongThucLinh'))} />
       </div>
       <div className="the theNoiDung" style={{ marginBottom: 16 }}>
-        <div className="dauThe"><strong>Tổng thu nhập theo tháng</strong></div>
+        <div className="dauThe">
+          <strong>Tổng thu nhập theo tháng</strong>
+        </div>
         {duLieuBieuDo.length ? (
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={duLieuBieuDo}>
@@ -383,7 +487,9 @@ function BaoCaoQuyLuong() {
               <Bar dataKey="tongThuNhap" name="Tổng thu nhập" fill="var(--mauChinh)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        ) : <div className="chuPhu">Chưa có bảng lương đã duyệt trong năm {nam}</div>}
+        ) : (
+          <div className="chuPhu">Chưa có bảng lương đã duyệt trong năm {nam}</div>
+        )}
       </div>
       <BangDuLieu cot={cotPhongBan} khoaDong="phongBanId" duLieu={baoCao?.theoPhongBan ?? []} thongBaoRong="Chưa có dữ liệu" />
     </>
@@ -402,21 +508,29 @@ function TrangBangLuong() {
   return (
     <div>
       <div className="tabGachChan">
-        <button type="button" className={tab === 'bang' ? 'dangChon' : ''} onClick={() => setTab('bang')}>Bảng lương</button>
-        <button type="button" className={tab === 'baoCao' ? 'dangChon' : ''} onClick={() => setTab('baoCao')}>Báo cáo quỹ lương</button>
+        <button type="button" className={tab === 'bang' ? 'dangChon' : ''} onClick={() => setTab('bang')}>
+          Bảng lương
+        </button>
+        <button type="button" className={tab === 'baoCao' ? 'dangChon' : ''} onClick={() => setTab('baoCao')}>
+          Báo cáo quỹ lương
+        </button>
       </div>
       {tab === 'baoCao' && <BaoCaoQuyLuong />}
-      {tab === 'bang' && (bangDangChon
-        ? (
+      {tab === 'bang' &&
+        (bangDangChon ? (
           <ChiTietBang
             bangId={bangDangChon}
             laHR={laHR}
             laGiamDoc={laGiamDoc}
             nhanVienIdCuaToi={nguoiDung.nhanVienId}
-            onQuayLai={(tb) => { setThongBao(typeof tb === 'string' ? tb : ''); setBangDangChon(null); }}
+            onQuayLai={(tb) => {
+              setThongBao(typeof tb === 'string' ? tb : '');
+              setBangDangChon(null);
+            }}
           />
-        )
-        : <DanhSachBang laHR={laHR} onChon={setBangDangChon} thongBaoBanDau={thongBao} />)}
+        ) : (
+          <DanhSachBang laHR={laHR} onChon={setBangDangChon} thongBaoBanDau={thongBao} />
+        ))}
     </div>
   );
 }

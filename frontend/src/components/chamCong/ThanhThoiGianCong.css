@@ -14,10 +14,19 @@
   bottom: 0;
 }
 
-.thanhThoiGian .lamViec { background: var(--mauChinh); }
-.thanhThoiGian .nghiTrua { background: #14b8a6; }
-.thanhThoiGian .diMuon { background: #f97316; opacity: 0.55; }
-.thanhThoiGian .tangCa { background: var(--mauCanhBao); }
+.thanhThoiGian .lamViec {
+  background: var(--mauChinh);
+}
+.thanhThoiGian .nghiTrua {
+  background: #14b8a6;
+}
+.thanhThoiGian .diMuon {
+  background: #f97316;
+  opacity: 0.55;
+}
+.thanhThoiGian .tangCa {
+  background: var(--mauCanhBao);
+}
 
 .chuThichThoiGian {
   display: flex;

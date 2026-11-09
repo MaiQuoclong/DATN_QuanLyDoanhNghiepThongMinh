@@ -15,7 +15,15 @@ export function GhiChuNgayCong({ banGhi }) {
 // Bảng công từng ngày. onHanhDong (tùy chọn): mở hộp thoại điều chỉnh cho ngày đó
 function BangCongNgay({ items, ca, onHanhDong, thongBaoRong = 'Chưa có dữ liệu chấm công trong tháng' }) {
   const cot = [
-    { khoa: 'ngayChamCong', tieuDe: 'Ngày', hienThi: (d) => <>{layThu(d.ngayChamCong)}, {dinhDangNgay(d.ngayChamCong)}</> },
+    {
+      khoa: 'ngayChamCong',
+      tieuDe: 'Ngày',
+      hienThi: (d) => (
+        <>
+          {layThu(d.ngayChamCong)}, {dinhDangNgay(d.ngayChamCong)}
+        </>
+      ),
+    },
     { khoa: 'gioVao', tieuDe: 'Giờ vào', hienThi: (d) => dinhDangGio(d.gioVao) },
     { khoa: 'gioRa', tieuDe: 'Giờ ra', hienThi: (d) => dinhDangGio(d.gioRa) },
     { khoa: 'thoiGian', tieuDe: 'Dòng thời gian', sapXep: false, hienThi: (d) => <ThanhThoiGianCong banGhi={d} ca={ca} /> },

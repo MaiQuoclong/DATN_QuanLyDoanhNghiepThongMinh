@@ -10,10 +10,10 @@ function ChiTietPhieuLuong({ phieu }) {
     // Cột thuongKPI gộp: backend tách lại phần thưởng KPI (phiếu KPI nghiệm thu trong tháng) khi đọc
     ...(phieu.thuongKpi !== undefined
       ? [
-        ['Thưởng KPI (nghiệm thu trong tháng)', dinhDangTien(phieu.thuongKpi)],
-        ['Khen thưởng − kỷ luật / điều chỉnh', dinhDangTien(phieu.thuongPhatKhac)],
-        ['Tổng thưởng / phạt', dinhDangTien(phieu.thuongKPI)],
-      ]
+          ['Thưởng KPI (nghiệm thu trong tháng)', dinhDangTien(phieu.thuongKpi)],
+          ['Khen thưởng − kỷ luật / điều chỉnh', dinhDangTien(phieu.thuongPhatKhac)],
+          ['Tổng thưởng / phạt', dinhDangTien(phieu.thuongKPI)],
+        ]
       : [['Thưởng / phạt (KPI, khen thưởng, kỷ luật)', dinhDangTien(phieu.thuongKPI)]]),
     ['Phụ cấp', dinhDangTien(phieu.tongPhuCap)],
     ['Tổng thu nhập', <strong key="tn">{dinhDangTien(phieu.tongThuNhap)}</strong>],

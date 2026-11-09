@@ -28,7 +28,10 @@ function taoGioiHanThuMatKhau(layKhoa) {
 }
 
 const gioiHanDangNhap = taoGioiHanThuMatKhau(
-  (req) => `${req.ip}|${String(req.body?.tenDangNhap ?? '').trim().toLowerCase()}`
+  (req) =>
+    `${req.ip}|${String(req.body?.tenDangNhap ?? '')
+      .trim()
+      .toLowerCase()}`,
 );
 // Đặt sau xác thực token nên đếm theo người dùng
 const gioiHanDoiMatKhau = taoGioiHanThuMatKhau((req) => `nguoiDung:${req.nguoiDung.nguoiDungId}`);
@@ -40,7 +43,7 @@ router.post(
     tenDangNhap: { nhan: 'Tên đăng nhập', batBuoc: true, toiDa: 100 },
     matKhau: { nhan: 'Mật khẩu', batBuoc: true, toiDaByte: 72 },
   }),
-  batLoiBatDongBo(xacThucController.dangNhap)
+  batLoiBatDongBo(xacThucController.dangNhap),
 );
 
 router.get('/toi', xacThucJwtChoMatKhauTam, batLoiBatDongBo(xacThucController.layThongTinCaNhan));
@@ -61,7 +64,7 @@ router.post(
       thongBaoMau: 'Mật khẩu mới phải có cả chữ và số',
     },
   }),
-  batLoiBatDongBo(xacThucController.doiMatKhau)
+  batLoiBatDongBo(xacThucController.doiMatKhau),
 );
 
 router.post('/dangXuat', xacThucJwtTuyChon, batLoiBatDongBo(xacThucController.dangXuat));

@@ -17,13 +17,27 @@ const COT_DON = [
     khoa: 'tenNguoiDuyet',
     tieuDe: 'Người duyệt',
     sapXep: false,
-    hienThi: (d) => (d.trangThai === 'CHO_DUYET'
-      ? <span className="chuPhu">Chờ {moTaNguoiDuyetDuKien(d.nguoiDuyetDuKien)}</span>
-      : d.tenNguoiDuyet ?? '—'),
+    hienThi: (d) =>
+      d.trangThai === 'CHO_DUYET' ? (
+        <span className="chuPhu">Chờ {moTaNguoiDuyetDuKien(d.nguoiDuyetDuKien)}</span>
+      ) : (
+        (d.tenNguoiDuyet ?? '—')
+      ),
   },
 ];
 const COT_CO_NHAN_VIEN = [
-  { khoa: 'hoVaTen', tieuDe: 'Nhân viên', hienThi: (d) => <>{d.hoVaTen} <span className="chuPhu">{d.maNhanVien} · {d.tenPhongBan}</span></> },
+  {
+    khoa: 'hoVaTen',
+    tieuDe: 'Nhân viên',
+    hienThi: (d) => (
+      <>
+        {d.hoVaTen}{' '}
+        <span className="chuPhu">
+          {d.maNhanVien} · {d.tenPhongBan}
+        </span>
+      </>
+    ),
+  },
   ...COT_DON,
 ];
 
@@ -42,24 +56,40 @@ function DanhSachDon({ cheDo, lamMoi, onDaXuLy }) {
   const [dangXem, setDangXem] = useState(null);
 
   useEffect(() => {
-    goiApi.get('/loaiNghiPhep').then((kq) => setDsLoai(kq.data)).catch(() => {});
+    goiApi
+      .get('/loaiNghiPhep')
+      .then((kq) => setDsLoai(kq.data))
+      .catch(() => {});
   }, []);
 
-  const tai = useCallback((laHienHanh = () => true) => {
-    goiApi
-      .get(laDuyet ? '/donNghiPhep' : '/donNghiPhep/cuaToi', {
-        params: locThamSo({ tuKhoa, ...loc, thang, trang, kichThuoc: 20 }),
-      })
-      .then((kq) => { if (laHienHanh()) { setKetQua(kq.data); setLoi(''); } })
-      .catch((e) => { if (laHienHanh()) setLoi(e.message); });
-  }, [laDuyet, tuKhoa, loc, thang, trang]);
+  const tai = useCallback(
+    (laHienHanh = () => true) => {
+      goiApi
+        .get(laDuyet ? '/donNghiPhep' : '/donNghiPhep/cuaToi', {
+          params: locThamSo({ tuKhoa, ...loc, thang, trang, kichThuoc: 20 }),
+        })
+        .then((kq) => {
+          if (laHienHanh()) {
+            setKetQua(kq.data);
+            setLoi('');
+          }
+        })
+        .catch((e) => {
+          if (laHienHanh()) setLoi(e.message);
+        });
+    },
+    [laDuyet, tuKhoa, loc, thang, trang],
+  );
 
   // Chờ người dùng gõ xong mới gọi API
   useEffect(() => {
     // Bỏ qua phản hồi cũ khi đổi bộ lọc nhanh
     let daHuy = false;
     const hen = setTimeout(() => tai(() => !daHuy), 300);
-    return () => { daHuy = true; clearTimeout(hen); };
+    return () => {
+      daHuy = true;
+      clearTimeout(hen);
+    };
   }, [tai, lamMoi]);
 
   const boLoc = [
@@ -71,20 +101,29 @@ function DanhSachDon({ cheDo, lamMoi, onDaXuLy }) {
     <>
       <ThanhLoc
         tuKhoa={tuKhoa}
-        onDoiTuKhoa={(v) => { setTuKhoa(v); setTrang(1); }}
+        onDoiTuKhoa={(v) => {
+          setTuKhoa(v);
+          setTrang(1);
+        }}
         goiYTim={laDuyet ? 'Mã hoặc tên nhân viên...' : 'Tìm kiếm...'}
         boLoc={boLoc}
         giaTriLoc={loc}
-        onDoiLoc={(khoa, v) => { setLoc((cu) => ({ ...cu, [khoa]: v })); setTrang(1); }}
-        phanPhai={(
+        onDoiLoc={(khoa, v) => {
+          setLoc((cu) => ({ ...cu, [khoa]: v }));
+          setTrang(1);
+        }}
+        phanPhai={
           <input
             type="month"
             className="oLoc"
             value={thang}
-            onChange={(e) => { setThang(e.target.value); setTrang(1); }}
+            onChange={(e) => {
+              setThang(e.target.value);
+              setTrang(1);
+            }}
             title="Lọc theo tháng có ngày nghỉ"
           />
-        )}
+        }
       />
       {loi && <div className="thongBao loi">{loi}</div>}
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
@@ -101,7 +140,12 @@ function DanhSachDon({ cheDo, lamMoi, onDaXuLy }) {
           don={dangXem}
           cheDo={cheDo}
           onDong={() => setDangXem(null)}
-          onDaXuLy={(tb) => { setDangXem(null); setThongBao(tb); tai(); onDaXuLy?.(); }}
+          onDaXuLy={(tb) => {
+            setDangXem(null);
+            setThongBao(tb);
+            tai();
+            onDaXuLy?.();
+          }}
         />
       )}
     </>

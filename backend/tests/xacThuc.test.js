@@ -40,7 +40,7 @@ async function chenResetMatKhauTam(nguoiDungId, lui25Gio = false) {
   await pool.execute(
     `INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao)
      VALUES (?, 'RESET_MAT_KHAU_TAM', '127.0.0.1', 'test', ${thoiGian})`,
-    [nguoiDungId]
+    [nguoiDungId],
   );
 }
 
@@ -56,24 +56,21 @@ beforeEach(async () => {
 
 // Dọn dữ liệu: khôi phục mật khẩu MatKhau@123, trạng thái, xóa bản ghi mốc mật khẩu do test sinh ra
 afterEach(async () => {
-  await pool.execute('UPDATE nguoidung SET matKhauMaHoa = ?, trangThai = ? WHERE id = ?', [
-    hashGoc,
-    'DANG_HOAT_DONG',
-    ID_NHANVIEN2,
-  ]);
+  await pool.execute('UPDATE nguoidung SET matKhauMaHoa = ?, trangThai = ? WHERE id = ?', [hashGoc, 'DANG_HOAT_DONG', ID_NHANVIEN2]);
   await pool.execute(
     `DELETE FROM nhatkyhethong WHERE id > ? AND hanhDong IN ('RESET_MAT_KHAU_TAM', 'DOI_MAT_KHAU',
        'DANG_NHAP_MAT_KHAU_TAM_HET_HAN', 'DANG_NHAP_KHONG_VAI_TRO', 'DANG_NHAP_BI_KHOA')`,
-    [idNhatKyMoc]
+    [idNhatKyMoc],
   );
 });
 
 // Đếm bản ghi nhật ký phát sinh trong test hiện tại (sau mốc idNhatKyMoc)
 async function demNhatKy(nguoiDungId, hanhDong) {
-  const [dong] = await pool.execute(
-    'SELECT COUNT(*) AS n FROM nhatkyhethong WHERE id > ? AND nguoiDungId = ? AND hanhDong = ?',
-    [idNhatKyMoc, nguoiDungId, hanhDong]
-  );
+  const [dong] = await pool.execute('SELECT COUNT(*) AS n FROM nhatkyhethong WHERE id > ? AND nguoiDungId = ? AND hanhDong = ?', [
+    idNhatKyMoc,
+    nguoiDungId,
+    hanhDong,
+  ]);
   return Number(dong[0].n);
 }
 
@@ -115,7 +112,7 @@ describe('POST /api/v1/xacThuc/dangNhap', () => {
     expect((await dangNhap('nhanvien2', 'SaiMatKhau1')).status).toBe(401);
     const [dong] = await pool.execute(
       "SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = 'DANG_NHAP_THAT_BAI' ORDER BY id",
-      [idNhatKyMoc]
+      [idNhatKyMoc],
     );
     await pool.execute("DELETE FROM nhatkyhethong WHERE id > ? AND hanhDong = 'DANG_NHAP_THAT_BAI'", [idNhatKyMoc]);
     expect(dong).toHaveLength(2);
@@ -125,16 +122,14 @@ describe('POST /api/v1/xacThuc/dangNhap', () => {
     expect(dong[1].chiTiet).toContain('tenDangNhap=nhanvien2');
   });
 
-  test.each([
-    [{ matKhau: MAT_KHAU }],
-    [{ tenDangNhap: 'admin' }],
-    [{ tenDangNhap: '   ', matKhau: MAT_KHAU }],
-    [{}],
-  ])('thiếu trường %j trả 400', async (body) => {
-    const res = await request(app).post('/api/v1/xacThuc/dangNhap').set('X-Tra-Token', '1').send(body);
-    expect(res.status).toBe(400);
-    expect(res.body).toMatchObject({ success: false, code: 400, data: null });
-  });
+  test.each([[{ matKhau: MAT_KHAU }], [{ tenDangNhap: 'admin' }], [{ tenDangNhap: '   ', matKhau: MAT_KHAU }], [{}]])(
+    'thiếu trường %j trả 400',
+    async (body) => {
+      const res = await request(app).post('/api/v1/xacThuc/dangNhap').set('X-Tra-Token', '1').send(body);
+      expect(res.status).toBe(400);
+      expect(res.body).toMatchObject({ success: false, code: 400, data: null });
+    },
+  );
 
   test('trường không phải chuỗi trả 400', async () => {
     const res = await request(app).post('/api/v1/xacThuc/dangNhap').set('X-Tra-Token', '1').send({ tenDangNhap: 123, matKhau: MAT_KHAU });
@@ -153,9 +148,7 @@ describe('POST /api/v1/xacThuc/dangNhap', () => {
   });
 
   test('tài khoản không có vai trò: đăng nhập trả 403 và ghi DANG_NHAP_KHONG_VAI_TRO', async () => {
-    const [vaiTroGoc] = await pool.execute('SELECT vaiTroId FROM nguoidungvaitro WHERE nguoiDungId = ?', [
-      ID_NHANVIEN2,
-    ]);
+    const [vaiTroGoc] = await pool.execute('SELECT vaiTroId FROM nguoidungvaitro WHERE nguoiDungId = ?', [ID_NHANVIEN2]);
     expect(vaiTroGoc.length).toBeGreaterThan(0);
     await pool.execute('DELETE FROM nguoidungvaitro WHERE nguoiDungId = ?', [ID_NHANVIEN2]);
     try {
@@ -274,7 +267,8 @@ describe('POST /api/v1/xacThuc/doiMatKhau', () => {
 
   test('không có token trả 401', async () => {
     const res = await request(app)
-      .post('/api/v1/xacThuc/doiMatKhau').set('X-Tra-Token', '1')
+      .post('/api/v1/xacThuc/doiMatKhau')
+      .set('X-Tra-Token', '1')
       .send({ matKhauCu: MAT_KHAU, matKhauMoi: MAT_KHAU_MOI });
     expect(res.status).toBe(401);
   });
@@ -303,7 +297,7 @@ describe('POST /api/v1/xacThuc/doiMatKhau', () => {
 
     const [nk] = await pool.execute(
       "SELECT COUNT(*) AS n FROM nhatkyhethong WHERE id > ? AND nguoiDungId = ? AND hanhDong = 'DOI_MAT_KHAU'",
-      [idNhatKyMoc, ID_NHANVIEN2]
+      [idNhatKyMoc, ID_NHANVIEN2],
     );
     expect(Number(nk[0].n)).toBe(1);
 
@@ -338,7 +332,8 @@ describe('Luồng mật khẩu tạm (RESET_MAT_KHAU_TAM)', () => {
     await chenResetMatKhauTam(ID_NHANVIEN2);
     const token = (await dangNhap('nhanvien2')).body.data.token;
     const doi = await request(app)
-      .post('/api/v1/xacThuc/doiMatKhau').set('X-Tra-Token', '1')
+      .post('/api/v1/xacThuc/doiMatKhau')
+      .set('X-Tra-Token', '1')
       .set('Authorization', `Bearer ${token}`)
       .send({ matKhauCu: MAT_KHAU, matKhauMoi: MAT_KHAU_MOI });
     expect(doi.status).toBe(200);
@@ -361,7 +356,7 @@ describe('Luồng mật khẩu tạm (RESET_MAT_KHAU_TAM)', () => {
     await chenResetMatKhauTam(ID_NHANVIEN2, true);
     await pool.execute(
       "INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, thoiGianTao) VALUES (?, 'DOI_MAT_KHAU', '127.0.0.1', NOW() - INTERVAL 1 HOUR)",
-      [ID_NHANVIEN2]
+      [ID_NHANVIEN2],
     );
     const res = await dangNhap('nhanvien2');
     expect(res.status).toBe(200);
@@ -377,7 +372,7 @@ describe('POST /api/v1/xacThuc/dangXuat', () => {
     expect(res.body).toMatchObject({ success: true, code: 200, data: null });
     const [dong] = await pool.execute(
       "SELECT COUNT(*) AS n FROM nhatkyhethong WHERE id > ? AND nguoiDungId = 5 AND hanhDong = 'DANG_XUAT'",
-      [idNhatKyMoc]
+      [idNhatKyMoc],
     );
     expect(Number(dong[0].n)).toBe(1);
   });

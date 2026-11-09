@@ -8,7 +8,9 @@ function TrangDuyetDon() {
       <div className="dauTrangNghiepVu">
         <div>
           <h1 className="tieuDeTrang">Duyệt đơn nghỉ phép</h1>
-          <div className="chuPhu">Duyệt sẽ trừ quỹ phép năm của nhân viên (với loại trừ quỹ). Không tự duyệt đơn của mình (trừ giám đốc duy nhất đang hoạt động).</div>
+          <div className="chuPhu">
+            Duyệt sẽ trừ quỹ phép năm của nhân viên (với loại trừ quỹ). Không tự duyệt đơn của mình (trừ giám đốc duy nhất đang hoạt động).
+          </div>
         </div>
       </div>
       <DanhSachDon cheDo="duyet" />

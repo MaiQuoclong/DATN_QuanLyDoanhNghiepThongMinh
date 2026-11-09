@@ -18,7 +18,6 @@ function gioHienTai() {
 const thangCua = (ngay) => ngay.slice(0, 7);
 const chuanHoaGio = (gio) => (gio ? `${gio.slice(0, 5)}:00` : null);
 
-
 // Số ngày công chuẩn = số ngày thứ 2 - thứ 6 trong tháng (chưa trừ ngày lễ)
 function demNgayCongChuan(thang) {
   const { ngayCuoi } = khoangNgayCuaThang(thang);
@@ -99,9 +98,17 @@ async function checkIn(nguoiDung) {
     const daCo = await chamCongRepository.layBanGhiTheoNgay(hoSo.id, ngay, ketNoi, true);
     if (daCo) throw new LoiUngDung(409, `Hôm nay bạn đã check-in lúc ${daCo.gioVao.slice(0, 5)}`);
     const gioVao = gioHienTai();
-    const id = await chamCongRepository.themBanGhi({
-      nhanVienId: hoSo.id, ngayChamCong: ngay, gioVao, gioRa: null, ...tinhChiSoCong(ngay, gioVao, null), trangThai: 'HOP_LE',
-    }, ketNoi);
+    const id = await chamCongRepository.themBanGhi(
+      {
+        nhanVienId: hoSo.id,
+        ngayChamCong: ngay,
+        gioVao,
+        gioRa: null,
+        ...tinhChiSoCong(ngay, gioVao, null),
+        trangThai: 'HOP_LE',
+      },
+      ketNoi,
+    );
     return chamCongRepository.layBanGhiTheoId(id, ketNoi);
   });
 }
@@ -113,7 +120,8 @@ async function checkOut(nguoiDung) {
     await chanThangDaChot(ngay, ketNoi);
     const banGhi = await chamCongRepository.layBanGhiTheoNgay(hoSo.id, ngay, ketNoi, true);
     if (!banGhi) throw new LoiUngDung(409, 'Hôm nay bạn chưa check-in');
-    if (banGhi.gioRa) throw new LoiUngDung(409, `Hôm nay bạn đã check-out lúc ${banGhi.gioRa.slice(0, 5)}, cần sửa giờ thì gửi yêu cầu điều chỉnh`);
+    if (banGhi.gioRa)
+      throw new LoiUngDung(409, `Hôm nay bạn đã check-out lúc ${banGhi.gioRa.slice(0, 5)}, cần sửa giờ thì gửi yêu cầu điều chỉnh`);
     const gioRa = gioHienTai();
     await chamCongRepository.capNhatBanGhi(banGhi.id, { gioRa, ...tinhChiSoCong(ngay, banGhi.gioVao, gioRa) }, ketNoi);
     return chamCongRepository.layBanGhiTheoId(banGhi.id, ketNoi);
@@ -125,7 +133,12 @@ async function layCongTheoThang(nhanVienId, thang) {
   const items = await chamCongRepository.layBanGhiTrongKhoang(nhanVienId, tuNgay, denNgay);
   const chot = await chamCongRepository.layThongTinChot(thang);
   return {
-    thang, soNgayCongChuan: demNgayCongChuan(thang), daChot: Boolean(chot), chot, items, tongHop: tongHopCong(items),
+    thang,
+    soNgayCongChuan: demNgayCongChuan(thang),
+    daChot: Boolean(chot),
+    chot,
+    items,
+    tongHop: tongHopCong(items),
   };
 }
 
@@ -139,13 +152,23 @@ async function layCuaToi(nguoiDung, thang = thangCua(ngayHomNay())) {
 async function layBangCong(nguoiDung, { thang = thangCua(ngayHomNay()), phongBanId, tuKhoa, trang, kichThuoc }) {
   const { tuNgay, denNgay } = khoangNgayCuaThang(thang);
   const { items, tongSo } = await chamCongRepository.layBangCongThang({
-    tuNgay, denNgay, homNay: ngayHomNay(), phamViPhongBanIds: await layPhamVi(nguoiDung), phongBanId, tuKhoa,
-    viTri: (trang - 1) * kichThuoc, soLuong: kichThuoc,
+    tuNgay,
+    denNgay,
+    homNay: ngayHomNay(),
+    phamViPhongBanIds: await layPhamVi(nguoiDung),
+    phongBanId,
+    tuKhoa,
+    viTri: (trang - 1) * kichThuoc,
+    soLuong: kichThuoc,
   });
   const chot = await chamCongRepository.layThongTinChot(thang);
   return {
-    thang, soNgayCongChuan: demNgayCongChuan(thang), daChot: Boolean(chot), chot,
-    items, phanTrang: { trang, kichThuoc, tongSo },
+    thang,
+    soNgayCongChuan: demNgayCongChuan(thang),
+    daChot: Boolean(chot),
+    chot,
+    items,
+    phanTrang: { trang, kichThuoc, tongSo },
   };
 }
 
@@ -187,13 +210,22 @@ async function chotCong(nguoiDung, thang, diaChiIP) {
     // Đơn nghỉ chờ duyệt trong tháng không duyệt được sau khi chốt -> bảng công/lương thiếu ngày nghỉ
     const donChoDuyet = await nghiPhepRepository.layDonChoDuyetTrongKhoang(tuNgay, denNgay, ketNoi);
     if (donChoDuyet.length > 0) {
-      const danhSach = donChoDuyet.slice(0, 5).map((d) => `${d.maDon} (${d.maNhanVien})`).join(', ');
-      throw new LoiUngDung(409, `Tháng ${thang} còn ${donChoDuyet.length} đơn nghỉ phép chờ duyệt: ${danhSach}${donChoDuyet.length > 5 ? ', ...' : ''}. Cần duyệt, từ chối hoặc người gửi hủy trước khi chốt`);
+      const danhSach = donChoDuyet
+        .slice(0, 5)
+        .map((d) => `${d.maDon} (${d.maNhanVien})`)
+        .join(', ');
+      throw new LoiUngDung(
+        409,
+        `Tháng ${thang} còn ${donChoDuyet.length} đơn nghỉ phép chờ duyệt: ${danhSach}${donChoDuyet.length > 5 ? ', ...' : ''}. Cần duyệt, từ chối hoặc người gửi hủy trước khi chốt`,
+      );
     }
     // Ngày thiếu check-out bị khóa ở 0 giờ công sau khi chốt -> lương sai, bắt buộc xử lý trước
     const soThieuCheckOut = await chamCongRepository.demNgayThieuCheckOutTrongKhoang(tuNgay, denNgay, ketNoi);
     if (soThieuCheckOut > 0) {
-      throw new LoiUngDung(409, `Tháng ${thang} còn ${soThieuCheckOut} ngày công thiếu check-out, cần nhân viên gửi điều chỉnh trước khi chốt`);
+      throw new LoiUngDung(
+        409,
+        `Tháng ${thang} còn ${soThieuCheckOut} ngày công thiếu check-out, cần nhân viên gửi điều chỉnh trước khi chốt`,
+      );
     }
     await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'CHOT_CONG_THANG', diaChiIP ?? null, thang, ketNoi);
   });
@@ -228,10 +260,17 @@ async function taoYeuCau(nguoiDung, { ngayCanDieuChinh, gioVaoDeXuat, gioRaDeXua
     if (banGhi && gioVaoMoi === banGhi.gioVao && gioRaMoi === banGhi.gioRa) {
       throw new LoiUngDung(400, 'Giờ đề xuất trùng với bản ghi chấm công hiện tại');
     }
-    return chamCongRepository.themYeuCau({
-      banGhiChamCongId: banGhi?.id, nhanVienId: hoSo.id, ngayCanDieuChinh,
-      gioVaoDeXuat: gioVao, gioRaDeXuat: gioRa, lyDoGiaiTrinh: lyDoGiaiTrinh.trim(),
-    }, ketNoi);
+    return chamCongRepository.themYeuCau(
+      {
+        banGhiChamCongId: banGhi?.id,
+        nhanVienId: hoSo.id,
+        ngayCanDieuChinh,
+        gioVaoDeXuat: gioVao,
+        gioRaDeXuat: gioRa,
+        lyDoGiaiTrinh: lyDoGiaiTrinh.trim(),
+      },
+      ketNoi,
+    );
   });
   return chamCongRepository.layYeuCauTheoId(id);
 }
@@ -253,7 +292,11 @@ async function layDanhSachYeuCau(nguoiDung, boLoc) {
 async function layDanhSachYeuCauTheoBoLoc({ thang, trang, kichThuoc, ...boLoc }, chuyenDoi) {
   const khoang = thang ? khoangNgayCuaThang(thang) : {};
   const { items, tongSo } = await chamCongRepository.layDanhSachYeuCau({
-    ...boLoc, tuNgay: khoang.tuNgay, denNgay: khoang.denNgay, viTri: (trang - 1) * kichThuoc, soLuong: kichThuoc,
+    ...boLoc,
+    tuNgay: khoang.tuNgay,
+    denNgay: khoang.denNgay,
+    viTri: (trang - 1) * kichThuoc,
+    soLuong: kichThuoc,
   });
   return { items: items.map(chuyenDoi), phanTrang: { trang, kichThuoc, tongSo } };
 }
@@ -305,10 +348,22 @@ async function duyetYeuCau(nguoiDung, id, diaChiIP) {
     } else {
       banGhiId = await chamCongRepository.themBanGhi({ nhanVienId, ngayChamCong: yeuCau.ngayCanDieuChinh, ...truong }, ketNoi);
     }
-    await chamCongRepository.capNhatKetQuaDuyet(id, {
-      trangThai: 'DA_DUYET', nguoiDuyetId: nguoiDung.nhanVienId, banGhiChamCongId: banGhiId,
-    }, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'DUYET_DIEU_CHINH_CONG', diaChiIP ?? null, `Yêu cầu #${id} của ${maNhanVien}`, ketNoi);
+    await chamCongRepository.capNhatKetQuaDuyet(
+      id,
+      {
+        trangThai: 'DA_DUYET',
+        nguoiDuyetId: nguoiDung.nhanVienId,
+        banGhiChamCongId: banGhiId,
+      },
+      ketNoi,
+    );
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'DUYET_DIEU_CHINH_CONG',
+      diaChiIP ?? null,
+      `Yêu cầu #${id} của ${maNhanVien}`,
+      ketNoi,
+    );
   });
   return themQuyenDuyet(nguoiDung, await chamCongRepository.layYeuCauTheoId(id));
 }
@@ -317,10 +372,22 @@ async function tuChoiYeuCau(nguoiDung, id, { lyDoTuChoi }, diaChiIP) {
   const { nhanVienId, maNhanVien } = await kiemTraQuyenDuyet(nguoiDung, id);
   await chayTransaction(async (ketNoi) => {
     await khoaYeuCauChoDuyet(nguoiDung, id, nhanVienId, ketNoi);
-    await chamCongRepository.capNhatKetQuaDuyet(id, {
-      trangThai: 'TU_CHOI', nguoiDuyetId: nguoiDung.nhanVienId, lyDoTuChoi: lyDoTuChoi.trim(),
-    }, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'TU_CHOI_DIEU_CHINH_CONG', diaChiIP ?? null, `Yêu cầu #${id} của ${maNhanVien}`, ketNoi);
+    await chamCongRepository.capNhatKetQuaDuyet(
+      id,
+      {
+        trangThai: 'TU_CHOI',
+        nguoiDuyetId: nguoiDung.nhanVienId,
+        lyDoTuChoi: lyDoTuChoi.trim(),
+      },
+      ketNoi,
+    );
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'TU_CHOI_DIEU_CHINH_CONG',
+      diaChiIP ?? null,
+      `Yêu cầu #${id} của ${maNhanVien}`,
+      ketNoi,
+    );
   });
   return themQuyenDuyet(nguoiDung, await chamCongRepository.layYeuCauTheoId(id));
 }

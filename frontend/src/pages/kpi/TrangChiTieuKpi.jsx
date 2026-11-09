@@ -26,13 +26,24 @@ function TrangChiTieuKpi() {
   const [dangSua, setDangSua] = useState(null);
 
   useEffect(() => {
-    goiApi.get('/phongBan').then((kq) => setPhongBan(kq.data)).catch(() => {});
-    if (quanTri) goiApi.get('/chiTieuKPI/viTri').then((kq) => setDsViTri(kq.data)).catch(() => {});
+    goiApi
+      .get('/phongBan')
+      .then((kq) => setPhongBan(kq.data))
+      .catch(() => {});
+    if (quanTri)
+      goiApi
+        .get('/chiTieuKPI/viTri')
+        .then((kq) => setDsViTri(kq.data))
+        .catch(() => {});
   }, [quanTri]);
 
   const tai = useCallback(() => {
-    goiApi.get('/chiTieuKPI', { params: locThamSo({ tuKhoa, ...loc }) })
-      .then((kq) => { setDs(kq.data); setLoi(''); })
+    goiApi
+      .get('/chiTieuKPI', { params: locThamSo({ tuKhoa, ...loc }) })
+      .then((kq) => {
+        setDs(kq.data);
+        setLoi('');
+      })
       .catch((e) => setLoi(e.message));
   }, [tuKhoa, loc]);
   useEffect(() => {
@@ -64,8 +75,21 @@ function TrangChiTieuKpi() {
 
   const cot = [
     { khoa: 'maChiTieu', tieuDe: 'Mã' },
-    { khoa: 'tenChiTieu', tieuDe: 'Tên chỉ tiêu', hienThi: (d) => <>{d.tenChiTieu}{d.moTa && <div className="chuPhu">{d.moTa}</div>}</> },
-    { khoa: 'tenPhongBan', tieuDe: 'Áp dụng cho', hienThi: (d) => (d.chucDanhPhongBanId === null ? <strong>Chung toàn công ty</strong> : `${d.tenChucDanh} · ${d.tenPhongBan}`) },
+    {
+      khoa: 'tenChiTieu',
+      tieuDe: 'Tên chỉ tiêu',
+      hienThi: (d) => (
+        <>
+          {d.tenChiTieu}
+          {d.moTa && <div className="chuPhu">{d.moTa}</div>}
+        </>
+      ),
+    },
+    {
+      khoa: 'tenPhongBan',
+      tieuDe: 'Áp dụng cho',
+      hienThi: (d) => (d.chucDanhPhongBanId === null ? <strong>Chung toàn công ty</strong> : `${d.tenChucDanh} · ${d.tenPhongBan}`),
+    },
     { khoa: 'donViDo', tieuDe: 'Đơn vị', hienThi: (d) => d.donViDo ?? '—' },
     { khoa: 'trongSoMacDinh', tieuDe: 'Trọng số', canPhai: true },
     { khoa: 'soLanSuDung', tieuDe: 'Số phiếu dùng', canPhai: true },
@@ -88,15 +112,23 @@ function TrangChiTieuKpi() {
       <div className="dauTrangNghiepVu">
         <div>
           <h1 className="tieuDeTrang">Chỉ tiêu KPI</h1>
-          <div className="chuPhu">Phiếu đánh giá lấy chỉ tiêu của vị trí nhân viên + chỉ tiêu chung · sửa trọng số không ảnh hưởng phiếu đã tạo</div>
+          <div className="chuPhu">
+            Phiếu đánh giá lấy chỉ tiêu của vị trí nhân viên + chỉ tiêu chung · sửa trọng số không ảnh hưởng phiếu đã tạo
+          </div>
         </div>
-        {quanTri && <NutBam bieuTuong={Plus} onClick={() => setDangThem(true)}>Thêm chỉ tiêu</NutBam>}
+        {quanTri && (
+          <NutBam bieuTuong={Plus} onClick={() => setDangThem(true)}>
+            Thêm chỉ tiêu
+          </NutBam>
+        )}
       </div>
       <ThanhLoc
         tuKhoa={tuKhoa}
         onDoiTuKhoa={setTuKhoa}
         goiYTim="Mã hoặc tên chỉ tiêu..."
-        boLoc={[{ khoa: 'phongBanId', nhan: 'Phòng ban', luaChon: phongBan.map((pb) => ({ giaTri: String(pb.id), nhan: pb.tenPhongBan })) }]}
+        boLoc={[
+          { khoa: 'phongBanId', nhan: 'Phòng ban', luaChon: phongBan.map((pb) => ({ giaTri: String(pb.id), nhan: pb.tenPhongBan })) },
+        ]}
         giaTriLoc={loc}
         onDoiLoc={(khoa, v) => setLoc((cu) => ({ ...cu, [khoa]: v }))}
         phanPhai={<span />}
@@ -128,12 +160,16 @@ function TrangChiTieuKpi() {
       {dangSua && (
         <HopThoaiBieuMau
           tieuDe={`Sửa chỉ tiêu ${dangSua.maChiTieu}`}
-          moTa={(
+          moTa={
             <>
               Đã dùng trong {dangSua.soLanSuDung} phiếu{dangSua.soLanSuDung ? ' (không đổi được vị trí, không xóa được)' : ''}.{' '}
-              {!dangSua.soLanSuDung && <button type="button" className="lienKet" onClick={() => xoa(dangSua)}>Xóa chỉ tiêu</button>}
+              {!dangSua.soLanSuDung && (
+                <button type="button" className="lienKet" onClick={() => xoa(dangSua)}>
+                  Xóa chỉ tiêu
+                </button>
+              )}
             </>
-          )}
+          }
           truong={truong(false)}
           giaTriBanDau={{
             tenChiTieu: dangSua.tenChiTieu,
@@ -144,7 +180,12 @@ function TrangChiTieuKpi() {
           }}
           onGui={async (g) => {
             const moi = chuyen(g);
-            const cu = { ...dangSua, trongSoMacDinh: Number(dangSua.trongSoMacDinh), donViDo: dangSua.donViDo ?? '', moTa: dangSua.moTa ?? '' };
+            const cu = {
+              ...dangSua,
+              trongSoMacDinh: Number(dangSua.trongSoMacDinh),
+              donViDo: dangSua.donViDo ?? '',
+              moTa: dangSua.moTa ?? '',
+            };
             const body = Object.fromEntries(Object.entries(moi).filter(([k, v]) => v !== cu[k]));
             await goiApi.patch(`/chiTieuKPI/${dangSua.id}`, body);
             setDangSua(null);

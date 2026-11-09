@@ -2,9 +2,7 @@ const luongService = require('../services/luongService');
 const { thanhCong } = require('../utils/phanHoi');
 const LoiUngDung = require('../utils/LoiUngDung');
 const { TRANG_THAI_BANG_LUONG } = require('../utils/trangThai');
-const {
-  laySoNguyenDuong, layThang, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang,
-} = require('../utils/thamSoTruyVan');
+const { laySoNguyenDuong, layThang, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang } = require('../utils/thamSoTruyVan');
 const { ngayHomNay } = require('../utils/ngayThang');
 
 const layId = (req, nhan) => laySoNguyenDuong(req.params.id, undefined, nhan);

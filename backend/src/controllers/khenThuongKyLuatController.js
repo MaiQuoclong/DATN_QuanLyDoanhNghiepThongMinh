@@ -1,9 +1,7 @@
 const ktklService = require('../services/khenThuongKyLuatService');
 const { thanhCong } = require('../utils/phanHoi');
 const { LOAI_QUYET_DINH } = require('../utils/trangThai');
-const {
-  laySoNguyenDuong, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang,
-} = require('../utils/thamSoTruyVan');
+const { laySoNguyenDuong, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang } = require('../utils/thamSoTruyVan');
 
 const TRANG_THAI_DE_XUAT = ['CHO_DUYET', 'DA_DUYET', 'TU_CHOI'];
 const layId = (req, nhan) => laySoNguyenDuong(req.params.id, undefined, nhan);
@@ -11,11 +9,15 @@ const layId = (req, nhan) => laySoNguyenDuong(req.params.id, undefined, nhan);
 // ===================== Đề xuất =====================
 
 async function layDanhSachDeXuat(req, res) {
-  const kq = await ktklService.layDanhSachDeXuat(req.nguoiDung, {
-    trangThai: layGiaTriTrongDanhSach(req.query.trangThai, TRANG_THAI_DE_XUAT, 'Trạng thái'),
-    loaiDeXuat: layGiaTriTrongDanhSach(req.query.loaiDeXuat, LOAI_QUYET_DINH, 'Loại đề xuất'),
-    tuKhoa: layTuKhoa(req.query.tuKhoa),
-  }, layPhanTrang(req.query));
+  const kq = await ktklService.layDanhSachDeXuat(
+    req.nguoiDung,
+    {
+      trangThai: layGiaTriTrongDanhSach(req.query.trangThai, TRANG_THAI_DE_XUAT, 'Trạng thái'),
+      loaiDeXuat: layGiaTriTrongDanhSach(req.query.loaiDeXuat, LOAI_QUYET_DINH, 'Loại đề xuất'),
+      tuKhoa: layTuKhoa(req.query.tuKhoa),
+    },
+    layPhanTrang(req.query),
+  );
   return thanhCong(res, kq, 'Lấy danh sách đề xuất thành công');
 }
 
@@ -50,13 +52,17 @@ async function lapQuyetDinhTuDeXuat(req, res) {
 // ===================== Quyết định =====================
 
 async function layDanhSachQuyetDinh(req, res) {
-  const kq = await ktklService.layDanhSachQuyetDinh(req.nguoiDung, {
-    loaiQuyetDinh: layGiaTriTrongDanhSach(req.query.loaiQuyetDinh, LOAI_QUYET_DINH, 'Loại quyết định'),
-    nhanVienId: laySoNguyenDuong(req.query.nhanVienId, undefined, 'Mã nhân viên'),
-    phongBanId: laySoNguyenDuong(req.query.phongBanId, undefined, 'Mã phòng ban'),
-    nam: laySoNguyenDuong(req.query.nam, undefined, 'Năm'),
-    tuKhoa: layTuKhoa(req.query.tuKhoa),
-  }, layPhanTrang(req.query));
+  const kq = await ktklService.layDanhSachQuyetDinh(
+    req.nguoiDung,
+    {
+      loaiQuyetDinh: layGiaTriTrongDanhSach(req.query.loaiQuyetDinh, LOAI_QUYET_DINH, 'Loại quyết định'),
+      nhanVienId: laySoNguyenDuong(req.query.nhanVienId, undefined, 'Mã nhân viên'),
+      phongBanId: laySoNguyenDuong(req.query.phongBanId, undefined, 'Mã phòng ban'),
+      nam: laySoNguyenDuong(req.query.nam, undefined, 'Năm'),
+      tuKhoa: layTuKhoa(req.query.tuKhoa),
+    },
+    layPhanTrang(req.query),
+  );
   return thanhCong(res, kq, 'Lấy danh sách quyết định thành công');
 }
 
@@ -74,6 +80,15 @@ async function taoQuyetDinh(req, res) {
 }
 
 module.exports = {
-  layDanhSachDeXuat, layChiTietDeXuat, taoDeXuat, suaDeXuat, xoaDeXuat, tuChoiDeXuat, lapQuyetDinhTuDeXuat,
-  layDanhSachQuyetDinh, layChiTietQuyetDinh, layDanhSachNguoiKy, taoQuyetDinh,
+  layDanhSachDeXuat,
+  layChiTietDeXuat,
+  taoDeXuat,
+  suaDeXuat,
+  xoaDeXuat,
+  tuChoiDeXuat,
+  lapQuyetDinhTuDeXuat,
+  layDanhSachQuyetDinh,
+  layChiTietQuyetDinh,
+  layDanhSachNguoiKy,
+  taoQuyetDinh,
 };

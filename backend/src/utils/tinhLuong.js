@@ -117,4 +117,15 @@ function tinhThuongKpi(xepLoai, luongCoBan, soThangKy) {
   return lamTronDong(heSo * Number(luongCoBan) * THAM_SO_KPI.tyLeThuongMucTieu * soThangKy);
 }
 
-module.exports = { demSoThangKy, tinhThuongKpi, demNgayCongChuan, tinhNgayCong, tinhBaoHiem, tinhPhuCap, tinhThueTNCN, tinhChiTietPhieu, tinhThueChoPhieu, lapPhieu };
+module.exports = {
+  demSoThangKy,
+  tinhThuongKpi,
+  demNgayCongChuan,
+  tinhNgayCong,
+  tinhBaoHiem,
+  tinhPhuCap,
+  tinhThueTNCN,
+  tinhChiTietPhieu,
+  tinhThueChoPhieu,
+  lapPhieu,
+};

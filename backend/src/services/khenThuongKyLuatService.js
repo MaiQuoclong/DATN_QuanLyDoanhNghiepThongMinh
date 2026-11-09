@@ -114,8 +114,13 @@ async function taoDeXuat(nguoiDung, body, diaChiIP) {
   return chayTransaction(async (ketNoi) => {
     const nv = await kiemTraNhanVienDuocDeXuat(nguoiDung, nhanVienId, ketNoi);
     const id = await ktklRepository.themDeXuat({ nguoiDeXuatId: nguoiDung.nhanVienId, nhanVienId, ...noiDung }, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'TAO_DE_XUAT_KTKL', diaChiIP,
-      `${noiDung.loaiDeXuat} ${nv.maNhanVien}: ${noiDung.tieuDe}`, ketNoi);
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'TAO_DE_XUAT_KTKL',
+      diaChiIP,
+      `${noiDung.loaiDeXuat} ${nv.maNhanVien}: ${noiDung.tieuDe}`,
+      ketNoi,
+    );
     return ktklRepository.layDeXuatTheoId(id, ketNoi);
   });
 }
@@ -190,8 +195,8 @@ async function layDanhSachQuyetDinh(nguoiDung, boLoc, phanTrang) {
 async function layChiTietQuyetDinh(nguoiDung, id) {
   const qd = await ktklRepository.layQuyetDinhTheoId(id);
   const phamVi = await layPhamViQuyetDinh(nguoiDung);
-  const duocXem = qd && (phamVi === null || qd.nhanVienId === phamVi.nhanVienId
-    || (qd.phongBanId != null && phamVi.phongBanIds.includes(qd.phongBanId)));
+  const duocXem =
+    qd && (phamVi === null || qd.nhanVienId === phamVi.nhanVienId || (qd.phongBanId != null && phamVi.phongBanIds.includes(qd.phongBanId)));
   if (!duocXem) throw new LoiUngDung(404, 'Không tìm thấy quyết định');
   return qd;
 }
@@ -220,8 +225,7 @@ function kiemTraNgayBanHanh(ngayBanHanh) {
 // Người ký phải là giamDoc đang làm việc và không phải người nhận quyết định
 async function kiemTraNguoiKy(nguoiKyDuyetId, nhanVienId, ketNoi) {
   const nk = await ktklRepository.layNhanVienCoBan(nguoiKyDuyetId, ketNoi);
-  if (!nk || !nk.laGiamDoc || !TRANG_THAI_DUOC_KTKL.includes(nk.trangThaiLamViec)
-    || nk.trangThaiTaiKhoan !== 'DANG_HOAT_DONG') {
+  if (!nk || !nk.laGiamDoc || !TRANG_THAI_DUOC_KTKL.includes(nk.trangThaiLamViec) || nk.trangThaiTaiKhoan !== 'DANG_HOAT_DONG') {
     throw new LoiUngDung(400, 'Người ký phải là Giám đốc đang làm việc');
   }
   if (nk.id === nhanVienId) throw new LoiUngDung(400, 'Người ký không được là người nhận quyết định');
@@ -255,8 +259,7 @@ async function ghiQuyetDinh(nguoiDung, noiDung, nhanVienId, nguoiKyDuyetId, diaC
   let id;
   let soQuyetDinh;
   for (let lan = 1; !id; lan += 1) {
-    soQuyetDinh = noiDung.soQuyetDinh
-      ?? await ktklRepository.laySoQuyetDinhTiepTheo(noiDung.ngayBanHanh.slice(0, 4), ketNoi);
+    soQuyetDinh = noiDung.soQuyetDinh ?? (await ktklRepository.laySoQuyetDinhTiepTheo(noiDung.ngayBanHanh.slice(0, 4), ketNoi));
     try {
       id = await ktklRepository.themQuyetDinh({ ...noiDung, soQuyetDinh, nhanVienId, nguoiKyDuyetId }, ketNoi);
     } catch (loi) {
@@ -269,8 +272,13 @@ async function ghiQuyetDinh(nguoiDung, noiDung, nhanVienId, nguoiKyDuyetId, diaC
   if (bangNhap) {
     // Hành động riêng: không tính là "tham gia lập bảng" (daThamGiaLapBang), giamDoc lập quyết định vẫn duyệt được bảng
     const soPhieu = await luongService.tinhLaiBangNhapTrongGiaoDich(bangNhap, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'TINH_LAI_BANG_LUONG_KTKL', diaChiIP,
-      `${bangNhap.maBangLuong}: ${soPhieu} (áp dụng ${soQuyetDinh})`.slice(0, 1000), ketNoi);
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'TINH_LAI_BANG_LUONG_KTKL',
+      diaChiIP,
+      `${bangNhap.maBangLuong}: ${soPhieu} (áp dụng ${soQuyetDinh})`.slice(0, 1000),
+      ketNoi,
+    );
     canhBao = `Đã tính lại bảng lương nháp ${bangNhap.maBangLuong} (các chỉnh sửa tay trên phiếu bị thay bằng số liệu tính lại)`;
     // sinhPhieu trả "N phiếu; phạt vượt thu nhập bị bỏ: <mã NV> <số tiền>, ...": báo cho HR biết phạt không trừ đủ
     const phanBiCat = String(soPhieu).split('; ')[1];
@@ -281,7 +289,8 @@ async function ghiQuyetDinh(nguoiDung, noiDung, nhanVienId, nguoiKyDuyetId, diaC
     const { tuNgay, denNgay } = khoangNgayCuaThang(noiDung.ngayBanHanh.slice(0, 7));
     if (!(await luongRepository.layNhanVienTinhLuong(tuNgay, denNgay, ketNoi, nhanVienId)).length) {
       canhBao = [canhBao, 'Nhân viên không có hợp đồng hiệu lực trong tháng ban hành nên số tiền sẽ không được tính vào lương']
-        .filter(Boolean).join('. ');
+        .filter(Boolean)
+        .join('. ');
     }
   }
   return { id, soQuyetDinh, canhBao };
@@ -295,7 +304,10 @@ async function lapQuyetDinhTuDeXuat(nguoiDung, id, body, diaChiIP) {
   return chayTransaction(async (ketNoi) => {
     const dx = await khoaDeXuatChoXuLy(nguoiDung, id, ketNoi);
     const noiDung = docNoiDungQuyetDinh(body ?? {}, {
-      loaiQuyetDinh: dx.loaiDeXuat, tieuDe: dx.tieuDe, lyDo: dx.lyDo, soTien: dx.soTienDeXuat,
+      loaiQuyetDinh: dx.loaiDeXuat,
+      tieuDe: dx.tieuDe,
+      lyDo: dx.lyDo,
+      soTien: dx.soTienDeXuat,
     });
     const nv = await ktklRepository.layNhanVienCoBan(dx.nhanVienId, ketNoi);
     if (!nv) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
@@ -303,12 +315,28 @@ async function lapQuyetDinhTuDeXuat(nguoiDung, id, body, diaChiIP) {
       throw new LoiUngDung(409, `Nhân viên ${nv.maNhanVien} không còn làm việc, hãy từ chối đề xuất`);
     }
     await kiemTraNguoiKy(nguoiKyDuyetId, dx.nhanVienId, ketNoi);
-    const { id: quyetDinhId, soQuyetDinh, canhBao } = await ghiQuyetDinh(nguoiDung, noiDung, dx.nhanVienId, nguoiKyDuyetId, diaChiIP, ketNoi);
-    await ktklRepository.capNhatDeXuat(id, {
-      trangThai: 'DA_DUYET', quyetDinhId, nguoiXuLyId: nguoiDung.nhanVienId, ghiChuXuLy,
-    }, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'LAP_QUYET_DINH_KTKL', diaChiIP,
-      `${soQuyetDinh} (${noiDung.loaiQuyetDinh} ${nv.maNhanVien}, ${noiDung.soTien}) từ đề xuất #${dx.id}`, ketNoi);
+    const {
+      id: quyetDinhId,
+      soQuyetDinh,
+      canhBao,
+    } = await ghiQuyetDinh(nguoiDung, noiDung, dx.nhanVienId, nguoiKyDuyetId, diaChiIP, ketNoi);
+    await ktklRepository.capNhatDeXuat(
+      id,
+      {
+        trangThai: 'DA_DUYET',
+        quyetDinhId,
+        nguoiXuLyId: nguoiDung.nhanVienId,
+        ghiChuXuLy,
+      },
+      ketNoi,
+    );
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'LAP_QUYET_DINH_KTKL',
+      diaChiIP,
+      `${soQuyetDinh} (${noiDung.loaiQuyetDinh} ${nv.maNhanVien}, ${noiDung.soTien}) từ đề xuất #${dx.id}`,
+      ketNoi,
+    );
     return { quyetDinh: await ktklRepository.layQuyetDinhTheoId(quyetDinhId, ketNoi), canhBao };
   });
 }
@@ -328,13 +356,27 @@ async function taoQuyetDinh(nguoiDung, body, diaChiIP) {
     }
     await kiemTraNguoiKy(nguoiKyDuyetId, nhanVienId, ketNoi);
     const { id, soQuyetDinh, canhBao } = await ghiQuyetDinh(nguoiDung, noiDung, nhanVienId, nguoiKyDuyetId, diaChiIP, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'LAP_QUYET_DINH_KTKL', diaChiIP,
-      `${soQuyetDinh} (${noiDung.loaiQuyetDinh} ${nv.maNhanVien}, ${noiDung.soTien})`, ketNoi);
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'LAP_QUYET_DINH_KTKL',
+      diaChiIP,
+      `${soQuyetDinh} (${noiDung.loaiQuyetDinh} ${nv.maNhanVien}, ${noiDung.soTien})`,
+      ketNoi,
+    );
     return { quyetDinh: await ktklRepository.layQuyetDinhTheoId(id, ketNoi), canhBao };
   });
 }
 
 module.exports = {
-  layDanhSachDeXuat, layChiTietDeXuat, taoDeXuat, suaDeXuat, xoaDeXuat, tuChoiDeXuat, lapQuyetDinhTuDeXuat,
-  layDanhSachQuyetDinh, layChiTietQuyetDinh, layDanhSachNguoiKy, taoQuyetDinh,
+  layDanhSachDeXuat,
+  layChiTietDeXuat,
+  taoDeXuat,
+  suaDeXuat,
+  xoaDeXuat,
+  tuChoiDeXuat,
+  lapQuyetDinhTuDeXuat,
+  layDanhSachQuyetDinh,
+  layChiTietQuyetDinh,
+  layDanhSachNguoiKy,
+  taoQuyetDinh,
 };

@@ -1,14 +1,4 @@
-import {
-  LayoutGrid,
-  Users,
-  Clock,
-  CalendarDays,
-  Wallet,
-  Target,
-  Award,
-  ShieldCheck,
-  Bot,
-} from 'lucide-react';
+import { LayoutGrid, Users, Clock, CalendarDays, Wallet, Target, Award, ShieldCheck, Bot } from 'lucide-react';
 
 const TAT_CA = ['Admin', 'giamDoc', 'quanLy', 'HR', 'nhanVien'];
 const QUAN_LY_NHAN_SU = ['giamDoc', 'quanLy', 'HR'];

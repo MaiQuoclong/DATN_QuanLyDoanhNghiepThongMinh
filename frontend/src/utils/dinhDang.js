@@ -47,9 +47,7 @@ export function thanhLuaChon(bang) {
 
 // Bỏ trường rỗng trước khi gửi query
 export function locThamSo(thamSo) {
-  return Object.fromEntries(
-    Object.entries(thamSo).filter(([, giaTri]) => giaTri !== '' && giaTri !== undefined && giaTri !== null)
-  );
+  return Object.fromEntries(Object.entries(thamSo).filter(([, giaTri]) => giaTri !== '' && giaTri !== undefined && giaTri !== null));
 }
 
 // 'HH:MM:SS' -> 'HH:MM'

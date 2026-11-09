@@ -9,10 +9,9 @@ const KY_TU_MAT_KHAU_TAM = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456
 // Mật khẩu tạm luôn có cả chữ và số (đúng quy tắc mật khẩu mạnh của đổi mật khẩu)
 function taoMatKhauTam() {
   for (;;) {
-    const matKhau = Array.from(
-      { length: DO_DAI_MAT_KHAU_TAM },
-      () => KY_TU_MAT_KHAU_TAM[crypto.randomInt(KY_TU_MAT_KHAU_TAM.length)]
-    ).join('');
+    const matKhau = Array.from({ length: DO_DAI_MAT_KHAU_TAM }, () => KY_TU_MAT_KHAU_TAM[crypto.randomInt(KY_TU_MAT_KHAU_TAM.length)]).join(
+      '',
+    );
     if (/[A-Za-z]/.test(matKhau) && /\d/.test(matKhau)) return matKhau;
   }
 }

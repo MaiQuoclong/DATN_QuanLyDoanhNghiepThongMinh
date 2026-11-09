@@ -32,22 +32,45 @@ function TheChamCongHomNay({ homNay, onDaChamCong }) {
   return (
     <div className="the theNoiDung">
       <div className="dauThe">
-        <h3>Hôm nay · {layThu(homNay.ngay)}, {dinhDangNgay(homNay.ngay)}</h3>
+        <h3>
+          Hôm nay · {layThu(homNay.ngay)}, {dinhDangNgay(homNay.ngay)}
+        </h3>
         <span className="chuPhu">
-          Ca {dinhDangGio(homNay.thamSo.gioVaoCa)} - {dinhDangGio(homNay.thamSo.gioRaCa)}, nghỉ trưa {dinhDangGio(homNay.thamSo.batDauNghiTrua)} - {dinhDangGio(homNay.thamSo.ketThucNghiTrua)}
+          Ca {dinhDangGio(homNay.thamSo.gioVaoCa)} - {dinhDangGio(homNay.thamSo.gioRaCa)}, nghỉ trưa{' '}
+          {dinhDangGio(homNay.thamSo.batDauNghiTrua)} - {dinhDangGio(homNay.thamSo.ketThucNghiTrua)}
         </span>
       </div>
       {thongBao && <div className={`thongBao ${thongBao.loai}`}>{thongBao.noiDung}</div>}
       <div className="dauTrangNghiepVu" style={{ marginBottom: 0, alignItems: 'center' }}>
         <div className="luoiThongTin" style={{ flex: 1 }}>
-          <div className="oThongTin"><span>Giờ vào</span><strong>{dinhDangGio(banGhi?.gioVao)}</strong></div>
-          <div className="oThongTin"><span>Giờ ra</span><strong>{dinhDangGio(banGhi?.gioRa)}</strong></div>
-          <div className="oThongTin"><span>Giờ công</span><strong>{banGhi?.gioRa ? banGhi.soGioLamThucTe : '—'}</strong></div>
-          <div className="oThongTin"><span>Tăng ca</span><strong>{banGhi?.gioRa ? banGhi.soGioLamThemOT : '—'}</strong></div>
+          <div className="oThongTin">
+            <span>Giờ vào</span>
+            <strong>{dinhDangGio(banGhi?.gioVao)}</strong>
+          </div>
+          <div className="oThongTin">
+            <span>Giờ ra</span>
+            <strong>{dinhDangGio(banGhi?.gioRa)}</strong>
+          </div>
+          <div className="oThongTin">
+            <span>Giờ công</span>
+            <strong>{banGhi?.gioRa ? banGhi.soGioLamThucTe : '—'}</strong>
+          </div>
+          <div className="oThongTin">
+            <span>Tăng ca</span>
+            <strong>{banGhi?.gioRa ? banGhi.soGioLamThemOT : '—'}</strong>
+          </div>
         </div>
         <div className="hangNutPhai">
-          {!banGhi && <NutBam bieuTuong={LogIn} disabled={dangGui} onClick={() => cham('checkIn')}>Check-in</NutBam>}
-          {banGhi && !banGhi.gioRa && <NutBam bieuTuong={LogOut} bienThe="vang" disabled={dangGui} onClick={() => cham('checkOut')}>Check-out</NutBam>}
+          {!banGhi && (
+            <NutBam bieuTuong={LogIn} disabled={dangGui} onClick={() => cham('checkIn')}>
+              Check-in
+            </NutBam>
+          )}
+          {banGhi && !banGhi.gioRa && (
+            <NutBam bieuTuong={LogOut} bienThe="vang" disabled={dangGui} onClick={() => cham('checkOut')}>
+              Check-out
+            </NutBam>
+          )}
           {banGhi?.gioRa && <span className="chuPhu">Đã hoàn thành chấm công hôm nay</span>}
         </div>
       </div>
@@ -65,13 +88,22 @@ function TrangLichCong() {
   const [daGui, setDaGui] = useState('');
 
   const tai = useCallback(() => {
-    goiApi.get('/chamCong/homNay').then((kq) => setHomNay(kq.data)).catch((e) => setLoi(e.message));
-    goiApi.get('/chamCong/cuaToi', { params: { thang } })
-      .then((kq) => { setCong(kq.data); setLoi(''); })
+    goiApi
+      .get('/chamCong/homNay')
+      .then((kq) => setHomNay(kq.data))
+      .catch((e) => setLoi(e.message));
+    goiApi
+      .get('/chamCong/cuaToi', { params: { thang } })
+      .then((kq) => {
+        setCong(kq.data);
+        setLoi('');
+      })
       .catch((e) => setLoi(e.message));
   }, [thang]);
 
-  useEffect(() => { tai(); }, [tai]);
+  useEffect(() => {
+    tai();
+  }, [tai]);
 
   const tongHop = cong?.tongHop;
   return (
@@ -86,7 +118,9 @@ function TrangLichCong() {
             Tháng
             <input type="month" value={thang} max={thangHienTai()} onChange={(e) => e.target.value && setThang(e.target.value)} />
           </label>
-          <NutBam bieuTuong={FilePen} bienThe="phu" disabled={cong?.daChot} onClick={() => setNgayDieuChinh('')}>Gửi điều chỉnh</NutBam>
+          <NutBam bieuTuong={FilePen} bienThe="phu" disabled={cong?.daChot} onClick={() => setNgayDieuChinh('')}>
+            Gửi điều chỉnh
+          </NutBam>
         </div>
       </div>
 
@@ -94,15 +128,22 @@ function TrangLichCong() {
       {daGui && <div className="thongBao thanhCong">{daGui}</div>}
       {thang === thangHienTai() && <TheChamCongHomNay homNay={homNay} onDaChamCong={tai} />}
       {cong?.daChot && (
-        <div className="thongBao canhBao">
-          Công tháng đã chốt lúc {dinhDangThoiGian(cong.chot.thoiGianChot)}, không thể gửi điều chỉnh.
-        </div>
+        <div className="thongBao canhBao">Công tháng đã chốt lúc {dinhDangThoiGian(cong.chot.thoiGianChot)}, không thể gửi điều chỉnh.</div>
       )}
 
       {tongHop && (
         <div className="luoiThe" style={{ marginBottom: 16 }}>
-          <TheThongKe tieuDe="Ngày có chấm công" giaTri={`${tongHop.soNgayChamCong}/${cong.soNgayCongChuan}`} moTa="So với ngày công chuẩn (T2 - T6)" />
-          <TheThongKe tieuDe="Tổng giờ công" giaTri={tongHop.tongGioLamThucTe} moTa={`Tăng ca ${tongHop.tongGioLamThem} giờ`} trangThai="thanhCong" />
+          <TheThongKe
+            tieuDe="Ngày có chấm công"
+            giaTri={`${tongHop.soNgayChamCong}/${cong.soNgayCongChuan}`}
+            moTa="So với ngày công chuẩn (T2 - T6)"
+          />
+          <TheThongKe
+            tieuDe="Tổng giờ công"
+            giaTri={tongHop.tongGioLamThucTe}
+            moTa={`Tăng ca ${tongHop.tongGioLamThem} giờ`}
+            trangThai="thanhCong"
+          />
           <TheThongKe
             tieuDe="Đi muộn / Về sớm"
             giaTri={`${tongHop.soLanDiMuon} / ${tongHop.soLanVeSom}`}
@@ -118,7 +159,9 @@ function TrangLichCong() {
         </div>
       )}
 
-      <div style={{ marginBottom: 8 }}><ChuThichThoiGian /></div>
+      <div style={{ marginBottom: 8 }}>
+        <ChuThichThoiGian />
+      </div>
       <BangCongNgay
         items={cong?.items ?? []}
         ca={homNay?.thamSo}
@@ -129,7 +172,10 @@ function TrangLichCong() {
         <HopThoaiDieuChinhCong
           ngay={ngayDieuChinh}
           onDong={() => setNgayDieuChinh(null)}
-          onDaGui={(yc) => { setNgayDieuChinh(null); setDaGui(`Đã gửi yêu cầu điều chỉnh ngày ${dinhDangNgay(yc.ngayCanDieuChinh)}, chờ duyệt`); }}
+          onDaGui={(yc) => {
+            setNgayDieuChinh(null);
+            setDaGui(`Đã gửi yêu cầu điều chỉnh ngày ${dinhDangNgay(yc.ngayCanDieuChinh)}, chờ duyệt`);
+          }}
         />
       )}
     </div>

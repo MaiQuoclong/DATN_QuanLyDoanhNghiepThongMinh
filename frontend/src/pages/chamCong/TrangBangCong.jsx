@@ -14,7 +14,15 @@ import { ChuThichThoiGian } from '../../components/chamCong/ThanhThoiGianCong';
 import { dinhDangThoiGian, locThamSo, thangHienTai } from '../../utils/dinhDang';
 
 const COT_BANG_CONG = [
-  { khoa: 'hoVaTen', tieuDe: 'Nhân viên', hienThi: (d) => <>{d.hoVaTen} <span className="chuPhu">{d.maNhanVien}</span></> },
+  {
+    khoa: 'hoVaTen',
+    tieuDe: 'Nhân viên',
+    hienThi: (d) => (
+      <>
+        {d.hoVaTen} <span className="chuPhu">{d.maNhanVien}</span>
+      </>
+    ),
+  },
   { khoa: 'tenPhongBan', tieuDe: 'Phòng ban' },
   { khoa: 'soNgayChamCong', tieuDe: 'Ngày công', canPhai: true },
   { khoa: 'tongGioLamThucTe', tieuDe: 'Giờ công', canPhai: true },
@@ -35,7 +43,8 @@ function HopThoaiCongNhanVien({ nhanVienId, thang, onDong }) {
   const [loi, setLoi] = useState('');
 
   useEffect(() => {
-    goiApi.get(`/chamCong/bangCong/${nhanVienId}`, { params: { thang } })
+    goiApi
+      .get(`/chamCong/bangCong/${nhanVienId}`, { params: { thang } })
       .then((kq) => setCong(kq.data))
       .catch((e) => setLoi(e.message));
   }, [nhanVienId, thang]);
@@ -50,9 +59,12 @@ function HopThoaiCongNhanVien({ nhanVienId, thang, onDong }) {
       {cong && (
         <>
           <div className="chuPhu" style={{ marginBottom: 8 }}>
-            {cong.tongHop.soNgayChamCong}/{cong.soNgayCongChuan} ngày · {cong.tongHop.tongGioLamThucTe} giờ công · tăng ca {cong.tongHop.tongGioLamThem} giờ
+            {cong.tongHop.soNgayChamCong}/{cong.soNgayCongChuan} ngày · {cong.tongHop.tongGioLamThucTe} giờ công · tăng ca{' '}
+            {cong.tongHop.tongGioLamThem} giờ
           </div>
-          <div style={{ marginBottom: 8 }}><ChuThichThoiGian /></div>
+          <div style={{ marginBottom: 8 }}>
+            <ChuThichThoiGian />
+          </div>
           <BangCongNgay items={cong.items} />
         </>
       )}
@@ -80,17 +92,21 @@ function HopThoaiChotCong({ thang, onDong, onDaChot }) {
     <HopThoai
       tieuDe={`Chốt công tháng ${thang}`}
       onDong={onDong}
-      chanTrang={(
+      chanTrang={
         <>
-          <NutBam bienThe="phu" onClick={onDong}>Hủy</NutBam>
-          <NutBam bienThe="vang" bieuTuong={Lock} disabled={dangGui} onClick={chot}>{dangGui ? 'Đang chốt...' : 'Chốt công'}</NutBam>
+          <NutBam bienThe="phu" onClick={onDong}>
+            Hủy
+          </NutBam>
+          <NutBam bienThe="vang" bieuTuong={Lock} disabled={dangGui} onClick={chot}>
+            {dangGui ? 'Đang chốt...' : 'Chốt công'}
+          </NutBam>
         </>
-      )}
+      }
     >
       {loi && <div className="thongBao loi">{loi}</div>}
       <div className="thongBao canhBao">
-        Sau khi chốt, không ai có thể chấm công, gửi hoặc duyệt điều chỉnh công trong tháng {thang}. Bảng công tháng này
-        sẽ dùng để lập bảng lương. Thao tác được ghi nhật ký hệ thống.
+        Sau khi chốt, không ai có thể chấm công, gửi hoặc duyệt điều chỉnh công trong tháng {thang}. Bảng công tháng này sẽ dùng để lập bảng
+        lương. Thao tác được ghi nhật ký hệ thống.
       </div>
       <div className="chuPhu">Cần xử lý hết yêu cầu điều chỉnh đang chờ duyệt của tháng trước khi chốt.</div>
     </HopThoai>
@@ -113,13 +129,19 @@ function TrangBangCong() {
   const [dangChot, setDangChot] = useState(false);
 
   useEffect(() => {
-    goiApi.get('/phongBan').then((kq) => setPhongBan(kq.data)).catch(() => {});
+    goiApi
+      .get('/phongBan')
+      .then((kq) => setPhongBan(kq.data))
+      .catch(() => {});
   }, []);
 
   const tai = useCallback(() => {
     goiApi
       .get('/chamCong/bangCong', { params: locThamSo({ thang, tuKhoa, ...loc, trang, kichThuoc: 20 }) })
-      .then((kq) => { setKetQua(kq.data); setLoi(''); })
+      .then((kq) => {
+        setKetQua(kq.data);
+        setLoi('');
+      })
       .catch((e) => setLoi(e.message));
   }, [thang, tuKhoa, loc, trang]);
 
@@ -131,11 +153,13 @@ function TrangBangCong() {
 
   const items = ketQua?.items ?? [];
   const tong = (khoa) => Math.round(items.reduce((s, d) => s + d[khoa], 0) * 100) / 100;
-  const boLoc = [{
-    khoa: 'phongBanId',
-    nhan: 'Phòng ban',
-    luaChon: phongBan.map((pb) => ({ giaTri: String(pb.id), nhan: pb.tenPhongBan })),
-  }];
+  const boLoc = [
+    {
+      khoa: 'phongBanId',
+      nhan: 'Phòng ban',
+      luaChon: phongBan.map((pb) => ({ giaTri: String(pb.id), nhan: pb.tenPhongBan })),
+    },
+  ];
   const thangDaKetThuc = thang < thangHienTai();
 
   return (
@@ -144,14 +168,25 @@ function TrangBangCong() {
         <div>
           <h1 className="tieuDeTrang">Bảng công tháng</h1>
           <div className="chuPhu">
-            {ketQua ? `${ketQua.soNgayCongChuan} ngày công chuẩn · ${ketQua.phanTrang.tongSo} nhân viên` : (loi ? '' : 'Đang tải...')}
+            {ketQua ? `${ketQua.soNgayCongChuan} ngày công chuẩn · ${ketQua.phanTrang.tongSo} nhân viên` : loi ? '' : 'Đang tải...'}
             {ketQua?.daChot && ` · Đã chốt lúc ${dinhDangThoiGian(ketQua.chot.thoiGianChot)} (${ketQua.chot.nguoiChot ?? '—'})`}
           </div>
         </div>
         <div className="hangNutPhai">
           <label className="truongForm">
             Tháng
-            <input type="month" value={thang} max={thangHienTai()} onChange={(e) => { if (e.target.value) { setThang(e.target.value); setTrang(1); setKetQua(null); } }} />
+            <input
+              type="month"
+              value={thang}
+              max={thangHienTai()}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setThang(e.target.value);
+                  setTrang(1);
+                  setKetQua(null);
+                }
+              }}
+            />
           </label>
           {laHR && ketQua && !ketQua.daChot && (
             <NutBam
@@ -170,8 +205,18 @@ function TrangBangCong() {
 
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
       <div className="luoiThe" style={{ marginBottom: 16 }}>
-        <TheThongKe tieuDe="Tổng giờ công (trang này)" giaTri={tong('tongGioLamThucTe')} moTa={`Tăng ca ${tong('tongGioLamThem')} giờ`} trangThai="thanhCong" />
-        <TheThongKe tieuDe="Lượt đi muộn" giaTri={tong('soLanDiMuon')} moTa={`Về sớm ${tong('soLanVeSom')} lượt`} trangThai={tong('soLanDiMuon') ? 'canhBao' : 'thanhCong'} />
+        <TheThongKe
+          tieuDe="Tổng giờ công (trang này)"
+          giaTri={tong('tongGioLamThucTe')}
+          moTa={`Tăng ca ${tong('tongGioLamThem')} giờ`}
+          trangThai="thanhCong"
+        />
+        <TheThongKe
+          tieuDe="Lượt đi muộn"
+          giaTri={tong('soLanDiMuon')}
+          moTa={`Về sớm ${tong('soLanVeSom')} lượt`}
+          trangThai={tong('soLanDiMuon') ? 'canhBao' : 'thanhCong'}
+        />
         <TheThongKe
           tieuDe="Ngày thiếu check-out"
           giaTri={tong('soNgayThieuCheckOut')}
@@ -182,11 +227,17 @@ function TrangBangCong() {
 
       <ThanhLoc
         tuKhoa={tuKhoa}
-        onDoiTuKhoa={(v) => { setTuKhoa(v); setTrang(1); }}
+        onDoiTuKhoa={(v) => {
+          setTuKhoa(v);
+          setTrang(1);
+        }}
         goiYTim="Mã hoặc tên nhân viên..."
         boLoc={boLoc}
         giaTriLoc={loc}
-        onDoiLoc={(khoa, v) => { setLoc((cu) => ({ ...cu, [khoa]: v })); setTrang(1); }}
+        onDoiLoc={(khoa, v) => {
+          setLoc((cu) => ({ ...cu, [khoa]: v }));
+          setTrang(1);
+        }}
         phanPhai={<span />}
       />
       {loi && <div className="thongBao loi">{loi}</div>}
@@ -204,7 +255,11 @@ function TrangBangCong() {
         <HopThoaiChotCong
           thang={thang}
           onDong={() => setDangChot(false)}
-          onDaChot={(tb) => { setDangChot(false); setThongBao(tb); tai(); }}
+          onDaChot={(tb) => {
+            setDangChot(false);
+            setThongBao(tb);
+            tai();
+          }}
         />
       )}
     </div>

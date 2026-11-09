@@ -18,13 +18,21 @@ const goi = (phuongThuc, duongDan, tk) => {
   const r = request(app)[phuongThuc](`/api/v1${duongDan}`);
   return tk ? r.set('Authorization', `Bearer ${tk}`) : r;
 };
-const docText = (r) => r.buffer(true).parse((res, cb) => {
-  let s = ''; res.setEncoding('utf8'); res.on('data', (c) => { s += c; }); res.on('end', () => cb(null, s));
-});
+const docText = (r) =>
+  r.buffer(true).parse((res, cb) => {
+    let s = '';
+    res.setEncoding('utf8');
+    res.on('data', (c) => {
+      s += c;
+    });
+    res.on('end', () => cb(null, s));
+  });
 
 async function layNhatKy(hanhDong) {
-  const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id',
-    [mocNhatKy, hanhDong]);
+  const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id', [
+    mocNhatKy,
+    hanhDong,
+  ]);
   return d;
 }
 async function chenChot(thang) {
@@ -35,29 +43,41 @@ async function chenNhanVien(luong = 10000000) {
   const ma = `QK${Date.now() % 100000}${demMa}`;
   const [kq] = await pool.execute(
     `INSERT INTO nhanvien (maNhanVien, hoVaTen, gioiTinh, ngaySinh, chucDanhPhongBanId, ngayVaoLam, trangThaiLamViec)
-     VALUES (?, 'QA Thưởng KPI', 'NAM', '1995-01-01', 5, '2020-01-06', 'CHINH_THUC')`, [ma]);
+     VALUES (?, 'QA Thưởng KPI', 'NAM', '1995-01-01', 5, '2020-01-06', 'CHINH_THUC')`,
+    [ma],
+  );
   await pool.execute(
     `INSERT INTO hopdonglaodong (maHopDong, nhanVienId, loaiHopDong, ngayBatDau, ngayKetThuc, luongCoBan, mucPhuCap, trangThai)
-     VALUES (?, ?, 'XAC_DINH_THOI_HAN', '2020-01-06', NULL, ?, 1000000, 'HIEU_LUC')`, [`HD${ma}`, kq.insertId, luong]);
+     VALUES (?, ?, 'XAC_DINH_THOI_HAN', '2020-01-06', NULL, ?, 1000000, 'HIEU_LUC')`,
+    [`HD${ma}`, kq.insertId, luong],
+  );
   return { id: kq.insertId, maNhanVien: ma };
 }
 async function chenKy(ngayBatDau, ngayKetThuc, trangThai = 'DA_DONG') {
   demMa += 1;
-  const [kq] = await pool.execute('INSERT INTO kydanhgiakpi (tenKyDanhGia, ngayBatDau, ngayKetThuc, trangThai) VALUES (?, ?, ?, ?)',
-    [`QA thưởng KPI ${Date.now() % 100000}-${demMa}`, ngayBatDau, ngayKetThuc, trangThai]);
+  const [kq] = await pool.execute('INSERT INTO kydanhgiakpi (tenKyDanhGia, ngayBatDau, ngayKetThuc, trangThai) VALUES (?, ?, ?, ?)', [
+    `QA thưởng KPI ${Date.now() % 100000}-${demMa}`,
+    ngayBatDau,
+    ngayKetThuc,
+    trangThai,
+  ]);
   return kq.insertId;
 }
 async function chenPhieuKpi(kyId, nhanVienId, xepLoai, ngayNghiemThu, trangThai = 'DA_DUYET') {
   const [kq] = await pool.execute(
     `INSERT INTO phieudanhgiakpi (kyDanhGiaId, nhanVienId, xepLoaiChung, nguoiDanhGiaId, ngayNghiemThu, trangThai)
-     VALUES (?, ?, ?, 3, ?, ?)`, [kyId, nhanVienId, xepLoai, ngayNghiemThu, trangThai]);
+     VALUES (?, ?, ?, 3, ?, ?)`,
+    [kyId, nhanVienId, xepLoai, ngayNghiemThu, trangThai],
+  );
   return kq.insertId;
 }
 async function chenQuyetDinh(nhanVienId, loai, soTien, ngay) {
   demMa += 1;
   await pool.execute(
     `INSERT INTO quyetdinhkhenthuongkyluat (soQuyetDinh, nhanVienId, loaiQuyetDinh, tieuDe, soTien, lyDo, ngayBanHanh, nguoiKyDuyetId)
-     VALUES (?, ?, ?, 'Test', ?, 'Test thưởng KPI', ?, 2)`, [`QAKP${Date.now() % 100000}${demMa}`, nhanVienId, loai, soTien, ngay]);
+     VALUES (?, ?, ?, 'Test', ?, 'Test thưởng KPI', ?, 2)`,
+    [`QAKP${Date.now() % 100000}${demMa}`, nhanVienId, loai, soTien, ngay],
+  );
 }
 async function lapBangOk(thang) {
   await chenChot(thang);
@@ -77,9 +97,12 @@ async function thangHienTaiDb() {
 async function chenBangThangHienTai(trangThai) {
   const thang = await thangHienTaiDb();
   const [nam, so] = thang.split('-').map(Number);
-  const [kq] = await pool.execute(
-    "INSERT INTO bangtonghopluong (maBangLuong, thang, nam, trangThai, nguoiLapId) VALUES (?, ?, ?, ?, 4)",
-    [`BL${thang}`, so, nam, trangThai]);
+  const [kq] = await pool.execute('INSERT INTO bangtonghopluong (maBangLuong, thang, nam, trangThai, nguoiLapId) VALUES (?, ?, ?, ?, 4)', [
+    `BL${thang}`,
+    so,
+    nam,
+    trangThai,
+  ]);
   return { id: kq.insertId, thang };
 }
 
@@ -87,14 +110,19 @@ async function chenBangThangHienTai(trangThai) {
 async function phieuKpiChoDuyetQuaApi() {
   demMa += 1;
   const nam = 2060 + demMa;
-  const ky = await goi('post', '/kyDanhGiaKPI', token.hr)
-    .send({ tenKyDanhGia: `QA KPI lương ${Date.now() % 100000}-${demMa}`, ngayBatDau: `${nam}-01-01`, ngayKetThuc: `${nam}-03-31` });
+  const ky = await goi('post', '/kyDanhGiaKPI', token.hr).send({
+    tenKyDanhGia: `QA KPI lương ${Date.now() % 100000}-${demMa}`,
+    ngayBatDau: `${nam}-01-01`,
+    ngayKetThuc: `${nam}-03-31`,
+  });
   expect(ky.status).toBe(201);
   const tao = await goi('post', '/phieuDanhGiaKPI', token.hr).send({ kyDanhGiaId: ky.body.data.id, nhanVienId: NV_NHANVIEN });
   expect(tao.status).toBe(201);
   const phieu = tao.body.data;
-  const r1 = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}/tuCham`, token.nhanvien)
-    .send({ giaiTrinhNhanVien: 'Đã làm', chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, diemTuCham: 8, ketQuaThucTe: 'Đạt' })) });
+  const r1 = await goi('patch', `/phieuDanhGiaKPI/${phieu.id}/tuCham`, token.nhanvien).send({
+    giaiTrinhNhanVien: 'Đã làm',
+    chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, diemTuCham: 8, ketQuaThucTe: 'Đạt' })),
+  });
   expect(r1.status).toBe(200);
   const r2 = await goi('post', `/phieuDanhGiaKPI/${phieu.id}/guiDuyet`, token.nhanvien);
   expect(r2.status).toBe(200);
@@ -102,11 +130,22 @@ async function phieuKpiChoDuyetQuaApi() {
 }
 // Điểm 9 mọi mục -> XUAT_SAC
 const bodyNghiemThu = (phieu) => ({
-  nhanXetQuanLy: 'Tốt', chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, diemNghiemThu: 9, nhanXet: 'OK' })),
+  nhanXetQuanLy: 'Tốt',
+  chiTiet: phieu.chiTiet.map((c) => ({ id: c.id, diemNghiemThu: 9, nhanXet: 'OK' })),
 });
 
-const BANG_DAT_LAI = ['bangtonghopluong', 'phieuluongnhanvien', 'quyetdinhkhenthuongkyluat', 'chitietdanhgiakpi', 'phieudanhgiakpi',
-  'kydanhgiakpi', 'hopdonglaodong', 'nhanvien', 'banghichamcong', 'nhatkyhethong'];
+const BANG_DAT_LAI = [
+  'bangtonghopluong',
+  'phieuluongnhanvien',
+  'quyetdinhkhenthuongkyluat',
+  'chitietdanhgiakpi',
+  'phieudanhgiakpi',
+  'kydanhgiakpi',
+  'hopdonglaodong',
+  'nhanvien',
+  'banghichamcong',
+  'nhatkyhethong',
+];
 async function datLaiAutoIncrement() {
   for (const bang of BANG_DAT_LAI) await pool.query(`ALTER TABLE ${bang} AUTO_INCREMENT = 1`);
 }
@@ -185,9 +224,15 @@ describe('Lập bảng lương cộng thưởng KPI', () => {
     await chenQuyetDinh(nv.id, 'KY_LUAT', 200000, '2020-04-13');
 
     const bang = await lapBangOk('2020-04');
-    const [[p]] = await pool.execute('SELECT thuongKPI FROM phieuluongnhanvien WHERE bangTongHopLuongId = ? AND nhanVienId = ?', [bang.id, nv.id]);
+    const [[p]] = await pool.execute('SELECT thuongKPI FROM phieuluongnhanvien WHERE bangTongHopLuongId = ? AND nhanVienId = ?', [
+      bang.id,
+      nv.id,
+    ]);
     expect(Number(p.thuongKPI)).toBe(3900000 + 1000000 + 500000 - 200000);
-    const [[pk]] = await pool.execute('SELECT thuongKPI FROM phieuluongnhanvien WHERE bangTongHopLuongId = ? AND nhanVienId = ?', [bang.id, nvKhac.id]);
+    const [[pk]] = await pool.execute('SELECT thuongKPI FROM phieuluongnhanvien WHERE bangTongHopLuongId = ? AND nhanVienId = ?', [
+      bang.id,
+      nvKhac.id,
+    ]);
     expect(Number(pk.thuongKPI)).toBe(3000000);
 
     const doc = await layPhieuTrongBang(bang.id, nv.id);
@@ -229,10 +274,16 @@ describe('Đọc phiếu lương có tách thưởng KPI', () => {
   test('nhanVien chỉ thấy phiếu của mình khi bảng DA_DUYET, có tách thưởng; phiếu người khác 404', async () => {
     const nvKhac = await chenNhanVien(10000000);
     const [bq] = await pool.execute(
-      "INSERT INTO bangtonghopluong (maBangLuong, thang, nam, trangThai, nguoiLapId) VALUES ('BL2020-06', 6, 2020, 'BAN_NHAP', 4)");
-    const chenPhieuLuong = async (nhanVienId, luong, thuong) => (await pool.execute(
-      `INSERT INTO phieuluongnhanvien (bangTongHopLuongId, nhanVienId, soNgayCongThucTe, luongCoBan, luongLamThemOT, thuongKPI,
-         tongPhuCap, khauTruBaoHiem, khauTruThueTNCN) VALUES (?, ?, 22, ?, 0, ?, 0, 0, 0)`, [bq.insertId, nhanVienId, luong, thuong]))[0].insertId;
+      "INSERT INTO bangtonghopluong (maBangLuong, thang, nam, trangThai, nguoiLapId) VALUES ('BL2020-06', 6, 2020, 'BAN_NHAP', 4)",
+    );
+    const chenPhieuLuong = async (nhanVienId, luong, thuong) =>
+      (
+        await pool.execute(
+          `INSERT INTO phieuluongnhanvien (bangTongHopLuongId, nhanVienId, soNgayCongThucTe, luongCoBan, luongLamThemOT, thuongKPI,
+         tongPhuCap, khauTruBaoHiem, khauTruThueTNCN) VALUES (?, ?, 22, ?, 0, ?, 0, 0, 0)`,
+          [bq.insertId, nhanVienId, luong, thuong],
+        )
+      )[0].insertId;
     const phieuToi = await chenPhieuLuong(NV_NHANVIEN, 12000000, 1820000);
     const phieuKhac = await chenPhieuLuong(nvKhac.id, 10000000, 0);
     await chenPhieuKpi(await chenKy('2020-05-01', '2020-05-31'), NV_NHANVIEN, 'TOT', '2020-06-15 10:00:00'); // 1.320.000
@@ -258,7 +309,11 @@ describe('Đọc phiếu lương có tách thưởng KPI', () => {
     const bang = await lapBangOk('2020-04');
     const res = await docText(goi('get', `/bangLuong/${bang.id}/xuatExcel`, token.giamdoc));
     expect(res.status).toBe(200);
-    const dong = res.body.replace(/^﻿/, '').trim().split('\r\n').map((d) => d.split(','));
+    const dong = res.body
+      .replace(/^\uFEFF/, '')
+      .trim()
+      .split('\r\n')
+      .map((d) => d.split(','));
     const tieuDe = dong[0];
     const iThuong = tieuDe.indexOf('Thưởng/Phạt');
     expect(tieuDe.slice(iThuong, iThuong + 3)).toEqual(['Thưởng/Phạt', 'Trong đó thưởng KPI', 'Trong đó khen thưởng - kỷ luật']);
@@ -285,7 +340,9 @@ describe('Nghiệm thu KPI khi đã có bảng lương tháng hiện tại', () 
     expect(p).toBeDefined();
     const [cacKpi] = await pool.execute(
       `SELECT p.xepLoaiChung, k.ngayBatDau, k.ngayKetThuc FROM phieudanhgiakpi p JOIN kydanhgiakpi k ON k.id = p.kyDanhGiaId
-        WHERE p.nhanVienId = ? AND p.trangThai = 'DA_DUYET' AND DATE_FORMAT(p.ngayNghiemThu, '%Y-%m') = ?`, [NV_NHANVIEN, bang.thang]);
+        WHERE p.nhanVienId = ? AND p.trangThai = 'DA_DUYET' AND DATE_FORMAT(p.ngayNghiemThu, '%Y-%m') = ?`,
+      [NV_NHANVIEN, bang.thang],
+    );
     const kyVong = cacKpi.reduce((s, k) => s + tinhThuongKpi(k.xepLoaiChung, p.luongCoBan, demSoThangKy(k.ngayBatDau, k.ngayKetThuc)), 0);
     expect(kyVong).toBeGreaterThanOrEqual(Math.round(1.3 * Number(p.luongCoBan) * 0.1 * 3));
     expect(p.thuongKpi).toBe(kyVong);
@@ -317,7 +374,10 @@ describe('Nghiệm thu KPI khi đã có bảng lương tháng hiện tại', () 
 describe('Sửa kỳ KPI đã có phiếu nghiệm thu', () => {
   test('đổi ngày -> 409, ngày không đổi; đổi tên vẫn được', async () => {
     const { ky } = await phieuKpiChoDuyetQuaApi();
-    await pool.execute("UPDATE phieudanhgiakpi SET trangThai = 'DA_DUYET', xepLoaiChung = 'TOT', ngayNghiemThu = '2020-04-10 09:00:00' WHERE kyDanhGiaId = ?", [ky.id]);
+    await pool.execute(
+      "UPDATE phieudanhgiakpi SET trangThai = 'DA_DUYET', xepLoaiChung = 'TOT', ngayNghiemThu = '2020-04-10 09:00:00' WHERE kyDanhGiaId = ?",
+      [ky.id],
+    );
     const nam = ky.ngayBatDau.slice(0, 4);
     const r1 = await goi('patch', `/kyDanhGiaKPI/${ky.id}`, token.hr).send({ ngayKetThuc: `${nam}-06-30` });
     expect(r1.status).toBe(409);

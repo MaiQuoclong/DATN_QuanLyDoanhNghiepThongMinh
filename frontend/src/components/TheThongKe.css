@@ -19,6 +19,12 @@
   margin-top: 4px;
 }
 
-.theMoTa.thanhCong { color: var(--mauThanhCong); }
-.theMoTa.canhBao { color: var(--mauCanhBao); }
-.theMoTa.loi { color: var(--mauLoi); }
+.theMoTa.thanhCong {
+  color: var(--mauThanhCong);
+}
+.theMoTa.canhBao {
+  color: var(--mauCanhBao);
+}
+.theMoTa.loi {
+  color: var(--mauLoi);
+}

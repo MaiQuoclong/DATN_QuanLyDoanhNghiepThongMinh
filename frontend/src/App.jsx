@@ -81,7 +81,14 @@ function App() {
   return (
     <Routes>
       <Route path="/dangNhap" element={<TrangDangNhap />} />
-      <Route path="/doiMatKhau" element={<TuyenBaoVe><TrangDoiMatKhau /></TuyenBaoVe>} />
+      <Route
+        path="/doiMatKhau"
+        element={
+          <TuyenBaoVe>
+            <TrangDoiMatKhau />
+          </TuyenBaoVe>
+        }
+      />
 
       <Route element={<TuyenBaoVe />}>
         <Route element={<BoCucChinh />}>
@@ -108,7 +115,11 @@ function App() {
                   <Route
                     key={duongDan}
                     path={duongDan}
-                    element={<TuyenBaoVe vaiTroChoPhep={tab?.vaiTro ?? m.vaiTro}><Trang /></TuyenBaoVe>}
+                    element={
+                      <TuyenBaoVe vaiTroChoPhep={tab?.vaiTro ?? m.vaiTro}>
+                        <Trang />
+                      </TuyenBaoVe>
+                    }
                   />
                 );
               })}

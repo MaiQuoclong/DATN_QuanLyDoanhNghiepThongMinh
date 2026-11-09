@@ -30,26 +30,33 @@ function HopThoaiBieuMau({ tieuDe, truong, giaTriBanDau = {}, nhanNutGui = 'Lưu
     <HopThoai
       tieuDe={tieuDe}
       onDong={onDong}
-      chanTrang={(
+      chanTrang={
         <>
-          <NutBam bienThe="phu" type="button" onClick={onDong}>Hủy</NutBam>
+          <NutBam bienThe="phu" type="button" onClick={onDong}>
+            Hủy
+          </NutBam>
           <NutBam bienThe={bienTheNut} type="submit" form="hopThoaiBieuMau" disabled={dangGui}>
             {dangGui ? 'Đang xử lý...' : nhanNutGui}
           </NutBam>
         </>
-      )}
+      }
     >
       {moTa && <div className="thongBao canhBao">{moTa}</div>}
       {loi && <div className="thongBao loi">{loi}</div>}
       <form id="hopThoaiBieuMau" className="bieuMau" onSubmit={gui}>
         {truong.map(({ ten, nhan, kieu = 'text', luaChon = [], locNhanVien, batBuoc, rongHet, goiY, ghiChu }) => (
           <label key={ten} className={`truongForm ${rongHet || ['textarea', 'nhanVien'].includes(kieu) ? 'rongHet' : ''}`}>
-            {nhan}{batBuoc && ' *'}
+            {nhan}
+            {batBuoc && ' *'}
             {kieu === 'nhanVien' && <OChonNhanVien value={giaTri[ten]} onChange={doi(ten)} loc={locNhanVien} batBuoc={batBuoc} />}
             {kieu === 'select' && (
               <select value={giaTri[ten]} onChange={doi(ten)} required={batBuoc}>
                 <option value="">-- Chọn --</option>
-                {luaChon.map((lc) => <option key={lc.giaTri} value={lc.giaTri}>{lc.nhan}</option>)}
+                {luaChon.map((lc) => (
+                  <option key={lc.giaTri} value={lc.giaTri}>
+                    {lc.nhan}
+                  </option>
+                ))}
               </select>
             )}
             {kieu === 'textarea' && <textarea value={giaTri[ten]} onChange={doi(ten)} required={batBuoc} placeholder={goiY} />}

@@ -11,10 +11,7 @@ export function NhaCungCapXacThuc({ children }) {
 
   const xoaPhien = useCallback(() => setNguoiDung(null), []);
 
-  const taiThongTin = useCallback(
-    () => goiApi.get('/xacThuc/toi').then((ketQua) => setNguoiDung(ketQua.data)),
-    []
-  );
+  const taiThongTin = useCallback(() => goiApi.get('/xacThuc/toi').then((ketQua) => setNguoiDung(ketQua.data)), []);
 
   // Backend xóa cookie và ghi DANG_XUAT; chờ xong mới xóa phiên để Set-Cookie xóa của lần đăng xuất
   // không ghi đè cookie của lần đăng nhập ngay sau đó. Lỗi mạng cũng không chặn đăng xuất ở client.
@@ -24,7 +21,9 @@ export function NhaCungCapXacThuc({ children }) {
   }, [xoaPhien]);
 
   useEffect(() => {
-    taiThongTin().catch(xoaPhien).finally(() => setDangTai(false));
+    taiThongTin()
+      .catch(xoaPhien)
+      .finally(() => setDangTai(false));
   }, [taiThongTin, xoaPhien]);
 
   // Phiên bị backend từ chối (hết hạn, bị khóa, đổi mật khẩu nơi khác) -> xóa phiên ở client.
@@ -50,11 +49,7 @@ export function NhaCungCapXacThuc({ children }) {
     setNguoiDung(ketQua.data.nguoiDung);
   };
 
-  return (
-    <NguCanhXacThuc.Provider value={{ nguoiDung, dangTai, dangNhap, dangXuat, doiMatKhau }}>
-      {children}
-    </NguCanhXacThuc.Provider>
-  );
+  return <NguCanhXacThuc.Provider value={{ nguoiDung, dangTai, dangNhap, dangXuat, doiMatKhau }}>{children}</NguCanhXacThuc.Provider>;
 }
 
 export function useXacThuc() {

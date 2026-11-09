@@ -21,7 +21,10 @@ function TrangHoSoCuaToi() {
   const [dangGui, setDangGui] = useState(false);
 
   const taiHoSo = useCallback(() => {
-    goiApi.get('/nhanVien/toi').then((kq) => setHoSo(kq.data)).catch((e) => setLoi(e.message));
+    goiApi
+      .get('/nhanVien/toi')
+      .then((kq) => setHoSo(kq.data))
+      .catch((e) => setLoi(e.message));
   }, []);
   useEffect(taiHoSo, [taiHoSo]);
 
@@ -52,10 +55,14 @@ function TrangHoSoCuaToi() {
     <div>
       <div className="dauTrangNghiepVu">
         <DauHoSo hoSo={hoSo} />
-        <NutBam bienThe="phu" bieuTuong={Pencil} onClick={moSua}>Sửa thông tin liên hệ</NutBam>
+        <NutBam bienThe="phu" bieuTuong={Pencil} onClick={moSua}>
+          Sửa thông tin liên hệ
+        </NutBam>
       </div>
       <div className="the theNoiDung">
-        <div className="dauThe"><h3>Thông tin cá nhân</h3></div>
+        <div className="dauThe">
+          <h3>Thông tin cá nhân</h3>
+        </div>
         <LuoiThongTinHoSo hoSo={hoSo} />
       </div>
 
@@ -63,12 +70,16 @@ function TrangHoSoCuaToi() {
         <HopThoai
           tieuDe="Sửa thông tin liên hệ"
           onDong={() => setForm(null)}
-          chanTrang={(
+          chanTrang={
             <>
-              <NutBam bienThe="phu" onClick={() => setForm(null)}>Hủy</NutBam>
-              <NutBam type="submit" form="formLienHe" disabled={dangGui}>{dangGui ? 'Đang lưu...' : 'Lưu'}</NutBam>
+              <NutBam bienThe="phu" onClick={() => setForm(null)}>
+                Hủy
+              </NutBam>
+              <NutBam type="submit" form="formLienHe" disabled={dangGui}>
+                {dangGui ? 'Đang lưu...' : 'Lưu'}
+              </NutBam>
             </>
-          )}
+          }
         >
           {loiForm && <div className="thongBao loi">{loiForm}</div>}
           <form id="formLienHe" className="bieuMau" onSubmit={luu}>

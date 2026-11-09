@@ -24,7 +24,7 @@ loaiNghiPhepRouter.post(
     tenLoai: { nhan: 'Tên loại', batBuoc: true, toiThieu: 2, toiDa: 100 },
     moTa: { nhan: 'Mô tả', toiDa: 255 },
   }),
-  batLoiBatDongBo(nghiPhepController.themLoai)
+  batLoiBatDongBo(nghiPhepController.themLoai),
 );
 loaiNghiPhepRouter.patch(
   '/:id',
@@ -34,7 +34,7 @@ loaiNghiPhepRouter.patch(
     moTa: { nhan: 'Mô tả', toiDa: 255 },
     trangThai: { nhan: 'Trạng thái', cacGiaTri: TRANG_THAI_LOAI_NGHI_PHEP },
   }),
-  batLoiBatDongBo(nghiPhepController.suaLoai)
+  batLoiBatDongBo(nghiPhepController.suaLoai),
 );
 
 // ===================== /api/v1/quyPhep =====================
@@ -49,7 +49,7 @@ quyPhepRouter.patch(
   phanQuyen(['HR']),
   // tongSoNgayPhep (số, bước 0.5) do service kiểm tra
   kiemTraDuLieu({ lyDo: { nhan: 'Lý do', toiDa: 255 } }),
-  batLoiBatDongBo(nghiPhepController.suaQuy)
+  batLoiBatDongBo(nghiPhepController.suaQuy),
 );
 
 // ===================== /api/v1/donNghiPhep =====================
@@ -68,7 +68,7 @@ donNghiPhepRouter.post(
     ngayKetThuc: { nhan: 'Ngày kết thúc', batBuoc: true, kieu: 'ngay' },
     lyDo: { nhan: 'Lý do', batBuoc: true, toiThieu: 5, toiDa: 1000 },
   }),
-  batLoiBatDongBo(nghiPhepController.taoDon)
+  batLoiBatDongBo(nghiPhepController.taoDon),
 );
 donNghiPhepRouter.post('/:id/huy', phanQuyen(MOI_VAI_TRO), batLoiBatDongBo(nghiPhepController.huyDon));
 donNghiPhepRouter.post('/:id/duyet', phanQuyen(DUYET_DON), batLoiBatDongBo(nghiPhepController.duyetDon));
@@ -76,7 +76,7 @@ donNghiPhepRouter.post(
   '/:id/tuChoi',
   phanQuyen(DUYET_DON),
   kiemTraDuLieu({ lyDoTuChoi: { nhan: 'Lý do từ chối', batBuoc: true, toiDa: 1000 } }),
-  batLoiBatDongBo(nghiPhepController.tuChoiDon)
+  batLoiBatDongBo(nghiPhepController.tuChoiDon),
 );
 
 module.exports = { loaiNghiPhepRouter, quyPhepRouter, donNghiPhepRouter };

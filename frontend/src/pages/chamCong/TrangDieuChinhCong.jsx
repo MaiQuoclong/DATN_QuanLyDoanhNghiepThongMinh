@@ -42,7 +42,18 @@ const COT_YEU_CAU = [
   { khoa: 'tenNguoiDuyet', tieuDe: 'Người duyệt', hienThi: (d) => d.tenNguoiDuyet ?? '—' },
 ];
 const COT_CO_NHAN_VIEN = [
-  { khoa: 'hoVaTen', tieuDe: 'Nhân viên', hienThi: (d) => <>{d.hoVaTen} <span className="chuPhu">{d.maNhanVien} · {d.tenPhongBan}</span></> },
+  {
+    khoa: 'hoVaTen',
+    tieuDe: 'Nhân viên',
+    hienThi: (d) => (
+      <>
+        {d.hoVaTen}{' '}
+        <span className="chuPhu">
+          {d.maNhanVien} · {d.tenPhongBan}
+        </span>
+      </>
+    ),
+  },
   ...COT_YEU_CAU,
 ];
 
@@ -84,30 +95,70 @@ function HopThoaiChiTietYeuCau({ yeuCau, onDong, onDaXuLy }) {
     <HopThoai
       tieuDe={`Yêu cầu điều chỉnh ngày ${dinhDangNgay(yeuCau.ngayCanDieuChinh)}`}
       onDong={onDong}
-      chanTrang={yeuCau.duocDuyet ? (
-        <>
-          <NutBam bienThe="phu" bieuTuong={X} disabled={dangGui} onClick={() => setDangTuChoi(true)}>Từ chối</NutBam>
-          <NutBam bieuTuong={Check} disabled={dangGui} onClick={duyet}>Duyệt</NutBam>
-        </>
-      ) : <NutBam bienThe="phu" onClick={onDong}>Đóng</NutBam>}
+      chanTrang={
+        yeuCau.duocDuyet ? (
+          <>
+            <NutBam bienThe="phu" bieuTuong={X} disabled={dangGui} onClick={() => setDangTuChoi(true)}>
+              Từ chối
+            </NutBam>
+            <NutBam bieuTuong={Check} disabled={dangGui} onClick={duyet}>
+              Duyệt
+            </NutBam>
+          </>
+        ) : (
+          <NutBam bienThe="phu" onClick={onDong}>
+            Đóng
+          </NutBam>
+        )
+      }
     >
       {loi && <div className="thongBao loi">{loi}</div>}
       <div className="luoiThongTin">
-        <div className="oThongTin"><span>Nhân viên</span><strong>{yeuCau.hoVaTen} ({yeuCau.maNhanVien})</strong></div>
-        <div className="oThongTin"><span>Phòng ban</span><strong>{yeuCau.tenPhongBan}</strong></div>
+        <div className="oThongTin">
+          <span>Nhân viên</span>
+          <strong>
+            {yeuCau.hoVaTen} ({yeuCau.maNhanVien})
+          </strong>
+        </div>
+        <div className="oThongTin">
+          <span>Phòng ban</span>
+          <strong>{yeuCau.tenPhongBan}</strong>
+        </div>
         <div className="oThongTin">
           <span>Giờ hiện tại</span>
           <strong>{yeuCau.banGhiChamCongId ? khoangGio(yeuCau.gioVaoHienTai, yeuCau.gioRaHienTai) : 'Chưa chấm công'}</strong>
         </div>
-        <div className="oThongTin"><span>Đề xuất</span><strong>{khoangGio(yeuCau.gioVaoDeXuat, yeuCau.gioRaDeXuat)}</strong></div>
-        <div className="oThongTin"><span>Trạng thái</span><strong><ChipTrangThai trangThai={yeuCau.trangThai} /></strong></div>
-        <div className="oThongTin"><span>Ngày gửi</span><strong>{dinhDangThoiGian(yeuCau.ngayTao)}</strong></div>
+        <div className="oThongTin">
+          <span>Đề xuất</span>
+          <strong>{khoangGio(yeuCau.gioVaoDeXuat, yeuCau.gioRaDeXuat)}</strong>
+        </div>
+        <div className="oThongTin">
+          <span>Trạng thái</span>
+          <strong>
+            <ChipTrangThai trangThai={yeuCau.trangThai} />
+          </strong>
+        </div>
+        <div className="oThongTin">
+          <span>Ngày gửi</span>
+          <strong>{dinhDangThoiGian(yeuCau.ngayTao)}</strong>
+        </div>
         {yeuCau.tenNguoiDuyet && (
-          <div className="oThongTin"><span>Người xử lý</span><strong>{yeuCau.tenNguoiDuyet} · {dinhDangThoiGian(yeuCau.thoiGianDuyet)}</strong></div>
+          <div className="oThongTin">
+            <span>Người xử lý</span>
+            <strong>
+              {yeuCau.tenNguoiDuyet} · {dinhDangThoiGian(yeuCau.thoiGianDuyet)}
+            </strong>
+          </div>
         )}
       </div>
-      <p><strong>Lý do giải trình:</strong> {yeuCau.lyDoGiaiTrinh}</p>
-      {yeuCau.lyDoTuChoi && <p><strong>Lý do từ chối:</strong> {yeuCau.lyDoTuChoi}</p>}
+      <p>
+        <strong>Lý do giải trình:</strong> {yeuCau.lyDoGiaiTrinh}
+      </p>
+      {yeuCau.lyDoTuChoi && (
+        <p>
+          <strong>Lý do từ chối:</strong> {yeuCau.lyDoTuChoi}
+        </p>
+      )}
       <div className="chuPhu">Giờ để trống (—) trong đề xuất được giữ nguyên theo giờ hiện tại.</div>
     </HopThoai>
   );
@@ -131,7 +182,10 @@ function DanhSachYeuCau({ cheDo }) {
       .get(laDuyet ? '/dieuChinhCong' : '/dieuChinhCong/cuaToi', {
         params: locThamSo({ tuKhoa, ...loc, thang, trang, kichThuoc: 20 }),
       })
-      .then((kq) => { setKetQua(kq.data); setLoi(''); })
+      .then((kq) => {
+        setKetQua(kq.data);
+        setLoi('');
+      })
       .catch((e) => setLoi(e.message));
   }, [laDuyet, tuKhoa, loc, thang, trang]);
 
@@ -151,25 +205,38 @@ function DanhSachYeuCau({ cheDo }) {
             {' · '}Tổng {ketQua?.phanTrang.tongSo ?? 0} yêu cầu
           </div>
         </div>
-        {!laDuyet && <NutBam bieuTuong={Plus} onClick={() => setDangTao(true)}>Gửi yêu cầu</NutBam>}
+        {!laDuyet && (
+          <NutBam bieuTuong={Plus} onClick={() => setDangTao(true)}>
+            Gửi yêu cầu
+          </NutBam>
+        )}
       </div>
 
       <ThanhLoc
         tuKhoa={tuKhoa}
-        onDoiTuKhoa={(v) => { setTuKhoa(v); setTrang(1); }}
+        onDoiTuKhoa={(v) => {
+          setTuKhoa(v);
+          setTrang(1);
+        }}
         goiYTim={laDuyet ? 'Mã hoặc tên nhân viên...' : 'Tìm kiếm...'}
         boLoc={BO_LOC}
         giaTriLoc={loc}
-        onDoiLoc={(khoa, v) => { setLoc((cu) => ({ ...cu, [khoa]: v })); setTrang(1); }}
-        phanPhai={(
+        onDoiLoc={(khoa, v) => {
+          setLoc((cu) => ({ ...cu, [khoa]: v }));
+          setTrang(1);
+        }}
+        phanPhai={
           <input
             type="month"
             className="oLoc"
             value={thang}
-            onChange={(e) => { setThang(e.target.value); setTrang(1); }}
+            onChange={(e) => {
+              setThang(e.target.value);
+              setTrang(1);
+            }}
             title="Lọc theo tháng"
           />
-        )}
+        }
       />
       {loi && <div className="thongBao loi">{loi}</div>}
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
@@ -185,13 +252,21 @@ function DanhSachYeuCau({ cheDo }) {
         <HopThoaiChiTietYeuCau
           yeuCau={dangXem}
           onDong={() => setDangXem(null)}
-          onDaXuLy={(tb) => { setDangXem(null); setThongBao(tb); tai(); }}
+          onDaXuLy={(tb) => {
+            setDangXem(null);
+            setThongBao(tb);
+            tai();
+          }}
         />
       )}
       {dangTao && (
         <HopThoaiDieuChinhCong
           onDong={() => setDangTao(false)}
-          onDaGui={() => { setDangTao(false); setThongBao('Đã gửi yêu cầu điều chỉnh, chờ duyệt'); tai(); }}
+          onDaGui={() => {
+            setDangTao(false);
+            setThongBao('Đã gửi yêu cầu điều chỉnh, chờ duyệt');
+            tai();
+          }}
         />
       )}
     </>
@@ -207,8 +282,12 @@ function TrangDieuChinhCong() {
     <div>
       {coQuyenDuyet && (
         <div className="tabGachChan">
-          <button type="button" className={tab === 'duyet' ? 'dangChon' : ''} onClick={() => setTab('duyet')}>Cần duyệt</button>
-          <button type="button" className={tab === 'cuaToi' ? 'dangChon' : ''} onClick={() => setTab('cuaToi')}>Của tôi</button>
+          <button type="button" className={tab === 'duyet' ? 'dangChon' : ''} onClick={() => setTab('duyet')}>
+            Cần duyệt
+          </button>
+          <button type="button" className={tab === 'cuaToi' ? 'dangChon' : ''} onClick={() => setTab('cuaToi')}>
+            Của tôi
+          </button>
         </div>
       )}
       <DanhSachYeuCau key={tab} cheDo={tab} />

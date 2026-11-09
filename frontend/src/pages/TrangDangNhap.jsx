@@ -25,7 +25,7 @@ function TrangDangNhap() {
     setDangGui(true);
     try {
       const thongTin = await dangNhap(form.tenDangNhap, form.matKhau);
-      dieuHuong(thongTin.batBuocDoiMatKhau ? '/doiMatKhau' : state?.tu ?? '/', { replace: true });
+      dieuHuong(thongTin.batBuocDoiMatKhau ? '/doiMatKhau' : (state?.tu ?? '/'), { replace: true });
     } catch (loiApi) {
       setLoi(loiApi.message);
     } finally {

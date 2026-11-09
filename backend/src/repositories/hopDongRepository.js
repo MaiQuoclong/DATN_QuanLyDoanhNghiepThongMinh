@@ -38,18 +38,18 @@ async function layDanhSach({ tuKhoa, nhanVienId, loaiHopDong, trangThai, viTri, 
   }
   const where = dieuKien.length ? `WHERE ${dieuKien.join(' AND ')}` : '';
   const [[dem]] = await pool.query(`SELECT COUNT(*) AS tongSo ${BANG_NOI} ${where}`, thamSo);
-  const [items] = await pool.query(
-    `SELECT ${COT_HOP_DONG} ${BANG_NOI} ${where} ORDER BY hd.ngayBatDau DESC, hd.id DESC LIMIT ? OFFSET ?`,
-    [...thamSo, soLuong, viTri]
-  );
+  const [items] = await pool.query(`SELECT ${COT_HOP_DONG} ${BANG_NOI} ${where} ORDER BY hd.ngayBatDau DESC, hd.id DESC LIMIT ? OFFSET ?`, [
+    ...thamSo,
+    soLuong,
+    viTri,
+  ]);
   return { items, tongSo: Number(dem.tongSo) };
 }
 
 async function layTheoNhanVien(nhanVienId) {
-  const [dong] = await pool.execute(
-    `SELECT ${COT_HOP_DONG} ${BANG_NOI} WHERE hd.nhanVienId = ? ORDER BY hd.ngayBatDau DESC, hd.id DESC`,
-    [nhanVienId]
-  );
+  const [dong] = await pool.execute(`SELECT ${COT_HOP_DONG} ${BANG_NOI} WHERE hd.nhanVienId = ? ORDER BY hd.ngayBatDau DESC, hd.id DESC`, [
+    nhanVienId,
+  ]);
   return dong;
 }
 
@@ -80,17 +80,16 @@ async function timHopDongChongLan(nhanVienId, ngayBatDau, ngayKetThuc, boQuaId, 
         AND (ngayKetThuc IS NULL OR ngayKetThuc >= ?)
         AND (? IS NULL OR ngayBatDau <= ?)
       FOR UPDATE`,
-    [nhanVienId, boQuaId ?? 0, ngayBatDau, ngayKetThuc, ngayKetThuc]
+    [nhanVienId, boQuaId ?? 0, ngayBatDau, ngayKetThuc, ngayKetThuc],
   );
   return dong[0] ?? null;
 }
 
 // Ngày bắt đầu sớm nhất trong các hợp đồng của nhân viên (đối chiếu khi HR sửa ngày vào làm)
 async function layNgayBatDauSomNhat(nhanVienId, ketNoi = pool) {
-  const [dong] = await ketNoi.execute(
-    `SELECT DATE_FORMAT(MIN(ngayBatDau), '%Y-%m-%d') AS ngay FROM hopdonglaodong WHERE nhanVienId = ?`,
-    [nhanVienId]
-  );
+  const [dong] = await ketNoi.execute(`SELECT DATE_FORMAT(MIN(ngayBatDau), '%Y-%m-%d') AS ngay FROM hopdonglaodong WHERE nhanVienId = ?`, [
+    nhanVienId,
+  ]);
   return dong[0].ngay;
 }
 
@@ -101,7 +100,7 @@ async function laySoMaLonNhat(nam, ketNoi) {
        FROM hopdonglaodong
       WHERE maHopDong LIKE ?
       FOR UPDATE`,
-    [`HD${nam}-%`]
+    [`HD${nam}-%`],
   );
   return Number(dong[0].soLonNhat ?? 0);
 }
@@ -111,8 +110,7 @@ async function them(hd, ketNoi) {
     `INSERT INTO hopdonglaodong (maHopDong, nhanVienId, loaiHopDong, ngayBatDau, ngayKetThuc,
                                  luongCoBan, mucPhuCap, trangThai, duongDanFileHopDong)
      VALUES (?, ?, ?, ?, ?, ?, ?, 'HIEU_LUC', ?)`,
-    [hd.maHopDong, hd.nhanVienId, hd.loaiHopDong, hd.ngayBatDau, hd.ngayKetThuc,
-      hd.luongCoBan, hd.mucPhuCap, hd.duongDanFileHopDong]
+    [hd.maHopDong, hd.nhanVienId, hd.loaiHopDong, hd.ngayBatDau, hd.ngayKetThuc, hd.luongCoBan, hd.mucPhuCap, hd.duongDanFileHopDong],
   );
   return ketQua.insertId;
 }
@@ -120,10 +118,10 @@ async function them(hd, ketNoi) {
 async function capNhat(id, truong, ketNoi) {
   const cot = Object.keys(truong).filter((ten) => COT_CAP_NHAT.includes(ten));
   if (cot.length === 0) return;
-  await ketNoi.execute(
-    `UPDATE hopdonglaodong SET ${cot.map((ten) => `${ten} = ?`).join(', ')} WHERE id = ?`,
-    [...cot.map((ten) => truong[ten]), id]
-  );
+  await ketNoi.execute(`UPDATE hopdonglaodong SET ${cot.map((ten) => `${ten} = ?`).join(', ')} WHERE id = ?`, [
+    ...cot.map((ten) => truong[ten]),
+    id,
+  ]);
 }
 
 // ls: { hopDongLaoDongId, hanhDong, cu: hợp đồng trước (null khi tạo mới), moi: hợp đồng sau, lyDo, nguoiThucHienId }
@@ -134,15 +132,23 @@ async function themLichSu({ hopDongLaoDongId, hanhDong, cu, moi, lyDo, nguoiThuc
                                 trangThaiCu, trangThaiMoi, lyDoThayDoi, nguoiThucHienId)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      hopDongLaoDongId, hanhDong,
-      cu?.loaiHopDong ?? null, moi.loaiHopDong,
-      cu?.luongCoBan ?? null, moi.luongCoBan,
-      cu?.mucPhuCap ?? null, moi.mucPhuCap ?? 0,
-      cu?.ngayBatDau ?? null, moi.ngayBatDau,
-      cu?.ngayKetThuc ?? null, moi.ngayKetThuc ?? null,
-      cu?.trangThai ?? null, moi.trangThai,
-      lyDo ?? null, nguoiThucHienId,
-    ]
+      hopDongLaoDongId,
+      hanhDong,
+      cu?.loaiHopDong ?? null,
+      moi.loaiHopDong,
+      cu?.luongCoBan ?? null,
+      moi.luongCoBan,
+      cu?.mucPhuCap ?? null,
+      moi.mucPhuCap ?? 0,
+      cu?.ngayBatDau ?? null,
+      moi.ngayBatDau,
+      cu?.ngayKetThuc ?? null,
+      moi.ngayKetThuc ?? null,
+      cu?.trangThai ?? null,
+      moi.trangThai,
+      lyDo ?? null,
+      nguoiThucHienId,
+    ],
   );
 }
 
@@ -156,7 +162,7 @@ async function layLichSu(hopDongId) {
        JOIN nhanvien nv ON nv.id = ls.nguoiThucHienId
       WHERE ls.hopDongLaoDongId = ?
       ORDER BY ls.id DESC`,
-    [hopDongId]
+    [hopDongId],
   );
   return dong;
 }
@@ -174,7 +180,7 @@ async function laySapHetHan(soNgay) {
            WHERE tiep.nhanVienId = hd.nhanVienId AND tiep.trangThai = 'HIEU_LUC' AND tiep.ngayBatDau > hd.ngayKetThuc
         )
       ORDER BY hd.ngayKetThuc, hd.id`,
-    [soNgay]
+    [soNgay],
   );
   return dong;
 }

@@ -11,15 +11,12 @@ function ThanhLoc({ tuKhoa, onDoiTuKhoa, goiYTim = 'Tìm kiếm...', boLoc = [],
         <input value={tuKhoa} onChange={(e) => onDoiTuKhoa(e.target.value)} placeholder={goiYTim} />
       </label>
       {boLoc.map(({ khoa, nhan, luaChon }) => (
-        <select
-          key={khoa}
-          className="oLoc"
-          value={giaTriLoc[khoa] ?? ''}
-          onChange={(e) => onDoiLoc?.(khoa, e.target.value)}
-        >
+        <select key={khoa} className="oLoc" value={giaTriLoc[khoa] ?? ''} onChange={(e) => onDoiLoc?.(khoa, e.target.value)}>
           <option value="">{nhan}</option>
           {luaChon.map((lc) => (
-            <option key={lc.giaTri} value={lc.giaTri}>{lc.nhan}</option>
+            <option key={lc.giaTri} value={lc.giaTri}>
+              {lc.nhan}
+            </option>
           ))}
         </select>
       ))}

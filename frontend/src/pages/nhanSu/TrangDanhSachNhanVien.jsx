@@ -26,11 +26,17 @@ const COT = [
 export async function layLuaChonViTri() {
   const kq = await goiApi.get('/chucDanhPhongBan', { params: { trangThai: 'DANG_AP_DUNG' } });
   // Chỉ vị trí còn chỗ, thuộc phòng ban và chức danh đang hoạt động (backend chặn các trường hợp khác bằng 409)
-  return kq.data.filter((vt) => (vt.conTrong ?? vt.dinhBien - vt.soDangGiu) > 0
-    && vt.trangThaiPhongBan !== 'NGUNG_HOAT_DONG' && vt.trangThaiChucDanh !== 'NGUNG_HOAT_DONG').map((vt) => ({
-    giaTri: vt.id,
-    nhan: `${vt.tenChucDanh} - ${vt.tenPhongBan} (còn ${vt.conTrong ?? vt.dinhBien - vt.soDangGiu}/${vt.dinhBien})`,
-  }));
+  return kq.data
+    .filter(
+      (vt) =>
+        (vt.conTrong ?? vt.dinhBien - vt.soDangGiu) > 0 &&
+        vt.trangThaiPhongBan !== 'NGUNG_HOAT_DONG' &&
+        vt.trangThaiChucDanh !== 'NGUNG_HOAT_DONG',
+    )
+    .map((vt) => ({
+      giaTri: vt.id,
+      nhan: `${vt.tenChucDanh} - ${vt.tenPhongBan} (còn ${vt.conTrong ?? vt.dinhBien - vt.soDangGiu}/${vt.dinhBien})`,
+    }));
 }
 
 function TrangDanhSachNhanVien() {
@@ -47,13 +53,19 @@ function TrangDanhSachNhanVien() {
   const [taiKhoanMoi, setTaiKhoanMoi] = useState(null);
 
   useEffect(() => {
-    goiApi.get('/phongBan').then((kq) => setPhongBan(kq.data)).catch(() => {});
+    goiApi
+      .get('/phongBan')
+      .then((kq) => setPhongBan(kq.data))
+      .catch(() => {});
   }, []);
 
   const tai = useCallback(() => {
     goiApi
       .get('/nhanVien', { params: locThamSo({ tuKhoa, ...loc, trang, kichThuoc: 20 }) })
-      .then((kq) => { setKetQua(kq.data); setLoi(''); })
+      .then((kq) => {
+        setKetQua(kq.data);
+        setLoi('');
+      })
       .catch((e) => setLoi(e.message));
   }, [tuKhoa, loc, trang]);
 
@@ -85,16 +97,26 @@ function TrangDanhSachNhanVien() {
             {' · '}Tổng {ketQua?.phanTrang.tongSo ?? 0} người
           </div>
         </div>
-        {laHR && <NutBam bieuTuong={UserPlus} onClick={moThem}>Thêm nhân viên</NutBam>}
+        {laHR && (
+          <NutBam bieuTuong={UserPlus} onClick={moThem}>
+            Thêm nhân viên
+          </NutBam>
+        )}
       </div>
 
       <ThanhLoc
         tuKhoa={tuKhoa}
-        onDoiTuKhoa={(v) => { setTuKhoa(v); setTrang(1); }}
+        onDoiTuKhoa={(v) => {
+          setTuKhoa(v);
+          setTrang(1);
+        }}
         goiYTim="Mã, họ tên, số điện thoại..."
         boLoc={boLoc}
         giaTriLoc={loc}
-        onDoiLoc={(khoa, v) => { setLoc((cu) => ({ ...cu, [khoa]: v })); setTrang(1); }}
+        onDoiLoc={(khoa, v) => {
+          setLoc((cu) => ({ ...cu, [khoa]: v }));
+          setTrang(1);
+        }}
         phanPhai={<span />}
       />
       {loi && <div className="thongBao loi">{loi}</div>}
@@ -117,8 +139,14 @@ function TrangDanhSachNhanVien() {
             { ten: 'chucDanhPhongBanId', nhan: 'Vị trí', kieu: 'select', luaChon: viTri, batBuoc: true, rongHet: true },
             { ten: 'ngayVaoLam', nhan: 'Ngày vào làm', kieu: 'date', batBuoc: true },
             {
-              ten: 'trangThaiLamViec', nhan: 'Trạng thái', kieu: 'select', batBuoc: true,
-              luaChon: [{ giaTri: 'THU_VIEC', nhan: 'Thử việc' }, { giaTri: 'CHINH_THUC', nhan: 'Chính thức' }],
+              ten: 'trangThaiLamViec',
+              nhan: 'Trạng thái',
+              kieu: 'select',
+              batBuoc: true,
+              luaChon: [
+                { giaTri: 'THU_VIEC', nhan: 'Thử việc' },
+                { giaTri: 'CHINH_THUC', nhan: 'Chính thức' },
+              ],
             },
             { ten: 'tenDangNhap', nhan: 'Tên đăng nhập', batBuoc: true },
             { ten: 'email', nhan: 'Email', kieu: 'email', batBuoc: true },
@@ -141,15 +169,18 @@ function TrangDanhSachNhanVien() {
         <HopThoai
           tieuDe="Đã thêm nhân viên"
           onDong={() => setTaiKhoanMoi(null)}
-          chanTrang={(
+          chanTrang={
             <>
-              <NutBam bienThe="phu" onClick={() => setTaiKhoanMoi(null)}>Đóng</NutBam>
+              <NutBam bienThe="phu" onClick={() => setTaiKhoanMoi(null)}>
+                Đóng
+              </NutBam>
               <NutBam onClick={() => dieuHuong(`/nhanSu/danhSach/${taiKhoanMoi.nhanVien.id}`)}>Xem hồ sơ</NutBam>
             </>
-          )}
+          }
         >
           <p>
-            {taiKhoanMoi.nhanVien.maNhanVien} - {taiKhoanMoi.nhanVien.hoVaTen}<br />
+            {taiKhoanMoi.nhanVien.maNhanVien} - {taiKhoanMoi.nhanVien.hoVaTen}
+            <br />
             Tên đăng nhập: <strong>{taiKhoanMoi.taiKhoan.tenDangNhap}</strong>
           </p>
           <div>Mật khẩu tạm (chỉ hiển thị một lần):</div>

@@ -44,7 +44,7 @@ chiTieuRouter.post(
     maChiTieu: { nhan: 'Mã chỉ tiêu', batBuoc: true, toiDa: 30 },
     tenChiTieu: { nhan: 'Tên chỉ tiêu', batBuoc: true, toiThieu: 2, toiDa: 150 },
   }),
-  batLoiBatDongBo(c.themChiTieu)
+  batLoiBatDongBo(c.themChiTieu),
 );
 chiTieuRouter.patch('/:id', phanQuyen(QUAN_TRI_KPI), batLoiBatDongBo(c.suaChiTieu));
 chiTieuRouter.delete('/:id', phanQuyen(QUAN_TRI_KPI), batLoiBatDongBo(c.xoaChiTieu));
@@ -64,7 +64,7 @@ phieuRouter.post(
     kyDanhGiaId: { nhan: 'Kỳ đánh giá', batBuoc: true, kieu: 'soNguyenDuong' },
     nhanVienId: { nhan: 'Nhân viên', batBuoc: true, kieu: 'soNguyenDuong' },
   }),
-  batLoiBatDongBo(c.taoPhieu)
+  batLoiBatDongBo(c.taoPhieu),
 );
 phieuRouter.post(
   '/taoHangLoat',
@@ -73,7 +73,7 @@ phieuRouter.post(
     kyDanhGiaId: { nhan: 'Kỳ đánh giá', batBuoc: true, kieu: 'soNguyenDuong' },
     phongBanId: { nhan: 'Phòng ban', kieu: 'soNguyenDuong' },
   }),
-  batLoiBatDongBo(c.taoPhieuHangLoat)
+  batLoiBatDongBo(c.taoPhieuHangLoat),
 );
 phieuRouter.patch('/:id', phanQuyen(QUAN_TRI_KPI), batLoiBatDongBo(c.suaPhieu));
 phieuRouter.delete('/:id', phanQuyen(QUAN_TRI_KPI), batLoiBatDongBo(c.xoaPhieu));
@@ -84,7 +84,7 @@ phieuRouter.post(
   '/:id/traLai',
   phanQuyen(NGHIEM_THU),
   kiemTraDuLieu({ lyDo: { nhan: 'Lý do trả lại', batBuoc: true, toiDa: 1000 } }),
-  batLoiBatDongBo(c.traLai)
+  batLoiBatDongBo(c.traLai),
 );
 
 module.exports = { kyDanhGiaRouter, chiTieuRouter, phieuRouter };
