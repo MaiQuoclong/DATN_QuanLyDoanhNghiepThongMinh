@@ -12,7 +12,13 @@ function TrangPhieuKpiCuaToi() {
   const [dangXem, setDangXem] = useState(null);
 
   const tai = useCallback(() => {
-    goiApi.get('/phieuDanhGiaKPI/cuaToi').then((kq) => { setDsPhieu(kq.data); setLoi(''); }).catch((e) => setLoi(e.message));
+    goiApi
+      .get('/phieuDanhGiaKPI/cuaToi')
+      .then((kq) => {
+        setDsPhieu(kq.data);
+        setLoi('');
+      })
+      .catch((e) => setLoi(e.message));
   }, []);
   useEffect(tai, [tai]);
 
@@ -26,7 +32,12 @@ function TrangPhieuKpiCuaToi() {
     {
       khoa: 'trangThai',
       tieuDe: 'Trạng thái',
-      hienThi: (d) => <ChipTrangThai trangThai={d.trangThai} nhan={d.trangThai === 'BAN_NHAP' && d.trangThaiKy === 'DANG_MO' ? 'Cần tự chấm' : undefined} />,
+      hienThi: (d) => (
+        <ChipTrangThai
+          trangThai={d.trangThai}
+          nhan={d.trangThai === 'BAN_NHAP' && d.trangThaiKy === 'DANG_MO' ? 'Cần tự chấm' : undefined}
+        />
+      ),
     },
   ];
 

@@ -38,6 +38,11 @@ Mỗi service có `.env.example` (commit) và `.env` (không commit).
   - Xong mỗi module phải bổ sung `database/seed.sql` đủ dữ liệu mẫu để demo trên web cho cả 5 vai trò.
   - Test phải pass trên DB vừa dựng lại: mỗi test tự tạo và tự dọn dữ liệu, không phụ thuộc thứ tự chạy hay dữ liệu sót lại.
 
+## Chất lượng mã
+- Định dạng/lint theo `.prettierrc` và `eslint.config.js` (backend, frontend); trước khi báo xong phải chạy `npm run lint` sạch ở backend và frontend (không tắt rule bằng `eslint-disable` nếu không có lý do ghi rõ).
+- CI (`.github/workflows/ci.yml`) phải xanh trước khi merge PR; CI đỏ thì sửa trước, không merge.
+- Khi hướng dẫn tạo PR, điền mô tả theo `.github/pull_request_template.md`.
+
 ## Bảo mật
 - JWT + RBAC 5 vai trò: `Admin`, `giamDoc`, `quanLy`, `HR`, `nhanVien` (giữ đúng giá trị lưu trong bảng `vaitro`).
 - `nhanVien` chỉ xem/sửa dữ liệu của chính mình; `quanLy` chỉ trong phòng ban mình phụ trách; `HR`/`Admin` toàn quyền theo nghiệp vụ.

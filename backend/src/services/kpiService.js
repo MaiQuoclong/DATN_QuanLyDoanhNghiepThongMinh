@@ -102,17 +102,18 @@ async function suaKy(nguoiDung, id, body, diaChiIP) {
     if (!ky) throw new LoiUngDung(404, 'Không tìm thấy kỳ đánh giá');
     if (ky.trangThai !== 'DANG_MO') throw new LoiUngDung(409, 'Kỳ đánh giá đã đóng, mở lại kỳ trước khi sửa');
     const moi = {};
-    if (body.tenKyDanhGia !== undefined) moi.tenKyDanhGia = layChuoi(body.tenKyDanhGia, 'Tên kỳ đánh giá', { batBuoc: true, toiDa: 100, toiThieu: 3 });
+    if (body.tenKyDanhGia !== undefined)
+      moi.tenKyDanhGia = layChuoi(body.tenKyDanhGia, 'Tên kỳ đánh giá', { batBuoc: true, toiDa: 100, toiThieu: 3 });
     if (body.ngayBatDau !== undefined) moi.ngayBatDau = body.ngayBatDau;
     if (body.ngayKetThuc !== undefined) moi.ngayKetThuc = body.ngayKetThuc;
     const thayDoi = Object.fromEntries(Object.entries(moi).filter(([k, v]) => v !== ky[k]));
     if (!Object.keys(thayDoi).length) throw new LoiUngDung(400, 'Không có thông tin nào thay đổi');
     kiemTraKhoangNgay(thayDoi.ngayBatDau ?? ky.ngayBatDau, thayDoi.ngayKetThuc ?? ky.ngayKetThuc);
     // Số tháng của kỳ quyết định thưởng KPI đã vào lương: kỳ đã có phiếu nghiệm thu thì không đổi ngày
-    if ((thayDoi.ngayBatDau || thayDoi.ngayKetThuc) && await kpiRepository.demPhieuTheoTrangThai(id, 'DA_DUYET', ketNoi)) {
+    if ((thayDoi.ngayBatDau || thayDoi.ngayKetThuc) && (await kpiRepository.demPhieuTheoTrangThai(id, 'DA_DUYET', ketNoi))) {
       throw new LoiUngDung(409, 'Kỳ đã có phiếu nghiệm thu (thưởng KPI đã tính theo số tháng của kỳ), không thể đổi ngày');
     }
-    if (thayDoi.tenKyDanhGia && await kpiRepository.timKyTheoTen(thayDoi.tenKyDanhGia, id, ketNoi)) {
+    if (thayDoi.tenKyDanhGia && (await kpiRepository.timKyTheoTen(thayDoi.tenKyDanhGia, id, ketNoi))) {
       throw new LoiUngDung(409, 'Tên kỳ đánh giá đã tồn tại');
     }
     await kpiRepository.capNhatKy(id, thayDoi, ketNoi);
@@ -193,7 +194,8 @@ async function themChiTieu(nguoiDung, body, diaChiIP) {
     tenChiTieu: layChuoi(body.tenChiTieu, 'Tên chỉ tiêu', { batBuoc: true, toiDa: 150 }),
     moTa: layChuoi(body.moTa, 'Mô tả', { toiDa: 2000 }),
     donViDo: layChuoi(body.donViDo, 'Đơn vị đo', { toiDa: 50 }),
-    trongSoMacDinh: body.trongSoMacDinh === undefined || body.trongSoMacDinh === '' ? 1 : layTrongSo(body.trongSoMacDinh, 'Trọng số mặc định'),
+    trongSoMacDinh:
+      body.trongSoMacDinh === undefined || body.trongSoMacDinh === '' ? 1 : layTrongSo(body.trongSoMacDinh, 'Trọng số mặc định'),
     chucDanhPhongBanId: layViTriTuBody(body.chucDanhPhongBanId),
   };
   return chayTransaction(async (ketNoi) => {
@@ -213,7 +215,7 @@ async function themChiTieu(nguoiDung, body, diaChiIP) {
 
 // Kiểm tra quyền trên chỉ tiêu hiện có (không thuộc phạm vi -> 404 như các module khác)
 async function kiemTraQuyenChiTieu(nguoiDung, id, ketNoi) {
-  if (!await kpiRepository.khoaChiTieu(id, ketNoi)) throw new LoiUngDung(404, 'Không tìm thấy chỉ tiêu KPI');
+  if (!(await kpiRepository.khoaChiTieu(id, ketNoi))) throw new LoiUngDung(404, 'Không tìm thấy chỉ tiêu KPI');
   const chiTieu = await kpiRepository.layChiTieuTheoId(id, ketNoi);
   const phamVi = await layPhamViQuanTri(nguoiDung, ketNoi);
   if (chiTieu.chucDanhPhongBanId === null) {
@@ -234,15 +236,22 @@ async function suaChiTieu(nguoiDung, id, body, diaChiIP) {
     if (body.donViDo !== undefined) moi.donViDo = layChuoi(body.donViDo, 'Đơn vị đo', { toiDa: 50 });
     if (body.trongSoMacDinh !== undefined) moi.trongSoMacDinh = layTrongSo(body.trongSoMacDinh, 'Trọng số mặc định');
     if (body.chucDanhPhongBanId !== undefined) moi.chucDanhPhongBanId = layViTriTuBody(body.chucDanhPhongBanId);
-    const thayDoi = Object.fromEntries(Object.entries(moi).filter(([k, v]) => (k === 'trongSoMacDinh' ? v !== Number(chiTieu[k]) : v !== chiTieu[k])));
+    const thayDoi = Object.fromEntries(
+      Object.entries(moi).filter(([k, v]) => (k === 'trongSoMacDinh' ? v !== Number(chiTieu[k]) : v !== chiTieu[k])),
+    );
     if (!Object.keys(thayDoi).length) throw new LoiUngDung(400, 'Không có thông tin nào thay đổi');
     if (thayDoi.chucDanhPhongBanId !== undefined) {
       if (chiTieu.soLanSuDung > 0) throw new LoiUngDung(409, 'Chỉ tiêu đã được dùng trong phiếu đánh giá, không thể đổi vị trí');
       await kiemTraViTriChiTieu(nguoiDung, thayDoi.chucDanhPhongBanId, phamVi, ketNoi);
     }
     await kpiRepository.capNhatChiTieu(id, thayDoi, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'SUA_CHI_TIEU_KPI', diaChiIP,
-      `${chiTieu.maChiTieu}: ${Object.keys(thayDoi).join(', ')}`, ketNoi);
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'SUA_CHI_TIEU_KPI',
+      diaChiIP,
+      `${chiTieu.maChiTieu}: ${Object.keys(thayDoi).join(', ')}`,
+      ketNoi,
+    );
     return kpiRepository.layChiTieuTheoId(id, ketNoi);
   });
 }
@@ -298,7 +307,10 @@ async function layDanhSachPhieu(nguoiDung, boLoc) {
   const { items, tongSo } = await kpiRepository.layDanhSachPhieu({ ...boLoc, phamViPhongBanIds });
   const phamViQuanLy = await layPhamViQuanLy(nguoiDung);
   return {
-    items: items.map((p) => ({ ...p, duocNghiemThu: p.trangThaiKy === 'DANG_MO' && p.trangThai === 'CHO_DUYET' && duocNghiemThu(nguoiDung, p, phamViQuanLy) })),
+    items: items.map((p) => ({
+      ...p,
+      duocNghiemThu: p.trangThaiKy === 'DANG_MO' && p.trangThai === 'CHO_DUYET' && duocNghiemThu(nguoiDung, p, phamViQuanLy),
+    })),
     phanTrang: { trang: boLoc.trang, kichThuoc: boLoc.kichThuoc, tongSo },
   };
 }
@@ -361,10 +373,12 @@ async function kiemTraNhanVienDuocDanhGia(nhanVienId, phamVi, nguoiDung, ketNoi)
   if (!nv) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
   const phongBanId = nv.chucDanhPhongBanId ? await phongBanRepository.layPhongBanCuaViTri(nv.chucDanhPhongBanId, ketNoi) : null;
   if (!trongPhamVi(phamVi, phongBanId)) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
-  if (!TRANG_THAI_DUOC_DANH_GIA.includes(nv.trangThaiLamViec)) throw new LoiUngDung(400, 'Chỉ đánh giá nhân viên đang thử việc hoặc chính thức');
+  if (!TRANG_THAI_DUOC_DANH_GIA.includes(nv.trangThaiLamViec))
+    throw new LoiUngDung(400, 'Chỉ đánh giá nhân viên đang thử việc hoặc chính thức');
   if (!nv.chucDanhPhongBanId) throw new LoiUngDung(400, 'Nhân viên chưa được gán vị trí nên chưa có chỉ tiêu KPI');
   // giamDoc là cấp nghiệm thu cao nhất, không có ai trong hệ thống nghiệm thu phiếu của giamDoc -> không đánh giá
-  if (await kpiRepository.laGiamDoc(nhanVienId, ketNoi)) throw new LoiUngDung(400, 'Không đánh giá KPI cho Ban Giám đốc (không có cấp nghiệm thu)');
+  if (await kpiRepository.laGiamDoc(nhanVienId, ketNoi))
+    throw new LoiUngDung(400, 'Không đánh giá KPI cho Ban Giám đốc (không có cấp nghiệm thu)');
   return nv;
 }
 
@@ -405,8 +419,11 @@ async function taoPhieuHangLoat(nguoiDung, body, diaChiIP) {
     if (ky.trangThai !== 'DANG_MO') throw new LoiUngDung(409, 'Kỳ đánh giá đã đóng');
     const phamVi = await layPhamViQuanTri(nguoiDung, ketNoi);
     if (phongBanId && !trongPhamVi(phamVi, phongBanId)) throw new LoiUngDung(403, 'Phòng ban không thuộc phạm vi bạn phụ trách');
-    const dsNhanVien = await kpiRepository.layNhanVienChuaCoPhieu(kyDanhGiaId,
-      { phongBanId, phamViPhongBanIds: phamVi, boQuaNhanVienId: nguoiDung.nhanVienId }, ketNoi);
+    const dsNhanVien = await kpiRepository.layNhanVienChuaCoPhieu(
+      kyDanhGiaId,
+      { phongBanId, phamViPhongBanIds: phamVi, boQuaNhanVienId: nguoiDung.nhanVienId },
+      ketNoi,
+    );
     const chiTieuTheoViTri = new Map();
     let soPhieuTao = 0;
     let soBoQua = 0;
@@ -415,7 +432,10 @@ async function taoPhieuHangLoat(nguoiDung, body, diaChiIP) {
         chiTieuTheoViTri.set(nv.chucDanhPhongBanId, await kpiRepository.layChiTieuChoViTri(nv.chucDanhPhongBanId, ketNoi));
       }
       const cacChiTieu = chiTieuTheoViTri.get(nv.chucDanhPhongBanId);
-      if (!cacChiTieu.length) { soBoQua += 1; continue; }
+      if (!cacChiTieu.length) {
+        soBoQua += 1;
+        continue;
+      }
       let id;
       try {
         id = await kpiRepository.themPhieu(kyDanhGiaId, nv.id, ketNoi);
@@ -428,7 +448,13 @@ async function taoPhieuHangLoat(nguoiDung, body, diaChiIP) {
       soPhieuTao += 1;
     }
     if (soPhieuTao) {
-      await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'TAO_PHIEU_KPI', diaChiIP, `${ky.tenKyDanhGia}: ${soPhieuTao} phiếu`, ketNoi);
+      await nhatKyRepository.themNhatKy(
+        nguoiDung.nguoiDungId,
+        'TAO_PHIEU_KPI',
+        diaChiIP,
+        `${ky.tenKyDanhGia}: ${soPhieuTao} phiếu`,
+        ketNoi,
+      );
     }
     return { soPhieuTao, soBoQuaChuaCoChiTieu: soBoQua };
   });
@@ -458,7 +484,13 @@ async function suaPhieu(nguoiDung, id, body, diaChiIP) {
       await kpiRepository.capNhatChiTiet(id, muc.id, thayDoi, ketNoi);
     }
     if (!soMucThayDoi) throw new LoiUngDung(400, 'Không có thông tin nào thay đổi');
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'SUA_PHIEU_KPI', diaChiIP, `${phieu.tenKyDanhGia}: ${phieu.maNhanVien}`, ketNoi);
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'SUA_PHIEU_KPI',
+      diaChiIP,
+      `${phieu.tenKyDanhGia}: ${phieu.maNhanVien}`,
+      ketNoi,
+    );
     return layChiTietPhieu(nguoiDung, id, ketNoi);
   });
 }
@@ -470,7 +502,13 @@ async function xoaPhieu(nguoiDung, id, diaChiIP) {
       throw new LoiUngDung(403, 'Bạn không có quyền xóa phiếu này');
     }
     await kpiRepository.xoaPhieu(id, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'XOA_PHIEU_KPI', diaChiIP, `${phieu.tenKyDanhGia}: ${phieu.maNhanVien}`, ketNoi);
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'XOA_PHIEU_KPI',
+      diaChiIP,
+      `${phieu.tenKyDanhGia}: ${phieu.maNhanVien}`,
+      ketNoi,
+    );
   });
 }
 
@@ -523,7 +561,10 @@ async function kiemTraNguoiNghiemThu(nguoiDung, phieu, ketNoi) {
   if (!nguoiDung.nhanVienId) throw new LoiUngDung(403, 'Tài khoản chưa có hồ sơ nhân viên nên không thể nghiệm thu');
   if (phieu.nhanVienId === nguoiDung.nhanVienId) throw new LoiUngDung(403, 'Bạn không được tự nghiệm thu phiếu KPI của chính mình');
   if (!duocNghiemThu(nguoiDung, phieu, await layPhamViQuanLy(nguoiDung, ketNoi))) {
-    throw new LoiUngDung(403, phieu.laTruongBoPhan ? 'Phiếu của trưởng bộ phận do Ban Giám đốc nghiệm thu' : 'Bạn không có quyền nghiệm thu phiếu này');
+    throw new LoiUngDung(
+      403,
+      phieu.laTruongBoPhan ? 'Phiếu của trưởng bộ phận do Ban Giám đốc nghiệm thu' : 'Bạn không có quyền nghiệm thu phiếu này',
+    );
   }
 }
 
@@ -535,7 +576,10 @@ async function khoaBangLuongThangNghiemThu(bayGio, ketNoi) {
   const [nam, thang] = String(bayGio).slice(0, 7).split('-').map(Number);
   const bang = await ktklRepository.khoaBangLuongTheoThang(thang, nam, ketNoi);
   if (bang && bang.trangThai !== 'BAN_NHAP') {
-    throw new LoiUngDung(409, `Bảng lương tháng ${thang}/${nam} đã gửi duyệt hoặc đã duyệt nên không thể cộng thưởng KPI, hãy trả lại bảng lương trước`);
+    throw new LoiUngDung(
+      409,
+      `Bảng lương tháng ${thang}/${nam} đã gửi duyệt hoặc đã duyệt nên không thể cộng thưởng KPI, hãy trả lại bảng lương trước`,
+    );
   }
   return bang;
 }
@@ -556,20 +600,34 @@ async function nghiemThu(nguoiDung, id, body, diaChiIP) {
     // Đọc điểm tổng do SQL tính (DECIMAL) để xếp loại khớp đúng điểm hiển thị, tránh lệch làm tròn số thực JS
     const { diemTong } = await kpiRepository.layPhieuTheoId(id, ketNoi);
     const xepLoaiChung = xepLoaiTheoDiem(diemTong);
-    await kpiRepository.capNhatPhieu(id, {
-      nhanXetQuanLy: layChuoi(body.nhanXetQuanLy, 'Nhận xét chung', { toiDa: 5000 }),
-      xepLoaiChung,
-      nguoiDanhGiaId: nguoiDung.nhanVienId,
-      ngayNghiemThu: bayGio,
-      trangThai: 'DA_DUYET',
-    }, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'NGHIEM_THU_KPI', diaChiIP,
-      `${phieu.tenKyDanhGia}: ${phieu.maNhanVien} ${diemTong} ${xepLoaiChung}`, ketNoi);
+    await kpiRepository.capNhatPhieu(
+      id,
+      {
+        nhanXetQuanLy: layChuoi(body.nhanXetQuanLy, 'Nhận xét chung', { toiDa: 5000 }),
+        xepLoaiChung,
+        nguoiDanhGiaId: nguoiDung.nhanVienId,
+        ngayNghiemThu: bayGio,
+        trangThai: 'DA_DUYET',
+      },
+      ketNoi,
+    );
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'NGHIEM_THU_KPI',
+      diaChiIP,
+      `${phieu.tenKyDanhGia}: ${phieu.maNhanVien} ${diemTong} ${xepLoaiChung}`,
+      ketNoi,
+    );
     const ketQua = await layChiTietPhieu(nguoiDung, id, ketNoi);
     if (bangLuong) {
       const soPhieu = await luongService.tinhLaiBangNhapTrongGiaoDich(bangLuong, ketNoi);
-      await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'TINH_LAI_BANG_LUONG_KPI', diaChiIP,
-        `${bangLuong.maBangLuong}: ${soPhieu} (nghiệm thu KPI ${phieu.maNhanVien})`.slice(0, 1000), ketNoi);
+      await nhatKyRepository.themNhatKy(
+        nguoiDung.nguoiDungId,
+        'TINH_LAI_BANG_LUONG_KPI',
+        diaChiIP,
+        `${bangLuong.maBangLuong}: ${soPhieu} (nghiệm thu KPI ${phieu.maNhanVien})`.slice(0, 1000),
+        ketNoi,
+      );
       ketQua.canhBao = `Đã tính lại bảng lương nháp ${bangLuong.maBangLuong} để cộng thưởng KPI`;
     }
     return ketQua;
@@ -583,8 +641,13 @@ async function traLai(nguoiDung, id, body, diaChiIP) {
     const { phieu } = await khoaPhieuTrongKyMo(nguoiDung, id, 'CHO_DUYET', ketNoi);
     await kiemTraNguoiNghiemThu(nguoiDung, phieu, ketNoi);
     await kpiRepository.capNhatPhieu(id, { trangThai: 'BAN_NHAP', nhanXetQuanLy: `Trả lại: ${lyDo}` }, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'TRA_LAI_PHIEU_KPI', diaChiIP,
-      `${phieu.tenKyDanhGia}: ${phieu.maNhanVien} - ${lyDo}`.slice(0, 1000), ketNoi);
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'TRA_LAI_PHIEU_KPI',
+      diaChiIP,
+      `${phieu.tenKyDanhGia}: ${phieu.maNhanVien} - ${lyDo}`.slice(0, 1000),
+      ketNoi,
+    );
     return layChiTietPhieu(nguoiDung, id, ketNoi);
   });
 }
@@ -595,14 +658,17 @@ async function layBaoCao(nguoiDung, { kyDanhGiaId, phongBanId }) {
   if (!ky) throw new LoiUngDung(404, 'Không tìm thấy kỳ đánh giá');
   const { items } = await kpiRepository.layDanhSachPhieu({ kyDanhGiaId, phongBanId, phamViPhongBanIds: await layPhamViXem(nguoiDung) });
   const taoNhom = () => ({
-    soPhieu: 0, theoTrangThai: { BAN_NHAP: 0, CHO_DUYET: 0, DA_DUYET: 0 },
-    theoXepLoai: Object.fromEntries(THAM_SO_KPI.nguongXepLoai.map(([, x]) => [x, 0])), tongDiem: 0,
+    soPhieu: 0,
+    theoTrangThai: { BAN_NHAP: 0, CHO_DUYET: 0, DA_DUYET: 0 },
+    theoXepLoai: Object.fromEntries(THAM_SO_KPI.nguongXepLoai.map(([, x]) => [x, 0])),
+    tongDiem: 0,
   });
   const tong = taoNhom();
   const theoPhong = new Map();
   for (const p of items) {
     const khoa = p.phongBanId ?? 0;
-    if (!theoPhong.has(khoa)) theoPhong.set(khoa, { phongBanId: p.phongBanId, tenPhongBan: p.tenPhongBan ?? 'Chưa có phòng ban', ...taoNhom() });
+    if (!theoPhong.has(khoa))
+      theoPhong.set(khoa, { phongBanId: p.phongBanId, tenPhongBan: p.tenPhongBan ?? 'Chưa có phòng ban', ...taoNhom() });
     for (const nhom of [tong, theoPhong.get(khoa)]) {
       nhom.soPhieu += 1;
       nhom.theoTrangThai[p.trangThai] = (nhom.theoTrangThai[p.trangThai] ?? 0) + 1;
@@ -621,8 +687,28 @@ async function layBaoCao(nguoiDung, { kyDanhGiaId, phongBanId }) {
 
 module.exports = {
   xepLoaiTheoDiem,
-  layDanhSachKy, layChiTietKy, themKy, suaKy, dongKy, moLaiKy, xoaKy,
-  layDanhSachChiTieu, layViTriGanChiTieu, themChiTieu, suaChiTieu, xoaChiTieu,
-  layDanhSachPhieu, layPhieuCuaToi, layChiTietPhieu, taoPhieu, taoPhieuHangLoat, suaPhieu, xoaPhieu,
-  tuCham, guiDuyet, nghiemThu, traLai, layBaoCao,
+  layDanhSachKy,
+  layChiTietKy,
+  themKy,
+  suaKy,
+  dongKy,
+  moLaiKy,
+  xoaKy,
+  layDanhSachChiTieu,
+  layViTriGanChiTieu,
+  themChiTieu,
+  suaChiTieu,
+  xoaChiTieu,
+  layDanhSachPhieu,
+  layPhieuCuaToi,
+  layChiTietPhieu,
+  taoPhieu,
+  taoPhieuHangLoat,
+  suaPhieu,
+  xoaPhieu,
+  tuCham,
+  guiDuyet,
+  nghiemThu,
+  traLai,
+  layBaoCao,
 };

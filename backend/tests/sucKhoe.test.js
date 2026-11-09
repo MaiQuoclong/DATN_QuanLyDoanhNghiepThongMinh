@@ -22,10 +22,7 @@ describe('Xử lý lỗi chung', () => {
   });
 
   test('JSON sai cú pháp trả về 400 chuẩn', async () => {
-    const res = await request(app)
-      .post('/api/v1/sucKhoe')
-      .set('Content-Type', 'application/json')
-      .send('{sai');
+    const res = await request(app).post('/api/v1/sucKhoe').set('Content-Type', 'application/json').send('{sai');
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({ success: false, code: 400, data: null });
   });

@@ -8,11 +8,6 @@ const nguoiDungController = require('../controllers/nguoiDungController');
 const router = express.Router();
 
 router.get('/vaiTro', xacThucJwt, phanQuyen(['Admin']), batLoiBatDongBo(nguoiDungController.layDanhSachVaiTro));
-router.get(
-  '/nhatKyHeThong',
-  xacThucJwt,
-  phanQuyen(['Admin', 'giamDoc']),
-  batLoiBatDongBo(nguoiDungController.layNhatKyHeThong)
-);
+router.get('/nhatKyHeThong', xacThucJwt, phanQuyen(['Admin', 'giamDoc']), batLoiBatDongBo(nguoiDungController.layNhatKyHeThong));
 
 module.exports = router;

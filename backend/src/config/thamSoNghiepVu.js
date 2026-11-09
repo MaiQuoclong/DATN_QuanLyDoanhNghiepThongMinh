@@ -29,8 +29,13 @@ const THAM_SO_LUONG = {
   giamTruBanThan: 11000000, // giảm trừ gia cảnh bản thân/tháng (schema không lưu người phụ thuộc)
   // Biểu thuế TNCN lũy tiến từng phần theo tháng: [mức trần thu nhập tính thuế của bậc, thuế suất]
   bieuThueTNCN: [
-    [5000000, 0.05], [10000000, 0.1], [18000000, 0.15], [32000000, 0.2],
-    [52000000, 0.25], [80000000, 0.3], [Infinity, 0.35],
+    [5000000, 0.05],
+    [10000000, 0.1],
+    [18000000, 0.15],
+    [32000000, 0.2],
+    [52000000, 0.25],
+    [80000000, 0.3],
+    [Infinity, 0.35],
   ],
 };
 
@@ -40,7 +45,11 @@ const THAM_SO_KPI = {
   diemToiDa: 10,
   trongSoToiDa: 100, // trọng số mỗi chỉ tiêu 0.01-100 (cột DECIMAL(5,2))
   nguongXepLoai: [
-    [9, 'XUAT_SAC'], [8, 'TOT'], [6.5, 'KHA'], [5, 'TRUNG_BINH'], [0, 'YEU'],
+    [9, 'XUAT_SAC'],
+    [8, 'TOT'],
+    [6.5, 'KHA'],
+    [5, 'TRUNG_BINH'],
+    [0, 'YEU'],
   ],
   // Thưởng KPI = K(xếp loại) × M; M = lương hợp đồng × tyLeThuongMucTieu × số tháng của kỳ.
   // K tối đa 1.3 (xếp loại là 5 mức cố định nên không cần trần). Trả một lần vào lương tháng nghiệm thu.

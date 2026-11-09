@@ -16,7 +16,9 @@ const NHAN_TRANG_THAI = { CHO_DUYET: 'Chờ xử lý', DA_DUYET: 'Đã lập quy
 const homNay = () => new Date().toLocaleDateString('en-CA');
 
 const truongDeXuat = (coNhanVien) => [
-  ...(coNhanVien ? [{ ten: 'nhanVienId', nhan: 'Nhân viên', kieu: 'nhanVien', batBuoc: true, locNhanVien: { trangThai: ['THU_VIEC', 'CHINH_THUC'] } }] : []),
+  ...(coNhanVien
+    ? [{ ten: 'nhanVienId', nhan: 'Nhân viên', kieu: 'nhanVien', batBuoc: true, locNhanVien: { trangThai: ['THU_VIEC', 'CHINH_THUC'] } }]
+    : []),
   { ten: 'loaiDeXuat', nhan: 'Loại', kieu: 'select', batBuoc: true, luaChon: thanhLuaChon(NHAN_LOAI_KTKL) },
   { ten: 'soTienDeXuat', nhan: 'Số tiền đề xuất (VNĐ)', kieu: 'number', ghiChu: 'Để trống = 0' },
   { ten: 'tieuDe', nhan: 'Tiêu đề', batBuoc: true, rongHet: true },
@@ -41,15 +43,33 @@ function TrangDeXuat() {
   const [dsNguoiKy, setDsNguoiKy] = useState([]);
 
   const tai = useCallback(() => {
-    goiApi.get('/deXuatKhenThuongKyLuat', { params: locThamSo({ tuKhoa: tuKhoa.trim(), ...loc, trang, kichThuoc: KICH_THUOC }) })
-      .then((r) => { setKq(r.data); setLoi(''); }).catch((e) => setLoi(e.message));
+    goiApi
+      .get('/deXuatKhenThuongKyLuat', { params: locThamSo({ tuKhoa: tuKhoa.trim(), ...loc, trang, kichThuoc: KICH_THUOC }) })
+      .then((r) => {
+        setKq(r.data);
+        setLoi('');
+      })
+      .catch((e) => setLoi(e.message));
   }, [tuKhoa, loc, trang]);
-  useEffect(() => { const hen = setTimeout(tai, 250); return () => clearTimeout(hen); }, [tai]);
   useEffect(() => {
-    if (laHR) goiApi.get('/quyetDinhKhenThuongKyLuat/nguoiKy').then((r) => setDsNguoiKy(r.data)).catch((e) => setLoi(e.message));
+    const hen = setTimeout(tai, 250);
+    return () => clearTimeout(hen);
+  }, [tai]);
+  useEffect(() => {
+    if (laHR)
+      goiApi
+        .get('/quyetDinhKhenThuongKyLuat/nguoiKy')
+        .then((r) => setDsNguoiKy(r.data))
+        .catch((e) => setLoi(e.message));
   }, [laHR]);
 
-  const xong = (thongDiep) => { setDangTao(false); setDangXem(null); setCheDo(null); setThongBao(thongDiep); tai(); };
+  const xong = (thongDiep) => {
+    setDangTao(false);
+    setDangXem(null);
+    setCheDo(null);
+    setThongBao(thongDiep);
+    tai();
+  };
   const laCuaToi = (d) => d.nguoiDeXuatId === nguoiDung.nhanVienId;
 
   const cot = [
@@ -60,37 +80,60 @@ function TrangDeXuat() {
     { khoa: 'soTienDeXuat', tieuDe: 'Số tiền', canPhai: true, hienThi: (d) => dinhDangTien(d.soTienDeXuat) },
     { khoa: 'tenNguoiDeXuat', tieuDe: 'Người đề xuất' },
     { khoa: 'ngayTao', tieuDe: 'Ngày tạo', hienThi: (d) => dinhDangThoiGian(d.ngayTao) },
-    { khoa: 'trangThai', tieuDe: 'Trạng thái', hienThi: (d) => <ChipTrangThai trangThai={d.trangThai} nhan={NHAN_TRANG_THAI[d.trangThai]} /> },
+    {
+      khoa: 'trangThai',
+      tieuDe: 'Trạng thái',
+      hienThi: (d) => <ChipTrangThai trangThai={d.trangThai} nhan={NHAN_TRANG_THAI[d.trangThai]} />,
+    },
   ];
 
   // Thông tin đề xuất + các thao tác được phép, hiển thị trong hộp thoại xem
   const moTaDeXuat = (d) => (
     <>
-      <div><strong>{d.tieuDe}</strong> · {NHAN_LOAI_KTKL[d.loaiDeXuat]} · {dinhDangTien(d.soTienDeXuat)}</div>
-      <div>Nhân viên: {d.maNhanVien} - {d.hoVaTen} · Người đề xuất: {d.tenNguoiDeXuat}</div>
+      <div>
+        <strong>{d.tieuDe}</strong> · {NHAN_LOAI_KTKL[d.loaiDeXuat]} · {dinhDangTien(d.soTienDeXuat)}
+      </div>
+      <div>
+        Nhân viên: {d.maNhanVien} - {d.hoVaTen} · Người đề xuất: {d.tenNguoiDeXuat}
+      </div>
       <div style={{ whiteSpace: 'pre-wrap' }}>Lý do: {d.lyDo}</div>
       {d.trangThai !== 'CHO_DUYET' && (
-        <div>Xử lý: {d.tenNguoiXuLy ?? '—'}{d.ghiChuXuLy ? ` · ${d.ghiChuXuLy}` : ''}{d.soQuyetDinh ? ` · Quyết định ${d.soQuyetDinh}` : ''}</div>
+        <div>
+          Xử lý: {d.tenNguoiXuLy ?? '—'}
+          {d.ghiChuXuLy ? ` · ${d.ghiChuXuLy}` : ''}
+          {d.soQuyetDinh ? ` · Quyết định ${d.soQuyetDinh}` : ''}
+        </div>
       )}
       {d.trangThai === 'CHO_DUYET' && (
         <div style={{ marginTop: 8 }}>
           {laHR && d.nhanVienId !== nguoiDung.nhanVienId && (
             <>
-              <button type="button" className="lienKet" onClick={() => setCheDo('lapQuyetDinh')}>Lập quyết định</button>
+              <button type="button" className="lienKet" onClick={() => setCheDo('lapQuyetDinh')}>
+                Lập quyết định
+              </button>
               {' · '}
-              <button type="button" className="lienKet" onClick={() => setCheDo('tuChoi')}>Từ chối</button>
+              <button type="button" className="lienKet" onClick={() => setCheDo('tuChoi')}>
+                Từ chối
+              </button>
             </>
           )}
           {laCuaToi(d) && (
             <>
-              <button type="button" className="lienKet" onClick={() => setCheDo('sua')}>Sửa</button>
+              <button type="button" className="lienKet" onClick={() => setCheDo('sua')}>
+                Sửa
+              </button>
               {' · '}
               <button
                 type="button"
                 className="lienKet"
                 onClick={async () => {
                   if (!window.confirm('Thu hồi đề xuất này?')) return;
-                  try { xong((await goiApi.delete(`/deXuatKhenThuongKyLuat/${d.id}`)).message); } catch (e) { setDangXem(null); setLoi(e.message); }
+                  try {
+                    xong((await goiApi.delete(`/deXuatKhenThuongKyLuat/${d.id}`)).message);
+                  } catch (e) {
+                    setDangXem(null);
+                    setLoi(e.message);
+                  }
                 }}
               >
                 Thu hồi
@@ -109,22 +152,47 @@ function TrangDeXuat() {
           <h1 className="tieuDeTrang">Đề xuất khen thưởng - kỷ luật</h1>
           <div className="chuPhu">Quản lý đề xuất cho nhân viên phòng mình · HR từ chối hoặc lập quyết định để Giám đốc ký</div>
         </div>
-        {duocTao && <NutBam bieuTuong={Plus} onClick={() => { setThongBao(''); setDangTao(true); }}>Tạo đề xuất</NutBam>}
+        {duocTao && (
+          <NutBam
+            bieuTuong={Plus}
+            onClick={() => {
+              setThongBao('');
+              setDangTao(true);
+            }}
+          >
+            Tạo đề xuất
+          </NutBam>
+        )}
       </div>
       {loi && <div className="thongBao loi">{loi}</div>}
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
       <ThanhLoc
         tuKhoa={tuKhoa}
-        onDoiTuKhoa={(v) => { setTuKhoa(v); setTrang(1); }}
+        onDoiTuKhoa={(v) => {
+          setTuKhoa(v);
+          setTrang(1);
+        }}
         goiYTim="Tìm mã/tên nhân viên, tiêu đề..."
         boLoc={[
           { khoa: 'trangThai', nhan: 'Tất cả trạng thái', luaChon: thanhLuaChon(NHAN_TRANG_THAI) },
           { khoa: 'loaiDeXuat', nhan: 'Tất cả loại', luaChon: thanhLuaChon(NHAN_LOAI_KTKL) },
         ]}
         giaTriLoc={loc}
-        onDoiLoc={(k, v) => { setLoc((c) => ({ ...c, [k]: v })); setTrang(1); }}
+        onDoiLoc={(k, v) => {
+          setLoc((c) => ({ ...c, [k]: v }));
+          setTrang(1);
+        }}
       />
-      <BangDuLieu cot={cot} duLieu={kq?.items ?? []} onHanhDong={(d) => { setLoi(''); setCheDo(null); setDangXem(d); }} thongBaoRong="Không có đề xuất" />
+      <BangDuLieu
+        cot={cot}
+        duLieu={kq?.items ?? []}
+        onHanhDong={(d) => {
+          setLoi('');
+          setCheDo(null);
+          setDangXem(d);
+        }}
+        thongBaoRong="Không có đề xuất"
+      />
       <PhanTrang phanTrang={kq?.phanTrang} onDoiTrang={setTrang} />
 
       {dangTao && (
@@ -154,9 +222,8 @@ function TrangDeXuat() {
           giaTriBanDau={dangXem}
           onGui={async (g) => {
             // Số tiền API trả dạng "1000000.00": so sánh theo giá trị số để không coi là đã đổi
-            const khacNhau = (k, v) => (k === 'soTienDeXuat'
-              ? Number(v || 0) !== Number(dangXem[k] || 0)
-              : String(v) !== String(dangXem[k] ?? ''));
+            const khacNhau = (k, v) =>
+              k === 'soTienDeXuat' ? Number(v || 0) !== Number(dangXem[k] || 0) : String(v) !== String(dangXem[k] ?? '');
             const body = Object.fromEntries(Object.entries(g).filter(([k, v]) => khacNhau(k, v)));
             if (!Object.keys(body).length) throw new Error('Không có thông tin nào thay đổi');
             xong((await goiApi.patch(`/deXuatKhenThuongKyLuat/${dangXem.id}`, body)).message);
@@ -178,8 +245,10 @@ function TrangDeXuat() {
         <HopThoaiBieuMau
           tieuDe={`Lập quyết định từ đề xuất #${dangXem.id}`}
           moTa={`${NHAN_LOAI_KTKL[dangXem.loaiDeXuat]} cho ${dangXem.maNhanVien} - ${dangXem.hoVaTen}`}
-          truong={[...truongQuyetDinh(dsNguoiKy, { coNhanVien: false, coLoai: false }),
-            { ten: 'ghiChuXuLy', nhan: 'Ghi chú xử lý', rongHet: true }]}
+          truong={[
+            ...truongQuyetDinh(dsNguoiKy, { coNhanVien: false, coLoai: false }),
+            { ten: 'ghiChuXuLy', nhan: 'Ghi chú xử lý', rongHet: true },
+          ]}
           giaTriBanDau={{ tieuDe: dangXem.tieuDe, lyDo: dangXem.lyDo, soTien: dangXem.soTienDeXuat, ngayBanHanh: homNay() }}
           nhanNutGui="Ban hành"
           onGui={async (g) => {

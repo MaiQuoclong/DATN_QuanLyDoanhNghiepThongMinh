@@ -32,7 +32,10 @@ function layCacThang(tuNgay, denNgay) {
     ketQua.push(ma);
     if (ma >= cuoi) return ketQua;
     thang += 1;
-    if (thang > 12) { thang = 1; nam += 1; }
+    if (thang > 12) {
+      thang = 1;
+      nam += 1;
+    }
   }
 }
 

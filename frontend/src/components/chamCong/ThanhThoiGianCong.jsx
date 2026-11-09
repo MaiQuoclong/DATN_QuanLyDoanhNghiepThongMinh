@@ -29,7 +29,10 @@ function ThanhThoiGianCong({ banGhi, ca = CA_MAC_DINH }) {
   const nghiDen = doiPhut(ca.ketThucNghiTrua);
   const ketThucCa = Math.min(ra, gioRaCa);
   return (
-    <div className="thanhThoiGian" title={`${String(banGhi.gioVao).slice(0, 5)} - ${banGhi.gioRa ? String(banGhi.gioRa).slice(0, 5) : 'chưa check-out'}`}>
+    <div
+      className="thanhThoiGian"
+      title={`${String(banGhi.gioVao).slice(0, 5)} - ${banGhi.gioRa ? String(banGhi.gioRa).slice(0, 5) : 'chưa check-out'}`}
+    >
       {banGhi.diMuon && doan('diMuon', doiPhut(ca.gioVaoCa), vao)}
       {doan('lamViec', vao, Math.min(ketThucCa, nghiTu))}
       {doan('nghiTrua', Math.max(vao, nghiTu), Math.min(ra, nghiDen))}
@@ -42,10 +45,22 @@ function ThanhThoiGianCong({ banGhi, ca = CA_MAC_DINH }) {
 export function ChuThichThoiGian() {
   return (
     <div className="chuThichThoiGian">
-      <span><i style={{ background: 'var(--mauChinh)' }} />Làm việc</span>
-      <span><i style={{ background: '#14b8a6' }} />Nghỉ trưa</span>
-      <span><i style={{ background: '#f97316', opacity: 0.55 }} />Đi muộn</span>
-      <span><i style={{ background: 'var(--mauCanhBao)' }} />Tăng ca</span>
+      <span>
+        <i style={{ background: 'var(--mauChinh)' }} />
+        Làm việc
+      </span>
+      <span>
+        <i style={{ background: '#14b8a6' }} />
+        Nghỉ trưa
+      </span>
+      <span>
+        <i style={{ background: '#f97316', opacity: 0.55 }} />
+        Đi muộn
+      </span>
+      <span>
+        <i style={{ background: 'var(--mauCanhBao)' }} />
+        Tăng ca
+      </span>
     </div>
   );
 }

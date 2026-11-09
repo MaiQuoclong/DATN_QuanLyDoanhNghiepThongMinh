@@ -23,7 +23,11 @@ async function chayMotLan(congViec) {
     return ketQua;
   } catch (loi) {
     // Rollback lỗi (vd. mất kết nối) không được che mất lỗi gốc
-    try { await ketNoi.rollback(); } catch { /* bỏ qua */ }
+    try {
+      await ketNoi.rollback();
+    } catch {
+      /* bỏ qua */
+    }
     throw loi;
   } finally {
     ketNoi.release();

@@ -1,9 +1,7 @@
 const hopDongService = require('../services/hopDongService');
 const { thanhCong } = require('../utils/phanHoi');
 const { TRANG_THAI_HOP_DONG } = require('../utils/trangThai');
-const {
-  laySoNguyenDuong, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang,
-} = require('../utils/thamSoTruyVan');
+const { laySoNguyenDuong, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang } = require('../utils/thamSoTruyVan');
 
 const SO_NGAY_CANH_BAO_MAC_DINH = 30;
 const SO_NGAY_CANH_BAO_TOI_DA = 365;
@@ -31,10 +29,7 @@ async function layHopDongCuaToi(req, res) {
 }
 
 async function layHopDongSapHetHan(req, res) {
-  const soNgay = Math.min(
-    laySoNguyenDuong(req.query.soNgay, SO_NGAY_CANH_BAO_MAC_DINH, 'Số ngày'),
-    SO_NGAY_CANH_BAO_TOI_DA
-  );
+  const soNgay = Math.min(laySoNguyenDuong(req.query.soNgay, SO_NGAY_CANH_BAO_MAC_DINH, 'Số ngày'), SO_NGAY_CANH_BAO_TOI_DA);
   const danhSach = await hopDongService.laySapHetHan(soNgay);
   return thanhCong(res, { soNgay, items: danhSach }, 'Lấy danh sách hợp đồng sắp hết hạn thành công');
 }

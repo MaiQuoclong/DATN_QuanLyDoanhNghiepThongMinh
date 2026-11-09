@@ -15,8 +15,12 @@ function TrangPhieuLuong() {
   const [dangXem, setDangXem] = useState(null);
 
   useEffect(() => {
-    goiApi.get('/phieuLuong/cuaToi', { params: { nam } })
-      .then((kq) => { setDsPhieu(kq.data); setLoi(''); })
+    goiApi
+      .get('/phieuLuong/cuaToi', { params: { nam } })
+      .then((kq) => {
+        setDsPhieu(kq.data);
+        setLoi('');
+      })
       .catch((e) => setLoi(e.message));
   }, [nam]);
 
@@ -39,7 +43,11 @@ function TrangPhieuLuong() {
         <label className="truongForm">
           Năm
           <select value={nam} onChange={(e) => setNam(Number(e.target.value))}>
-            {[namHienTai - 2, namHienTai - 1, namHienTai].map((n) => <option key={n} value={n}>{n}</option>)}
+            {[namHienTai - 2, namHienTai - 1, namHienTai].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
           </select>
         </label>
       </div>

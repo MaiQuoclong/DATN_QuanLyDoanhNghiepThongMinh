@@ -71,9 +71,18 @@ textarea {
   font-size: 13px;
 }
 
-.thongBao.loi { background: var(--mauLoiNhat); color: var(--mauLoi); }
-.thongBao.thanhCong { background: var(--mauThanhCongNhat); color: var(--mauThanhCong); }
-.thongBao.canhBao { background: var(--mauCanhBaoNhat); color: #92400e; }
+.thongBao.loi {
+  background: var(--mauLoiNhat);
+  color: var(--mauLoi);
+}
+.thongBao.thanhCong {
+  background: var(--mauThanhCongNhat);
+  color: var(--mauThanhCong);
+}
+.thongBao.canhBao {
+  background: var(--mauCanhBaoNhat);
+  color: #92400e;
+}
 
 .theNoiDung {
   padding: 16px 18px;

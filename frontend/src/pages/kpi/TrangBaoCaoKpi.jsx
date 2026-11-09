@@ -6,8 +6,11 @@ import TheThongKe from '../../components/TheThongKe';
 
 // Thứ tự và màu xếp loại (tốt -> kém), khớp THAM_SO_KPI ở backend
 const XEP_LOAI = [
-  ['XUAT_SAC', 'Xuất sắc', '#15803d'], ['TOT', 'Tốt', '#22c55e'], ['KHA', 'Khá', '#eab308'],
-  ['TRUNG_BINH', 'Trung bình', '#f97316'], ['YEU', 'Yếu', '#dc2626'],
+  ['XUAT_SAC', 'Xuất sắc', '#15803d'],
+  ['TOT', 'Tốt', '#22c55e'],
+  ['KHA', 'Khá', '#eab308'],
+  ['TRUNG_BINH', 'Trung bình', '#f97316'],
+  ['YEU', 'Yếu', '#dc2626'],
 ];
 
 // Tab Báo cáo: xếp loại KPI theo kỳ và phòng ban (HR, giamDoc toàn công ty; quanLy phòng mình)
@@ -18,24 +21,35 @@ function TrangBaoCaoKpi() {
   const [loi, setLoi] = useState('');
 
   useEffect(() => {
-    goiApi.get('/kyDanhGiaKPI').then((kq) => {
-      setDsKy(kq.data);
-      // Mặc định kỳ gần nhất đã có phiếu nghiệm thu
-      const ky = kq.data.find((k) => k.soPhieuDaDuyet > 0) ?? kq.data[0];
-      if (ky) setKyId(String(ky.id));
-    }).catch((e) => setLoi(e.message));
+    goiApi
+      .get('/kyDanhGiaKPI')
+      .then((kq) => {
+        setDsKy(kq.data);
+        // Mặc định kỳ gần nhất đã có phiếu nghiệm thu
+        const ky = kq.data.find((k) => k.soPhieuDaDuyet > 0) ?? kq.data[0];
+        if (ky) setKyId(String(ky.id));
+      })
+      .catch((e) => setLoi(e.message));
   }, []);
 
   useEffect(() => {
     if (!kyId) return;
-    goiApi.get('/phieuDanhGiaKPI/baoCao', { params: { kyDanhGiaId: kyId } })
-      .then((kq) => { setBaoCao(kq.data); setLoi(''); })
-      .catch((e) => { setBaoCao(null); setLoi(e.message); });
+    goiApi
+      .get('/phieuDanhGiaKPI/baoCao', { params: { kyDanhGiaId: kyId } })
+      .then((kq) => {
+        setBaoCao(kq.data);
+        setLoi('');
+      })
+      .catch((e) => {
+        setBaoCao(null);
+        setLoi(e.message);
+      });
   }, [kyId]);
 
   const tong = baoCao?.tongHop;
   const duLieuBieuDo = (baoCao?.theoPhongBan ?? []).map((pb) => ({
-    ten: pb.tenPhongBan, ...Object.fromEntries(XEP_LOAI.map(([ma]) => [ma, pb.theoXepLoai[ma] ?? 0])),
+    ten: pb.tenPhongBan,
+    ...Object.fromEntries(XEP_LOAI.map(([ma]) => [ma, pb.theoXepLoai[ma] ?? 0])),
   }));
   const cot = [
     { khoa: 'tenPhongBan', tieuDe: 'Phòng ban' },
@@ -55,7 +69,11 @@ function TrangBaoCaoKpi() {
         <label className="truongForm">
           Kỳ đánh giá
           <select value={kyId} onChange={(e) => setKyId(e.target.value)}>
-            {dsKy.map((k) => <option key={k.id} value={k.id}>{k.tenKyDanhGia}</option>)}
+            {dsKy.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.tenKyDanhGia}
+              </option>
+            ))}
           </select>
         </label>
       </div>
@@ -63,8 +81,15 @@ function TrangBaoCaoKpi() {
       {!loi && dsKy.length === 0 && <div className="thongBao canhBao">Chưa có kỳ đánh giá nào</div>}
       {tong && (
         <>
-          <div className="luoiThongKe" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
-            <TheThongKe tieuDe="Tổng số phiếu" giaTri={tong.soPhieu} moTa={`${tong.theoTrangThai.CHO_DUYET} chờ nghiệm thu · ${tong.theoTrangThai.BAN_NHAP} nháp`} />
+          <div
+            className="luoiThongKe"
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}
+          >
+            <TheThongKe
+              tieuDe="Tổng số phiếu"
+              giaTri={tong.soPhieu}
+              moTa={`${tong.theoTrangThai.CHO_DUYET} chờ nghiệm thu · ${tong.theoTrangThai.BAN_NHAP} nháp`}
+            />
             <TheThongKe tieuDe="Đã nghiệm thu" giaTri={tong.theoTrangThai.DA_DUYET} />
             <TheThongKe tieuDe="Điểm trung bình" giaTri={tong.diemTrungBinh ?? '—'} />
             <TheThongKe
@@ -75,8 +100,8 @@ function TrangBaoCaoKpi() {
             />
           </div>
           <div className="chuPhu" style={{ marginBottom: 16 }}>
-            Thưởng KPI = hệ số × 10% lương hợp đồng × số tháng của kỳ (Xuất sắc 1.3 · Tốt 1.1 · Khá 1.0 · Trung bình 0.5 · Yếu 0),
-            trả một lần vào bảng lương tháng nghiệm thu phiếu.
+            Thưởng KPI = hệ số × 10% lương hợp đồng × số tháng của kỳ (Xuất sắc 1.3 · Tốt 1.1 · Khá 1.0 · Trung bình 0.5 · Yếu 0), trả một
+            lần vào bảng lương tháng nghiệm thu phiếu.
           </div>
           {duLieuBieuDo.length > 0 && (
             <div className="the" style={{ padding: 16, marginBottom: 16 }}>
@@ -88,7 +113,9 @@ function TrangBaoCaoKpi() {
                   <YAxis allowDecimals={false} />
                   <Tooltip />
                   <Legend />
-                  {XEP_LOAI.map(([ma, nhan, mau]) => <Bar key={ma} dataKey={ma} name={nhan} stackId="xl" fill={mau} />)}
+                  {XEP_LOAI.map(([ma, nhan, mau]) => (
+                    <Bar key={ma} dataKey={ma} name={nhan} stackId="xl" fill={mau} />
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -12,7 +12,8 @@ function HopThoaiTaoDon({ quy, onDong, onDaGui }) {
   const [dangGui, setDangGui] = useState(false);
 
   useEffect(() => {
-    goiApi.get('/loaiNghiPhep', { params: { trangThai: 'DANG_AP_DUNG' } })
+    goiApi
+      .get('/loaiNghiPhep', { params: { trangThai: 'DANG_AP_DUNG' } })
       .then((kq) => setDsLoai(kq.data))
       .catch((e) => setLoi(e.message));
   }, []);
@@ -56,12 +57,16 @@ function HopThoaiTaoDon({ quy, onDong, onDaGui }) {
     <HopThoai
       tieuDe="Tạo đơn nghỉ phép"
       onDong={onDong}
-      chanTrang={(
+      chanTrang={
         <>
-          <NutBam bienThe="phu" type="button" onClick={onDong}>Hủy</NutBam>
-          <NutBam type="submit" form="formTaoDon" disabled={dangGui}>{dangGui ? 'Đang gửi...' : 'Gửi đơn'}</NutBam>
+          <NutBam bienThe="phu" type="button" onClick={onDong}>
+            Hủy
+          </NutBam>
+          <NutBam type="submit" form="formTaoDon" disabled={dangGui}>
+            {dangGui ? 'Đang gửi...' : 'Gửi đơn'}
+          </NutBam>
         </>
-      )}
+      }
     >
       {loi && <div className="thongBao loi">{loi}</div>}
       <form id="formTaoDon" className="bieuMau" onSubmit={gui}>
@@ -69,7 +74,11 @@ function HopThoaiTaoDon({ quy, onDong, onDaGui }) {
           Loại nghỉ phép *
           <select value={giaTri.loaiNghiPhepId} onChange={doi('loaiNghiPhepId')} required>
             <option value="">-- Chọn --</option>
-            {dsLoai.map((l) => <option key={l.id} value={l.id}>{l.tenLoai}</option>)}
+            {dsLoai.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.tenLoai}
+              </option>
+            ))}
           </select>
           {loai && (
             <small className="chuPhu">
@@ -96,7 +105,14 @@ function HopThoaiTaoDon({ quy, onDong, onDaGui }) {
         )}
         <label className="truongForm rongHet">
           Lý do *
-          <textarea value={giaTri.lyDo} onChange={doi('lyDo')} required minLength={5} maxLength={1000} placeholder="Ví dụ: về quê có việc gia đình" />
+          <textarea
+            value={giaTri.lyDo}
+            onChange={doi('lyDo')}
+            required
+            minLength={5}
+            maxLength={1000}
+            placeholder="Ví dụ: về quê có việc gia đình"
+          />
         </label>
       </form>
       <div className="chuPhu">

@@ -15,8 +15,8 @@ function khongTimThayRoute(req, res) {
 }
 
 // Global error middleware: mọi lỗi đều trả về JSON chuẩn, không lộ stack trace ra client
-// eslint-disable-next-line no-unused-vars
-function xuLyLoi(loi, req, res, next) {
+// Express nhận diện middleware lỗi qua đủ 4 tham số nên giữ _next dù không dùng
+function xuLyLoi(loi, req, res, _next) {
   if (loi instanceof LoiUngDung) {
     return thatBai(res, loi.code, loi.message);
   }

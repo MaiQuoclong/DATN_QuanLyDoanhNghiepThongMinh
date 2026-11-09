@@ -17,15 +17,24 @@ let mocNhatKy;
 let anh;
 let dem = 0;
 
-const dangNhap = (ten) => request(app).post(`${API}/xacThuc/dangNhap`).set('X-Tra-Token', '1').send({ tenDangNhap: ten, matKhau: MAT_KHAU });
+const dangNhap = (ten) =>
+  request(app).post(`${API}/xacThuc/dangNhap`).set('X-Tra-Token', '1').send({ tenDangNhap: ten, matKhau: MAT_KHAU });
 const goi = (pt, duongDan, tk) => {
   const r = request(app)[pt](`${API}${duongDan}`);
   return tk ? r.set('Authorization', `Bearer ${tk}`) : r;
 };
-const maMoi = (tienTo = 'QA') => { dem += 1; return `${tienTo}${Date.now() % 100000}${dem}`; };
+const maMoi = (tienTo = 'QA') => {
+  dem += 1;
+  return `${tienTo}${Date.now() % 100000}${dem}`;
+};
 
 async function taoPhongBan(ghiDe = {}) {
-  const res = await goi('post', '/phongBan', token.hr).send({ maPhongBan: maMoi(), tenPhongBan: 'Phòng kiểm thử', phongBanChaId: 1, ...ghiDe });
+  const res = await goi('post', '/phongBan', token.hr).send({
+    maPhongBan: maMoi(),
+    tenPhongBan: 'Phòng kiểm thử',
+    phongBanChaId: 1,
+    ...ghiDe,
+  });
   expect(res.status).toBe(201);
   return res.body.data;
 }
@@ -44,20 +53,28 @@ const boNhiem = (pbId, nvId, tk = token.giamdoc) => goi('post', `/phongBan/${pbI
 const mienNhiem = (pbId, tk = token.giamdoc) => goi('post', `/phongBan/${pbId}/mienNhiem`, tk).send({});
 function duLieuNhanVien(chucDanhPhongBanId) {
   const ten = maMoi('qanv').toLowerCase();
-  return { hoVaTen: 'Trần Văn Thử', gioiTinh: 'NAM', ngaySinh: '1999-01-01', ngayVaoLam: '2026-10-01', chucDanhPhongBanId, tenDangNhap: ten, email: `${ten}@smarthrm.local` };
+  return {
+    hoVaTen: 'Trần Văn Thử',
+    gioiTinh: 'NAM',
+    ngaySinh: '1999-01-01',
+    ngayVaoLam: '2026-10-01',
+    chucDanhPhongBanId,
+    tenDangNhap: ten,
+    email: `${ten}@smarthrm.local`,
+  };
 }
 
 async function demNhatKy(hanhDong, nguoiDungId) {
   const [d] = await pool.execute(
     'SELECT COUNT(*) AS n FROM nhatkyhethong WHERE id > ? AND hanhDong = ? AND (? IS NULL OR nguoiDungId = ?)',
-    [mocNhatKy, hanhDong, nguoiDungId ?? null, nguoiDungId ?? null]
+    [mocNhatKy, hanhDong, nguoiDungId ?? null, nguoiDungId ?? null],
   );
   return Number(d[0].n);
 }
 async function layVaiTro(nguoiDungId) {
   const [d] = await pool.execute(
     'SELECT v.maVaiTro FROM nguoidungvaitro nv JOIN vaitro v ON v.id = nv.vaiTroId WHERE nv.nguoiDungId = ? ORDER BY v.maVaiTro',
-    [nguoiDungId]
+    [nguoiDungId],
   );
   return d.map((x) => x.maVaiTro);
 }
@@ -79,7 +96,7 @@ async function tinhQuanSoKyVong() {
   const [dem] = await pool.query(
     `SELECT cdpb.phongBanId AS id, COUNT(*) AS n FROM nhanvien nv
      JOIN chucdanhphongban cdpb ON cdpb.id = nv.chucDanhPhongBanId
-     WHERE nv.trangThaiLamViec <> 'DA_NGHI_VIEC' GROUP BY cdpb.phongBanId`
+     WHERE nv.trangThaiLamViec <> 'DA_NGHI_VIEC' GROUP BY cdpb.phongBanId`,
   );
   const truc = Object.fromEntries(dem.map((d) => [d.id, Number(d.n)]));
   const tong = (id) => (truc[id] || 0) + pb.filter((p) => p.phongBanChaId === id).reduce((s, p) => s + tong(p.id), 0);
@@ -114,10 +131,13 @@ afterEach(async () => {
   const maxPb = maxId(anh.pb);
   await pool.execute('UPDATE phongban SET truongBoPhanId = NULL, phongBanChaId = NULL WHERE id > ?', [maxPb]);
   for (const d of anh.pb) {
-    await pool.execute(
-      'UPDATE phongban SET tenPhongBan = ?, truongBoPhanId = ?, phongBanChaId = ?, trangThai = ? WHERE id = ?',
-      [d.tenPhongBan, d.truongBoPhanId, d.phongBanChaId, d.trangThai, d.id]
-    );
+    await pool.execute('UPDATE phongban SET tenPhongBan = ?, truongBoPhanId = ?, phongBanChaId = ?, trangThai = ? WHERE id = ?', [
+      d.tenPhongBan,
+      d.truongBoPhanId,
+      d.phongBanChaId,
+      d.trangThai,
+      d.id,
+    ]);
   }
   for (const d of anh.nv) {
     await pool.execute(`UPDATE nhanvien SET ${COT_NV.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`, [...COT_NV.map((c) => d[c]), d.id]);
@@ -126,14 +146,25 @@ afterEach(async () => {
   await pool.execute('DELETE FROM nguoidungvaitro');
   await pool.execute('DELETE FROM nguoidung WHERE id > ?', [maxId(anh.nd)]);
   for (const d of anh.nd) await pool.execute('UPDATE nguoidung SET trangThai = ? WHERE id = ?', [d.trangThai, d.id]);
-  for (const d of anh.ndvt) await pool.execute('INSERT INTO nguoidungvaitro (nguoiDungId, vaiTroId) VALUES (?, ?)', [d.nguoiDungId, d.vaiTroId]);
+  for (const d of anh.ndvt)
+    await pool.execute('INSERT INTO nguoidungvaitro (nguoiDungId, vaiTroId) VALUES (?, ?)', [d.nguoiDungId, d.vaiTroId]);
   await pool.execute('DELETE FROM chucdanhphongban WHERE id > ?', [maxId(anh.cdpb)]);
   for (const d of anh.cdpb) {
-    await pool.execute('UPDATE chucdanhphongban SET dinhBien = ?, ghiChu = ?, trangThai = ? WHERE id = ?', [d.dinhBien, d.ghiChu, d.trangThai, d.id]);
+    await pool.execute('UPDATE chucdanhphongban SET dinhBien = ?, ghiChu = ?, trangThai = ? WHERE id = ?', [
+      d.dinhBien,
+      d.ghiChu,
+      d.trangThai,
+      d.id,
+    ]);
   }
   await pool.execute('DELETE FROM chucdanh WHERE id > ?', [maxId(anh.cd)]);
   for (const d of anh.cd) {
-    await pool.execute('UPDATE chucdanh SET tenChucDanh = ?, capBac = ?, trangThai = ? WHERE id = ?', [d.tenChucDanh, d.capBac, d.trangThai, d.id]);
+    await pool.execute('UPDATE chucdanh SET tenChucDanh = ?, capBac = ?, trangThai = ? WHERE id = ?', [
+      d.tenChucDanh,
+      d.capBac,
+      d.trangThai,
+      d.id,
+    ]);
   }
   await pool.execute('DELETE FROM phongban WHERE id > ?', [maxPb]);
   await datLaiAutoIncrement();
@@ -153,21 +184,24 @@ describe('Đọc cơ cấu tổ chức', () => {
     expect(res.body).toEqual({ success: false, code: 401, message: expect.any(String), data: null });
   });
 
-  test.each(['admin', 'giamdoc', 'quanly', 'hr', 'nhanvien'])('%s xem danh sách phòng ban, soNhanVien trực tiếp và tongQuanSo cộng cây', async (ten) => {
-    const res = await goi('get', '/phongBan', token[ten]);
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ success: true, code: 200, message: expect.any(String) });
-    const theoMa = Object.fromEntries(res.body.data.map((pb) => [pb.maPhongBan, pb]));
-    const kyVong = await tinhQuanSoKyVong();
-    expect(Object.keys(theoMa).sort()).toEqual(Object.keys(kyVong).sort());
-    expect(Object.keys(theoMa)).toEqual(expect.arrayContaining(['BGD', 'PKD', 'PKT', 'PKT-PT', 'PNS']));
-    for (const ma of Object.keys(kyVong)) expect(theoMa[ma]).toMatchObject(kyVong[ma]);
-    expect(theoMa.BGD).toMatchObject({ truongBoPhanId: 2, maTruongBoPhan: 'NV0002' });
-    expect(theoMa.PNS).toMatchObject({ truongBoPhanId: null });
-    expect(theoMa.PKT).toMatchObject({ truongBoPhanId: 3 });
-    expect(theoMa.PKD).toMatchObject({ truongBoPhanId: 9, phongBanChaId: 1 });
-    expect(theoMa['PKT-PT']).toMatchObject({ phongBanChaId: 3 });
-  });
+  test.each(['admin', 'giamdoc', 'quanly', 'hr', 'nhanvien'])(
+    '%s xem danh sách phòng ban, soNhanVien trực tiếp và tongQuanSo cộng cây',
+    async (ten) => {
+      const res = await goi('get', '/phongBan', token[ten]);
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ success: true, code: 200, message: expect.any(String) });
+      const theoMa = Object.fromEntries(res.body.data.map((pb) => [pb.maPhongBan, pb]));
+      const kyVong = await tinhQuanSoKyVong();
+      expect(Object.keys(theoMa).sort()).toEqual(Object.keys(kyVong).sort());
+      expect(Object.keys(theoMa)).toEqual(expect.arrayContaining(['BGD', 'PKD', 'PKT', 'PKT-PT', 'PNS']));
+      for (const ma of Object.keys(kyVong)) expect(theoMa[ma]).toMatchObject(kyVong[ma]);
+      expect(theoMa.BGD).toMatchObject({ truongBoPhanId: 2, maTruongBoPhan: 'NV0002' });
+      expect(theoMa.PNS).toMatchObject({ truongBoPhanId: null });
+      expect(theoMa.PKT).toMatchObject({ truongBoPhanId: 3 });
+      expect(theoMa.PKD).toMatchObject({ truongBoPhanId: 9, phongBanChaId: 1 });
+      expect(theoMa['PKT-PT']).toMatchObject({ phongBanChaId: 3 });
+    },
+  );
 
   test('nhân viên đã nghỉ việc không tính vào quân số', async () => {
     const truoc = await tinhQuanSoKyVong();
@@ -248,8 +282,14 @@ describe('Quản lý phòng ban (HR)', () => {
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ success: true, code: 201 });
     expect(res.body.data).toMatchObject({
-      maPhongBan: ma.toUpperCase(), tenPhongBan: 'Phòng Kiểm thử', phongBanChaId: 3,
-      trangThai: 'DANG_HOAT_DONG', truongBoPhanId: null, soNhanVien: 0, tongQuanSo: 0, viTri: [],
+      maPhongBan: ma.toUpperCase(),
+      tenPhongBan: 'Phòng Kiểm thử',
+      phongBanChaId: 3,
+      trangThai: 'DANG_HOAT_DONG',
+      truongBoPhanId: null,
+      soNhanVien: 0,
+      tongQuanSo: 0,
+      viTri: [],
     });
     expect(await demNhatKy('THEM_PHONG_BAN', 4)).toBe(1);
   });
@@ -267,7 +307,9 @@ describe('Quản lý phòng ban (HR)', () => {
   });
 
   test('phòng ban cha không tồn tại 404, cha đang ngừng 409', async () => {
-    expect((await goi('post', '/phongBan', token.hr).send({ maPhongBan: maMoi(), tenPhongBan: 'Thử', phongBanChaId: 99999 })).status).toBe(404);
+    expect((await goi('post', '/phongBan', token.hr).send({ maPhongBan: maMoi(), tenPhongBan: 'Thử', phongBanChaId: 99999 })).status).toBe(
+      404,
+    );
     const cha = await taoPhongBan();
     expect((await doiTrangThai('phongBan', cha.id, 'NGUNG_HOAT_DONG')).status).toBe(200);
     const res = await goi('post', '/phongBan', token.hr).send({ maPhongBan: maMoi(), tenPhongBan: 'Thử', phongBanChaId: cha.id });
@@ -443,9 +485,22 @@ describe('Quản lý chức danh (HR)', () => {
 // ===========================================================================
 describe('Quản lý vị trí (chucDanhPhongBan, HR)', () => {
   test('thêm vị trí 201, ghi THEM_VI_TRI', async () => {
-    const res = await goi('post', '/chucDanhPhongBan', token.hr).send({ phongBanId: 4, chucDanhId: 2, dinhBien: 2, ghiChu: ' Trưởng nhóm ' });
+    const res = await goi('post', '/chucDanhPhongBan', token.hr).send({
+      phongBanId: 4,
+      chucDanhId: 2,
+      dinhBien: 2,
+      ghiChu: ' Trưởng nhóm ',
+    });
     expect(res.status).toBe(201);
-    expect(res.body.data).toMatchObject({ phongBanId: 4, chucDanhId: 2, dinhBien: 2, ghiChu: 'Trưởng nhóm', trangThai: 'DANG_AP_DUNG', soDangGiu: 0, conTrong: 2 });
+    expect(res.body.data).toMatchObject({
+      phongBanId: 4,
+      chucDanhId: 2,
+      dinhBien: 2,
+      ghiChu: 'Trưởng nhóm',
+      trangThai: 'DANG_AP_DUNG',
+      soDangGiu: 0,
+      conTrong: 2,
+    });
     expect(await demNhatKy('THEM_VI_TRI', 4)).toBe(1);
   });
 
@@ -691,7 +746,7 @@ describe('Chạy song song', () => {
         `SELECT pb.trangThai, (SELECT COUNT(*) FROM nhanvien nv JOIN chucdanhphongban c ON c.id = nv.chucDanhPhongBanId
            WHERE c.phongBanId = pb.id AND nv.trangThaiLamViec <> 'DA_NGHI_VIEC') AS soNv
            FROM phongban pb WHERE pb.id = ?`,
-        [pb.id]
+        [pb.id],
       );
       if (d[0].trangThai === 'NGUNG_HOAT_DONG') expect(Number(d[0].soNv)).toBe(0);
       expect(ngung.status === 200 && them.status === 201).toBe(false);
@@ -704,7 +759,7 @@ describe('Chạy song song', () => {
       `SELECT pb.trangThai, (SELECT COUNT(*) FROM nhanvien nv JOIN chucdanhphongban c ON c.id = nv.chucDanhPhongBanId
          WHERE c.phongBanId = pb.id AND nv.trangThaiLamViec <> 'DA_NGHI_VIEC') AS soNv
          FROM phongban pb WHERE pb.id = ?`,
-      [pbId]
+      [pbId],
     );
     return { trangThai: d[0].trangThai, soNv: Number(d[0].soNv) };
   }
@@ -850,7 +905,9 @@ describe('PATCH kèm trangThai trong cùng transaction', () => {
 describe('Chạy song song: chức danh và bổ nhiệm', () => {
   const dieuChuyenNv = (nvId, chucDanhPhongBanId) => goi('post', `/nhanVien/${nvId}/dieuChuyen`, token.hr).send({ chucDanhPhongBanId });
   async function soViTriDangApDung(chucDanhId) {
-    const [d] = await pool.execute("SELECT COUNT(*) AS n FROM chucdanhphongban WHERE chucDanhId = ? AND trangThai = 'DANG_AP_DUNG'", [chucDanhId]);
+    const [d] = await pool.execute("SELECT COUNT(*) AS n FROM chucdanhphongban WHERE chucDanhId = ? AND trangThai = 'DANG_AP_DUNG'", [
+      chucDanhId,
+    ]);
     return Number(d[0].n);
   }
   async function trangThaiChucDanh(id) {
@@ -870,7 +927,9 @@ describe('Chạy song song: chức danh và bổ nhiệm', () => {
       const vt = await taoViTri(pb.id, cd.id, 3);
       const nvId = await taoNv(5);
       const [ngung, chuyen] = await Promise.all([
-        lan % 2 ? goi('patch', `/chucDanh/${cd.id}`, token.hr).send({ trangThai: 'NGUNG_HOAT_DONG' }) : doiTrangThai('chucDanh', cd.id, 'NGUNG_HOAT_DONG'),
+        lan % 2
+          ? goi('patch', `/chucDanh/${cd.id}`, token.hr).send({ trangThai: 'NGUNG_HOAT_DONG' })
+          : doiTrangThai('chucDanh', cd.id, 'NGUNG_HOAT_DONG'),
         dieuChuyenNv(nvId, vt.id),
       ]);
       expect([200, 409]).toContain(ngung.status);

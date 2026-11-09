@@ -50,16 +50,19 @@ const goi = (phuongThuc, duongDan, tk) => {
 async function taoNhanVien(ghiDe = {}) {
   demTen += 1;
   const ten = `qahd${Date.now() % 100000}${demTen}`;
-  const res = await request(app).post('/api/v1/nhanVien').set('Authorization', `Bearer ${token.hr}`).send({
-    hoVaTen: 'Trần Hợp Đồng',
-    gioiTinh: 'NAM',
-    ngaySinh: '1995-05-20',
-    ngayVaoLam: NGAY_VAO_LAM,
-    chucDanhPhongBanId: 5,
-    tenDangNhap: ten,
-    email: `${ten}@smarthrm.local`,
-    ...ghiDe,
-  });
+  const res = await request(app)
+    .post('/api/v1/nhanVien')
+    .set('Authorization', `Bearer ${token.hr}`)
+    .send({
+      hoVaTen: 'Trần Hợp Đồng',
+      gioiTinh: 'NAM',
+      ngaySinh: '1995-05-20',
+      ngayVaoLam: NGAY_VAO_LAM,
+      chucDanhPhongBanId: 5,
+      tenDangNhap: ten,
+      email: `${ten}@smarthrm.local`,
+      ...ghiDe,
+    });
   expect(res.status).toBe(201);
   return res.body.data;
 }
@@ -70,7 +73,8 @@ async function taoHrThuHai() {
   await pool.execute('INSERT INTO nguoidungvaitro (nguoiDungId, vaiTroId) VALUES (?, ?)', [nhanVien.nguoiDungId, VAI_TRO_HR_ID]);
   const dn = await dangNhap(taiKhoan.tenDangNhap, taiKhoan.matKhauTam);
   expect(dn.status).toBe(200);
-  const doi = await request(app).post('/api/v1/xacThuc/doiMatKhau')
+  const doi = await request(app)
+    .post('/api/v1/xacThuc/doiMatKhau')
     .set('Authorization', `Bearer ${dn.body.data.token}`)
     .send({ matKhauCu: taiKhoan.matKhauTam, matKhauMoi: 'HrThuHai123' });
   expect(doi.status).toBe(200);
@@ -82,8 +86,13 @@ async function taoHrThuHai() {
 const taoHopDong = (body, tk = token.hr) => goi('post', '', tk).send(body);
 function hopDongXacDinh(nhanVienId, ghiDe = {}) {
   return {
-    nhanVienId, loaiHopDong: 'XAC_DINH_THOI_HAN', ngayBatDau: ngay(0), ngayKetThuc: ngay(364),
-    luongCoBan: 15000000, mucPhuCap: '500000.50', ...ghiDe,
+    nhanVienId,
+    loaiHopDong: 'XAC_DINH_THOI_HAN',
+    ngayBatDau: ngay(0),
+    ngayKetThuc: ngay(364),
+    luongCoBan: 15000000,
+    mucPhuCap: '500000.50',
+    ...ghiDe,
   };
 }
 // Đếm số hợp đồng hiện có trong CSDL (không đếm cứng theo seed)
@@ -106,9 +115,10 @@ async function layLichSuDb(hopDongId) {
   return d;
 }
 async function layNhatKy(hanhDong) {
-  const [d] = await pool.execute(
-    'SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id', [mocNhatKy, hanhDong]
-  );
+  const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id', [
+    mocNhatKy,
+    hanhDong,
+  ]);
   return d;
 }
 
@@ -127,7 +137,12 @@ beforeAll(async () => {
   const [[nd]] = await pool.query('SELECT MAX(id) AS m FROM nguoidung');
   const [nvTt] = await pool.query('SELECT id, trangThaiLamViec FROM nhanvien');
   anhChup = {
-    hd, nvTt, maxHopDong: Math.max(...hd.map((d) => d.id)), maxLichSu: ls.m, maxNhanVien: nv.m, maxNguoiDung: nd.m,
+    hd,
+    nvTt,
+    maxHopDong: Math.max(...hd.map((d) => d.id)),
+    maxLichSu: ls.m,
+    maxNhanVien: nv.m,
+    maxNguoiDung: nd.m,
   };
   for (const ten of ['admin', 'giamdoc', 'quanly', 'hr', 'nhanvien', 'nhanvien2']) {
     const res = await dangNhap(ten);
@@ -147,8 +162,10 @@ afterEach(async () => {
   await pool.execute('DELETE FROM hopdonglaodong WHERE id > ?', [anhChup.maxHopDong]); // CASCADE lichsuhopdong
   await pool.execute('DELETE FROM lichsuhopdong WHERE id > ?', [anhChup.maxLichSu]);
   for (const d of anhChup.hd) {
-    await pool.execute(`UPDATE hopdonglaodong SET ${COT_HD.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`,
-      [...COT_HD.map((c) => d[c]), d.id]);
+    await pool.execute(`UPDATE hopdonglaodong SET ${COT_HD.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`, [
+      ...COT_HD.map((c) => d[c]),
+      d.id,
+    ]);
   }
   for (const d of anhChup.nvTt) {
     await pool.execute('UPDATE nhanvien SET trangThaiLamViec = ? WHERE id = ?', [d.trangThaiLamViec, d.id]);
@@ -169,8 +186,16 @@ afterAll(async () => {
 // ---------------------------------------------------------------------------
 describe('Phân quyền 5 vai trò', () => {
   test('chưa đăng nhập trả 401 chuẩn cho mọi endpoint', async () => {
-    for (const [pt, dd] of [['get', ''], ['get', '/cuaToi'], ['get', '/sapHetHan'], ['get', '/6'], ['post', ''],
-      ['post', '/6/giaHan'], ['post', '/6/dieuChinh'], ['post', '/6/chamDut']]) {
+    for (const [pt, dd] of [
+      ['get', ''],
+      ['get', '/cuaToi'],
+      ['get', '/sapHetHan'],
+      ['get', '/6'],
+      ['post', ''],
+      ['post', '/6/giaHan'],
+      ['post', '/6/dieuChinh'],
+      ['post', '/6/chamDut'],
+    ]) {
       const res = await goi(pt, dd);
       expect(res.status).toBe(401);
       expect(res.body).toEqual({ success: false, code: 401, message: expect.any(String), data: null });
@@ -197,9 +222,15 @@ describe('Phân quyền 5 vai trò', () => {
   });
 
   test.each([
-    ['nhanvien', 6, 200], ['nhanvien', 7, 403], ['nhanvien', 1, 403],
-    ['admin', 5, 200], ['admin', 6, 403], ['quanly', 3, 200], ['quanly', 6, 403],
-    ['giamdoc', 6, 200], ['hr', 1, 200],
+    ['nhanvien', 6, 200],
+    ['nhanvien', 7, 403],
+    ['nhanvien', 1, 403],
+    ['admin', 5, 200],
+    ['admin', 6, 403],
+    ['quanly', 3, 200],
+    ['quanly', 6, 403],
+    ['giamdoc', 6, 200],
+    ['hr', 1, 200],
   ])('%s xem chi tiết hợp đồng %i -> %i', async (ten, id, ma) => {
     const res = await goi('get', `/${id}`, token[ten]);
     expect(res.status).toBe(ma);
@@ -261,13 +292,16 @@ describe('GET danh sách, cuaToi, chi tiết', () => {
     expect(res.body).toMatchObject({ success: false, code: 400, data: null });
   });
 
-  test.each([['nhanvien', [6]], ['nhanvien2', [7]], ['quanly', [3, 2]], ['hr', [4]]])(
-    '%s xem hợp đồng của mình', async (ten, mong) => {
-      const res = await goi('get', '/cuaToi', token[ten]);
-      expect(res.status).toBe(200);
-      expect(res.body.data.map((h) => h.id)).toEqual(mong);
-    }
-  );
+  test.each([
+    ['nhanvien', [6]],
+    ['nhanvien2', [7]],
+    ['quanly', [3, 2]],
+    ['hr', [4]],
+  ])('%s xem hợp đồng của mình', async (ten, mong) => {
+    const res = await goi('get', '/cuaToi', token[ten]);
+    expect(res.status).toBe(200);
+    expect(res.body.data.map((h) => h.id)).toEqual(mong);
+  });
 
   test('chi tiết kèm lịch sử mới nhất trước, không tồn tại 404, id sai 400', async () => {
     const res = await goi('get', '/6', token.hr);
@@ -353,14 +387,23 @@ describe('POST / - lập hợp đồng', () => {
     const hd = res.body.data;
     expect(hd.maHopDong).toMatch(new RegExp(`^HD${ngay(0).slice(0, 4)}-\\d{4}$`));
     expect(hd).toMatchObject({
-      nhanVienId: nhanVien.id, maNhanVien: nhanVien.maNhanVien, loaiHopDong: 'XAC_DINH_THOI_HAN',
-      ngayBatDau: ngay(0), ngayKetThuc: ngay(364), trangThai: 'HIEU_LUC', duongDanFileHopDong: '/f/hd.pdf',
+      nhanVienId: nhanVien.id,
+      maNhanVien: nhanVien.maNhanVien,
+      loaiHopDong: 'XAC_DINH_THOI_HAN',
+      ngayBatDau: ngay(0),
+      ngayKetThuc: ngay(364),
+      trangThai: 'HIEU_LUC',
+      duongDanFileHopDong: '/f/hd.pdf',
     });
     expect(Number(hd.luongCoBan)).toBe(15000000);
     expect(Number(hd.mucPhuCap)).toBe(500000.5);
     expect(hd.lichSu).toHaveLength(1);
     expect(hd.lichSu[0]).toMatchObject({
-      hanhDong: 'TAO_MOI', loaiHopDongCu: null, trangThaiCu: null, trangThaiMoi: 'HIEU_LUC', lyDoThayDoi: 'Ký mới',
+      hanhDong: 'TAO_MOI',
+      loaiHopDongCu: null,
+      trangThaiCu: null,
+      trangThaiMoi: 'HIEU_LUC',
+      lyDoThayDoi: 'Ký mới',
       nguoiThucHienId: 4,
     });
     const nk = await layNhatKy('THEM_HOP_DONG');
@@ -373,7 +416,11 @@ describe('POST / - lập hợp đồng', () => {
     const { nhanVien } = await taoNhanVien();
     const nam = Number(ngay(0).slice(0, 4)) - 1;
     const a = await taoHopDongOk({
-      nhanVienId: nhanVien.id, loaiHopDong: 'THU_VIEC', ngayBatDau: NGAY_VAO_LAM, ngayKetThuc: congNgay(NGAY_VAO_LAM, 30), luongCoBan: 1,
+      nhanVienId: nhanVien.id,
+      loaiHopDong: 'THU_VIEC',
+      ngayBatDau: NGAY_VAO_LAM,
+      ngayKetThuc: congNgay(NGAY_VAO_LAM, 30),
+      luongCoBan: 1,
     });
     expect(a.maHopDong.slice(0, 6)).toBe(`HD${NGAY_VAO_LAM.slice(0, 4)}`);
     const b = await taoHopDongOk(hopDongXacDinh(nhanVien.id));
@@ -384,7 +431,12 @@ describe('POST / - lập hợp đồng', () => {
 
   test('mức phụ cấp mặc định 0, không thời hạn có ngayKetThuc null', async () => {
     const { nhanVien } = await taoNhanVien();
-    const hd = await taoHopDongOk({ nhanVienId: nhanVien.id, loaiHopDong: 'KHONG_XAC_DINH_THOI_HAN', ngayBatDau: ngay(0), luongCoBan: '12000000.00' });
+    const hd = await taoHopDongOk({
+      nhanVienId: nhanVien.id,
+      loaiHopDong: 'KHONG_XAC_DINH_THOI_HAN',
+      ngayBatDau: ngay(0),
+      luongCoBan: '12000000.00',
+    });
     expect(hd.ngayKetThuc).toBeNull();
     expect(Number(hd.mucPhuCap)).toBe(0);
   });
@@ -425,8 +477,11 @@ describe('POST / - lập hợp đồng', () => {
 
   test('biên hợp lệ: thử việc đúng 180 ngày, XĐTH đúng 36 tháng, bắt đầu hôm nay+180', async () => {
     const tv = await taoHopDongOk({
-      nhanVienId: (await taoNhanVien()).nhanVien.id, loaiHopDong: 'THU_VIEC', ngayBatDau: ngay(0),
-      ngayKetThuc: congNgay(ngay(0), 179), luongCoBan: 1,
+      nhanVienId: (await taoNhanVien()).nhanVien.id,
+      loaiHopDong: 'THU_VIEC',
+      ngayBatDau: ngay(0),
+      ngayKetThuc: congNgay(ngay(0), 179),
+      luongCoBan: 1,
     });
     expect(tv.trangThai).toBe('HIEU_LUC');
     await taoHopDongOk(hopDongXacDinh((await taoNhanVien()).nhanVien.id, { ngayKetThuc: congNgay(congThang(ngay(0), 36), -1) }));
@@ -493,10 +548,7 @@ describe('POST / - lập hợp đồng', () => {
     const hr2 = await taoHrThuHai();
     const a = (await taoNhanVien()).nhanVien;
     const b = (await taoNhanVien()).nhanVien;
-    const [r1, r2] = await Promise.all([
-      taoHopDong(hopDongXacDinh(a.id), token.hr),
-      taoHopDong(hopDongXacDinh(b.id), hr2.tk),
-    ]);
+    const [r1, r2] = await Promise.all([taoHopDong(hopDongXacDinh(a.id), token.hr), taoHopDong(hopDongXacDinh(b.id), hr2.tk)]);
     expect([r1.status, r2.status]).toEqual([201, 201]);
     expect(r1.body.data.maHopDong).not.toBe(r2.body.data.maHopDong);
   });
@@ -529,7 +581,11 @@ describe('POST /:id/giaHan', () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ success: true, code: 200, data: { ngayKetThuc: ngay(700), trangThai: 'HIEU_LUC' } });
     expect(res.body.data.lichSu[0]).toMatchObject({
-      hanhDong: 'GIA_HAN', ngayKetThucCu: ngay(364), ngayKetThucMoi: ngay(700), trangThaiCu: 'HIEU_LUC', nguoiThucHienId: 4,
+      hanhDong: 'GIA_HAN',
+      ngayKetThucCu: ngay(364),
+      ngayKetThucMoi: ngay(700),
+      trangThaiCu: 'HIEU_LUC',
+      nguoiThucHienId: 4,
     });
     expect(await layNhatKy('GIA_HAN_HOP_DONG')).toHaveLength(1);
   });
@@ -547,8 +603,7 @@ describe('POST /:id/giaHan', () => {
   test('gia hạn vượt 36 tháng 400, thiếu/sai ngày 400, không tồn tại 404', async () => {
     const { nhanVien } = await taoNhanVien();
     const hd = await taoHopDongOk(hopDongXacDinh(nhanVien.id));
-    expect((await goi('post', `/${hd.id}/giaHan`, token.hr)
-      .send({ ngayKetThucMoi: congThang(ngay(0), 36) })).status).toBe(400);
+    expect((await goi('post', `/${hd.id}/giaHan`, token.hr).send({ ngayKetThucMoi: congThang(ngay(0), 36) })).status).toBe(400);
     expect((await goi('post', `/${hd.id}/giaHan`, token.hr).send({})).status).toBe(400);
     expect((await goi('post', `/${hd.id}/giaHan`, token.hr).send({ ngayKetThucMoi: 'abc' })).status).toBe(400);
     expect((await goi('post', '/99999/giaHan', token.hr).send({ ngayKetThucMoi: ngay(700) })).status).toBe(404);
@@ -589,8 +644,12 @@ describe('POST /:id/giaHan', () => {
 // ---------------------------------------------------------------------------
 describe('POST /:id/dieuChinh', () => {
   test('điều chỉnh lương, phụ cấp, file: lịch sử DIEU_CHINH cũ/mới, nhật ký', async () => {
-    const res = await goi('post', '/6/dieuChinh', token.hr)
-      .send({ luongCoBan: '14000000', mucPhuCap: 900000, duongDanFileHopDong: '/f/pl1.pdf', lyDo: 'Phụ lục 1' });
+    const res = await goi('post', '/6/dieuChinh', token.hr).send({
+      luongCoBan: '14000000',
+      mucPhuCap: 900000,
+      duongDanFileHopDong: '/f/pl1.pdf',
+      lyDo: 'Phụ lục 1',
+    });
     expect(res.status).toBe(200);
     expect(Number(res.body.data.luongCoBan)).toBe(14000000);
     expect(Number(res.body.data.mucPhuCap)).toBe(900000);
@@ -653,8 +712,12 @@ describe('POST /:id/chamDut', () => {
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ trangThai: 'DA_CHAM_DUT', ngayKetThuc: ngay(0) });
     expect(res.body.data.lichSu[0]).toMatchObject({
-      hanhDong: 'CHAM_DUT', trangThaiCu: 'HIEU_LUC', trangThaiMoi: 'DA_CHAM_DUT', lyDoThayDoi: 'Nghỉ việc',
-      ngayKetThucCu: ketThucCu, ngayKetThucMoi: ngay(0),
+      hanhDong: 'CHAM_DUT',
+      trangThaiCu: 'HIEU_LUC',
+      trangThaiMoi: 'DA_CHAM_DUT',
+      lyDoThayDoi: 'Nghỉ việc',
+      ngayKetThucCu: ketThucCu,
+      ngayKetThucMoi: ngay(0),
     });
     expect(await layNhatKy('CHAM_DUT_HOP_DONG')).toHaveLength(1);
     const lan2 = await goi('post', '/6/chamDut', token.hr).send({ ngayChamDut: ngay(0), lyDo: 'x' });

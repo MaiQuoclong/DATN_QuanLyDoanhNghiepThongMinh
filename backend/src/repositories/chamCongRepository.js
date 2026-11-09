@@ -39,7 +39,7 @@ function themDieuKienPhamVi(dieuKien, thamSo, { phamViPhongBanIds, phongBanId, t
 async function layBanGhiTheoNgay(nhanVienId, ngay, ketNoi = pool, khoa = false) {
   const [dong] = await ketNoi.execute(
     `SELECT ${COT_BAN_GHI} FROM banghichamcong WHERE nhanVienId = ? AND ngayChamCong = ?${khoa ? ' FOR UPDATE' : ''}`,
-    [nhanVienId, ngay]
+    [nhanVienId, ngay],
   );
   return chuanHoaBanGhi(dong[0]);
 }
@@ -54,9 +54,16 @@ async function themBanGhi(banGhi, ketNoi) {
     `INSERT INTO banghichamcong (nhanVienId, ngayChamCong, gioVao, gioRa, soGioLamThucTe, soGioLamThemOT, diMuon, veSom, trangThai)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      banGhi.nhanVienId, banGhi.ngayChamCong, banGhi.gioVao, banGhi.gioRa ?? null, banGhi.soGioLamThucTe,
-      banGhi.soGioLamThemOT, banGhi.diMuon ? 1 : 0, banGhi.veSom ? 1 : 0, banGhi.trangThai,
-    ]
+      banGhi.nhanVienId,
+      banGhi.ngayChamCong,
+      banGhi.gioVao,
+      banGhi.gioRa ?? null,
+      banGhi.soGioLamThucTe,
+      banGhi.soGioLamThemOT,
+      banGhi.diMuon ? 1 : 0,
+      banGhi.veSom ? 1 : 0,
+      banGhi.trangThai,
+    ],
   );
   return ketQua.insertId;
 }
@@ -72,7 +79,7 @@ async function layBanGhiTrongKhoang(nhanVienId, tuNgay, denNgay) {
   const [dong] = await pool.execute(
     `SELECT ${COT_BAN_GHI} FROM banghichamcong
       WHERE nhanVienId = ? AND ngayChamCong BETWEEN ? AND ? ORDER BY ngayChamCong`,
-    [nhanVienId, tuNgay, denNgay]
+    [nhanVienId, tuNgay, denNgay],
   );
   return dong.map(chuanHoaBanGhi);
 }
@@ -108,7 +115,7 @@ async function layBangCongThang({ tuNgay, denNgay, homNay, phamViPhongBanIds, ph
       GROUP BY nv.id
       ORDER BY nv.maNhanVien
       LIMIT ? OFFSET ?`,
-    [homNay, tuNgay, denNgay, ...thamSo, soLuong, viTri]
+    [homNay, tuNgay, denNgay, ...thamSo, soLuong, viTri],
   );
   return {
     items: items.map((d) => ({
@@ -133,7 +140,7 @@ async function layThongTinChot(thang, ketNoi = pool) {
        FROM nhatkyhethong nk LEFT JOIN nguoidung nd ON nd.id = nk.nguoiDungId
       WHERE nk.hanhDong = 'CHOT_CONG_THANG' AND nk.chiTiet = ?
       ORDER BY nk.id LIMIT 1`,
-    [thang]
+    [thang],
   );
   return dong[0] ?? null;
 }
@@ -144,7 +151,7 @@ async function layDanhSachThangDaChot() {
        FROM nhatkyhethong nk
       WHERE nk.hanhDong = 'CHOT_CONG_THANG'
       GROUP BY nk.chiTiet
-      ORDER BY nk.chiTiet DESC`
+      ORDER BY nk.chiTiet DESC`,
   );
   return dong;
 }
@@ -152,7 +159,7 @@ async function layDanhSachThangDaChot() {
 async function demNgayThieuCheckOutTrongKhoang(tuNgay, denNgay, ketNoi) {
   const [[dong]] = await ketNoi.execute(
     'SELECT COUNT(*) AS soLuong FROM banghichamcong WHERE gioRa IS NULL AND ngayChamCong BETWEEN ? AND ?',
-    [tuNgay, denNgay]
+    [tuNgay, denNgay],
   );
   return Number(dong.soLuong);
 }
@@ -192,7 +199,7 @@ async function layYeuCauTheoId(id, ketNoi = pool) {
 async function khoaYeuCau(id, ketNoi) {
   const [dong] = await ketNoi.execute(
     'SELECT id, nhanVienId, ngayCanDieuChinh, gioVaoDeXuat, gioRaDeXuat, trangThai FROM yeucaudieuchinhchamcong WHERE id = ? FOR UPDATE',
-    [id]
+    [id],
   );
   return dong[0] ?? null;
 }
@@ -201,7 +208,7 @@ async function timYeuCauChoDuyetTheoNgay(nhanVienId, ngay, ketNoi) {
   const [dong] = await ketNoi.execute(
     `SELECT id FROM yeucaudieuchinhchamcong
       WHERE nhanVienId = ? AND ngayCanDieuChinh = ? AND trangThai = 'CHO_DUYET' LIMIT 1`,
-    [nhanVienId, ngay]
+    [nhanVienId, ngay],
   );
   return dong[0] ?? null;
 }
@@ -210,7 +217,7 @@ async function demYeuCauChoDuyetTrongKhoang(tuNgay, denNgay, ketNoi) {
   const [[dong]] = await ketNoi.execute(
     `SELECT COUNT(*) AS soLuong FROM yeucaudieuchinhchamcong
       WHERE trangThai = 'CHO_DUYET' AND ngayCanDieuChinh BETWEEN ? AND ?`,
-    [tuNgay, denNgay]
+    [tuNgay, denNgay],
   );
   return Number(dong.soLuong);
 }
@@ -219,7 +226,7 @@ async function themYeuCau(yc, ketNoi) {
   const [ketQua] = await ketNoi.execute(
     `INSERT INTO yeucaudieuchinhchamcong (banGhiChamCongId, nhanVienId, ngayCanDieuChinh, gioVaoDeXuat, gioRaDeXuat, lyDoGiaiTrinh)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [yc.banGhiChamCongId ?? null, yc.nhanVienId, yc.ngayCanDieuChinh, yc.gioVaoDeXuat ?? null, yc.gioRaDeXuat ?? null, yc.lyDoGiaiTrinh]
+    [yc.banGhiChamCongId ?? null, yc.nhanVienId, yc.ngayCanDieuChinh, yc.gioVaoDeXuat ?? null, yc.gioRaDeXuat ?? null, yc.lyDoGiaiTrinh],
   );
   return ketQua.insertId;
 }
@@ -230,7 +237,7 @@ async function capNhatKetQuaDuyet(id, { trangThai, nguoiDuyetId, lyDoTuChoi, ban
         SET trangThai = ?, nguoiDuyetId = ?, lyDoTuChoi = ?, thoiGianDuyet = NOW(),
             banGhiChamCongId = COALESCE(?, banGhiChamCongId)
       WHERE id = ?`,
-    [trangThai, nguoiDuyetId, lyDoTuChoi ?? null, banGhiChamCongId ?? null, id]
+    [trangThai, nguoiDuyetId, lyDoTuChoi ?? null, banGhiChamCongId ?? null, id],
   );
 }
 
@@ -258,7 +265,7 @@ async function layDanhSachYeuCau({ nhanVienId, phamViPhongBanIds, phongBanId, tu
     `SELECT ${COT_YEU_CAU} ${BANG_NOI_YEU_CAU} ${where}
       ORDER BY (yc.trangThai = 'CHO_DUYET') DESC, yc.ngayTao DESC, yc.id DESC
       LIMIT ? OFFSET ?`,
-    [...thamSo, soLuong, viTri]
+    [...thamSo, soLuong, viTri],
   );
   return { items, tongSo: Number(dem.tongSo) };
 }

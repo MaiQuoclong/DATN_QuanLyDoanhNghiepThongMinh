@@ -46,15 +46,23 @@ async function taoNhanVien(ghiDe = {}) {
   demTen += 1;
   const ten = `qanp${Date.now() % 100000}${demTen}`;
   const res = await goi('post', '/nhanVien', token.hr).send({
-    hoVaTen: 'Lê Nghỉ Phép', gioiTinh: 'NAM', ngaySinh: '1995-05-20', ngayVaoLam: NGAY_VAO_LAM,
-    chucDanhPhongBanId: 5, tenDangNhap: ten, email: `${ten}@smarthrm.local`, ...ghiDe,
+    hoVaTen: 'Lê Nghỉ Phép',
+    gioiTinh: 'NAM',
+    ngaySinh: '1995-05-20',
+    ngayVaoLam: NGAY_VAO_LAM,
+    chucDanhPhongBanId: 5,
+    tenDangNhap: ten,
+    email: `${ten}@smarthrm.local`,
+    ...ghiDe,
   });
   expect(res.status).toBe(201);
   const { nhanVien, taiKhoan } = res.body.data;
   const dn = await dangNhap(taiKhoan.tenDangNhap, taiKhoan.matKhauTam);
   expect(dn.status).toBe(200);
-  const doi = await goi('post', '/xacThuc/doiMatKhau', dn.body.data.token)
-    .send({ matKhauCu: taiKhoan.matKhauTam, matKhauMoi: 'NghiPhep123' });
+  const doi = await goi('post', '/xacThuc/doiMatKhau', dn.body.data.token).send({
+    matKhauCu: taiKhoan.matKhauTam,
+    matKhauMoi: 'NghiPhep123',
+  });
   expect(doi.status).toBe(200);
   const dn2 = await dangNhap(taiKhoan.tenDangNhap, 'NghiPhep123');
   expect(dn2.status).toBe(200);
@@ -62,10 +70,12 @@ async function taoNhanVien(ghiDe = {}) {
 }
 
 async function capQuy(nhanVienId, tong = 12, daNghi = 0, nam = NAM) {
-  const [kq] = await pool.execute(
-    'INSERT INTO quyngayphep (nhanVienId, namHieuLuc, tongSoNgayPhep, soNgayDaNghi) VALUES (?, ?, ?, ?)',
-    [nhanVienId, nam, tong, daNghi]
-  );
+  const [kq] = await pool.execute('INSERT INTO quyngayphep (nhanVienId, namHieuLuc, tongSoNgayPhep, soNgayDaNghi) VALUES (?, ?, ?, ?)', [
+    nhanVienId,
+    nam,
+    tong,
+    daNghi,
+  ]);
   return kq.insertId;
 }
 async function layQuy(id) {
@@ -77,9 +87,14 @@ async function layTrangThaiDon(id) {
   return d;
 }
 
-const taoDon = (tk, body = {}) => goi('post', '/donNghiPhep', tk).send({
-  loaiNghiPhepId: LOAI_PHEP_NAM, ngayBatDau: '2021-03-01', ngayKetThuc: '2021-03-02', lyDo: 'Giải quyết việc gia đình', ...body,
-});
+const taoDon = (tk, body = {}) =>
+  goi('post', '/donNghiPhep', tk).send({
+    loaiNghiPhepId: LOAI_PHEP_NAM,
+    ngayBatDau: '2021-03-01',
+    ngayKetThuc: '2021-03-02',
+    lyDo: 'Giải quyết việc gia đình',
+    ...body,
+  });
 async function taoDonOk(tk, body) {
   const res = await taoDon(tk, body);
   expect(res.status).toBe(201);
@@ -89,19 +104,26 @@ async function chenChot(thang) {
   await pool.execute("INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, chiTiet) VALUES (4, 'CHOT_CONG_THANG', ?)", [thang]);
 }
 async function layNhatKy(hanhDong) {
-  const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id',
-    [mocNhatKy, hanhDong]);
+  const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id', [
+    mocNhatKy,
+    hanhDong,
+  ]);
   return d;
 }
 async function taoLoai(ghiDe = {}) {
   demTen += 1;
   const l = {
-    maLoai: `QA_${Date.now() % 100000}_${demTen}`, tenLoai: 'Loại thử', soNgayToiDa: null, coLuong: 1, truVaoQuyPhepNam: 0,
-    trangThai: 'DANG_AP_DUNG', ...ghiDe,
+    maLoai: `QA_${Date.now() % 100000}_${demTen}`,
+    tenLoai: 'Loại thử',
+    soNgayToiDa: null,
+    coLuong: 1,
+    truVaoQuyPhepNam: 0,
+    trangThai: 'DANG_AP_DUNG',
+    ...ghiDe,
   };
   const [kq] = await pool.execute(
     'INSERT INTO loainghiphep (maLoai, tenLoai, soNgayToiDa, coLuong, truVaoQuyPhepNam, trangThai) VALUES (?, ?, ?, ?, ?, ?)',
-    [l.maLoai, l.tenLoai, l.soNgayToiDa, l.coLuong, l.truVaoQuyPhepNam, l.trangThai]
+    [l.maLoai, l.tenLoai, l.soNgayToiDa, l.coLuong, l.truVaoQuyPhepNam, l.trangThai],
   );
   return kq.insertId;
 }
@@ -145,11 +167,15 @@ afterEach(async () => {
   for (const l of anhChup.loai) {
     await pool.execute(
       'UPDATE loainghiphep SET tenLoai = ?, soNgayToiDa = ?, coLuong = ?, truVaoQuyPhepNam = ?, moTa = ?, trangThai = ? WHERE id = ?',
-      [l.tenLoai, l.soNgayToiDa, l.coLuong, l.truVaoQuyPhepNam, l.moTa, l.trangThai, l.id]
+      [l.tenLoai, l.soNgayToiDa, l.coLuong, l.truVaoQuyPhepNam, l.moTa, l.trangThai, l.id],
     );
   }
   for (const q of anhChup.quy) {
-    await pool.execute('UPDATE quyngayphep SET tongSoNgayPhep = ?, soNgayDaNghi = ? WHERE id = ?', [q.tongSoNgayPhep, q.soNgayDaNghi, q.id]);
+    await pool.execute('UPDATE quyngayphep SET tongSoNgayPhep = ?, soNgayDaNghi = ? WHERE id = ?', [
+      q.tongSoNgayPhep,
+      q.soNgayDaNghi,
+      q.id,
+    ]);
   }
   // Khôi phục trạng thái làm việc / tài khoản của nhân sự seed (test tự duyệt chuyển giamdoc2 sang TAM_NGHI)
   for (const nv of anhChup.nvSeed) {
@@ -194,10 +220,22 @@ describe('Unit tinhNgayNghi', () => {
 
 describe('Unit xacDinhNguoiDuyet', () => {
   const pb = (ghiDe) => ({
-    phongBanChaId: null, trangThai: 'DANG_HOAT_DONG', truongBoPhanId: null, maTruong: null, tenTruong: null,
-    trangThaiTruong: null, truongCoQuanLy: false, ...ghiDe,
+    phongBanChaId: null,
+    trangThai: 'DANG_HOAT_DONG',
+    truongBoPhanId: null,
+    maTruong: null,
+    tenTruong: null,
+    trangThaiTruong: null,
+    truongCoQuanLy: false,
+    ...ghiDe,
   });
-  const truong = (id) => ({ truongBoPhanId: id, maTruong: `NV${id}`, tenTruong: `Trưởng ${id}`, trangThaiTruong: 'CHINH_THUC', truongCoQuanLy: true });
+  const truong = (id) => ({
+    truongBoPhanId: id,
+    maTruong: `NV${id}`,
+    tenTruong: `Trưởng ${id}`,
+    trangThaiTruong: 'CHINH_THUC',
+    truongCoQuanLy: true,
+  });
   const cayCoBan = () => [
     pb({ id: 1, ...truong(100), truongCoQuanLy: false }), // BGD: trưởng là giám đốc, không có vai trò quanLy
     pb({ id: 2, phongBanChaId: 1, ...truong(200) }),
@@ -205,16 +243,23 @@ describe('Unit xacDinhNguoiDuyet', () => {
   ];
 
   test('trưởng bộ phận phòng của người gửi duyệt', () => {
-    expect(xacDinhNguoiDuyet({ nhanVienId: 5, phongBanId: 2, soNgayNghi: 2 }, cayCoBan()))
-      .toMatchObject({ loai: 'TRUONG_BO_PHAN', nhanVienId: 200, phongBanId: 2 });
+    expect(xacDinhNguoiDuyet({ nhanVienId: 5, phongBanId: 2, soNgayNghi: 2 }, cayCoBan())).toMatchObject({
+      loai: 'TRUONG_BO_PHAN',
+      nhanVienId: 200,
+      phongBanId: 2,
+    });
   });
   test('phòng không có trưởng thì đi lên phòng cha', () => {
-    expect(xacDinhNguoiDuyet({ nhanVienId: 5, phongBanId: 3, soNgayNghi: 1 }, cayCoBan()))
-      .toMatchObject({ loai: 'TRUONG_BO_PHAN', nhanVienId: 200 });
+    expect(xacDinhNguoiDuyet({ nhanVienId: 5, phongBanId: 3, soNgayNghi: 1 }, cayCoBan())).toMatchObject({
+      loai: 'TRUONG_BO_PHAN',
+      nhanVienId: 200,
+    });
   });
   test('người gửi là trưởng thì đi lên cha, cha không có quanLy -> GIAM_DOC', () => {
-    expect(xacDinhNguoiDuyet({ nhanVienId: 200, phongBanId: 2, soNgayNghi: 1 }, cayCoBan()))
-      .toEqual({ loai: 'GIAM_DOC', lyDo: 'CAP_CAO_NHAT' });
+    expect(xacDinhNguoiDuyet({ nhanVienId: 200, phongBanId: 2, soNgayNghi: 1 }, cayCoBan())).toEqual({
+      loai: 'GIAM_DOC',
+      lyDo: 'CAP_CAO_NHAT',
+    });
   });
   test('trưởng không có vai trò quanLy hoặc TAM_NGHI/DA_NGHI_VIEC thì lên cha', () => {
     const cay = [pb({ id: 1, ...truong(100) }), pb({ id: 2, phongBanChaId: 1, ...truong(200), truongCoQuanLy: false })];
@@ -229,8 +274,10 @@ describe('Unit xacDinhNguoiDuyet', () => {
     expect(xacDinhNguoiDuyet({ nhanVienId: 5, phongBanId: 2, soNgayNghi: 1 }, cay)).toMatchObject({ nhanVienId: 100 });
   });
   test('đơn dài hơn 5 ngày chuyển GIAM_DOC, đúng 5 ngày vẫn trưởng bộ phận', () => {
-    expect(xacDinhNguoiDuyet({ nhanVienId: 5, phongBanId: 2, soNgayNghi: 5.5 }, cayCoBan()))
-      .toEqual({ loai: 'GIAM_DOC', lyDo: 'DON_DAI_NGAY' });
+    expect(xacDinhNguoiDuyet({ nhanVienId: 5, phongBanId: 2, soNgayNghi: 5.5 }, cayCoBan())).toEqual({
+      loai: 'GIAM_DOC',
+      lyDo: 'DON_DAI_NGAY',
+    });
     expect(xacDinhNguoiDuyet({ nhanVienId: 5, phongBanId: 2, soNgayNghi: 5 }, cayCoBan())).toMatchObject({ nhanVienId: 200 });
   });
   test('hết cây hoặc phòng không tồn tại, cây có vòng lặp -> GIAM_DOC', () => {
@@ -243,10 +290,20 @@ describe('Unit xacDinhNguoiDuyet', () => {
 // ---------------------------------------------------------------------------
 describe('Xác thực và phân quyền route', () => {
   const ROUTE = [
-    ['get', '/loaiNghiPhep'], ['post', '/loaiNghiPhep'], ['patch', '/loaiNghiPhep/1'],
-    ['get', '/quyPhep/cuaToi'], ['get', '/quyPhep'], ['post', '/quyPhep/capNam'], ['patch', '/quyPhep/1'],
-    ['get', '/donNghiPhep'], ['get', '/donNghiPhep/cuaToi'], ['get', '/donNghiPhep/lich'], ['post', '/donNghiPhep'],
-    ['post', '/donNghiPhep/1/huy'], ['post', '/donNghiPhep/1/duyet'], ['post', '/donNghiPhep/1/tuChoi'],
+    ['get', '/loaiNghiPhep'],
+    ['post', '/loaiNghiPhep'],
+    ['patch', '/loaiNghiPhep/1'],
+    ['get', '/quyPhep/cuaToi'],
+    ['get', '/quyPhep'],
+    ['post', '/quyPhep/capNam'],
+    ['patch', '/quyPhep/1'],
+    ['get', '/donNghiPhep'],
+    ['get', '/donNghiPhep/cuaToi'],
+    ['get', '/donNghiPhep/lich'],
+    ['post', '/donNghiPhep'],
+    ['post', '/donNghiPhep/1/huy'],
+    ['post', '/donNghiPhep/1/duyet'],
+    ['post', '/donNghiPhep/1/tuChoi'],
   ];
   test('chưa đăng nhập -> 401 cho mọi route', async () => {
     for (const [pt, dd] of ROUTE) {
@@ -257,7 +314,12 @@ describe('Xác thực và phân quyền route', () => {
   });
   test('route chỉ HR: các vai trò khác -> 403', async () => {
     for (const ten of ['admin', 'giamdoc', 'quanly', 'nhanvien']) {
-      for (const [pt, dd] of [['post', '/loaiNghiPhep'], ['patch', '/loaiNghiPhep/1'], ['post', '/quyPhep/capNam'], ['patch', '/quyPhep/1']]) {
+      for (const [pt, dd] of [
+        ['post', '/loaiNghiPhep'],
+        ['patch', '/loaiNghiPhep/1'],
+        ['post', '/quyPhep/capNam'],
+        ['patch', '/quyPhep/1'],
+      ]) {
         const res = await goi(pt, dd, token[ten]).send({});
         expect([ten, dd, res.status]).toEqual([ten, dd, 403]);
       }
@@ -285,8 +347,11 @@ describe('Xác thực và phân quyền route', () => {
   });
   test('tài khoản không có hồ sơ nhân viên -> 403 khi dùng chức năng nghỉ phép', async () => {
     const ten = `qanohs${Date.now() % 100000}`;
-    const [kq] = await pool.execute('INSERT INTO nguoidung (tenDangNhap, email, matKhauMaHoa) VALUES (?, ?, ?)',
-      [ten, `${ten}@smarthrm.local`, HASH_MAT_KHAU]);
+    const [kq] = await pool.execute('INSERT INTO nguoidung (tenDangNhap, email, matKhauMaHoa) VALUES (?, ?, ?)', [
+      ten,
+      `${ten}@smarthrm.local`,
+      HASH_MAT_KHAU,
+    ]);
     await pool.execute('INSERT INTO nguoidungvaitro (nguoiDungId, vaiTroId) VALUES (?, 5)', [kq.insertId]);
     const dn = await dangNhap(ten);
     expect(dn.status).toBe(200);
@@ -309,7 +374,10 @@ describe('Tạo đơn nghỉ phép', () => {
     const d = res.body.data;
     expect(d.maDon).toMatch(/^DNP2021-\d{4}$/);
     expect(d).toMatchObject({
-      trangThai: 'CHO_DUYET', soNgayNghi: 2, phuongThucTao: 'FORM_GIAO_DIEN', duocDuyet: false,
+      trangThai: 'CHO_DUYET',
+      soNgayNghi: 2,
+      phuongThucTao: 'FORM_GIAO_DIEN',
+      duocDuyet: false,
       nguoiDuyetDuKien: { loai: 'TRUONG_BO_PHAN', nhanVienId: 3 },
     });
     const d2 = await taoDonOk(tk, { ngayBatDau: '2021-03-03', ngayKetThuc: '2021-03-03' });
@@ -394,14 +462,27 @@ describe('Tạo đơn nghỉ phép', () => {
     const nguoiDung = { nguoiDungId: nv.nguoiDungId, nhanVienId: nhanVien.id, vaiTro: ['nhanVien'] };
     const hopLe = { loaiNghiPhepId: LOAI_OM, ngayBatDau: '2021-03-01', ngayKetThuc: '2021-03-02', lyDo: 'Ốm cần nghỉ ngơi' };
     const truongHop = [
-      null, undefined, 'chuoi',
-      { ...hopLe, loaiNghiPhepId: 'abc' }, { ...hopLe, loaiNghiPhepId: undefined }, { ...hopLe, loaiNghiPhepId: 1.5 },
-      { ...hopLe, ngayBatDau: '3/11/2021' }, { ...hopLe, ngayKetThuc: 20210302 }, { ...hopLe, ngayBatDau: undefined },
-      { ...hopLe, lyDo: 'abc' }, { ...hopLe, lyDo: undefined }, { ...hopLe, lyDo: '    ' }, { ...hopLe, lyDo: 12345 },
+      null,
+      undefined,
+      'chuoi',
+      { ...hopLe, loaiNghiPhepId: 'abc' },
+      { ...hopLe, loaiNghiPhepId: undefined },
+      { ...hopLe, loaiNghiPhepId: 1.5 },
+      { ...hopLe, ngayBatDau: '3/11/2021' },
+      { ...hopLe, ngayKetThuc: 20210302 },
+      { ...hopLe, ngayBatDau: undefined },
+      { ...hopLe, lyDo: 'abc' },
+      { ...hopLe, lyDo: undefined },
+      { ...hopLe, lyDo: '    ' },
+      { ...hopLe, lyDo: 12345 },
     ];
     for (const body of truongHop) {
       let loi;
-      try { await nghiPhepService.taoDon(nguoiDung, body, 'AI_CHAT'); } catch (e) { loi = e; }
+      try {
+        await nghiPhepService.taoDon(nguoiDung, body, 'AI_CHAT');
+      } catch (e) {
+        loi = e;
+      }
       expect(loi).toBeInstanceOf(LoiUngDung);
       expect([body, loi.code]).toEqual([body, 400]);
     }
@@ -689,19 +770,28 @@ describe('Loại nghỉ phép (HR)', () => {
   const ma = () => `QA_L${Date.now() % 100000}`;
   test('thêm loại 201 + nhật ký, trùng mã 409, mã sai 400', async () => {
     const maLoai = ma();
-    const res = await goi('post', '/loaiNghiPhep', token.hr).send({ maLoai: maLoai.toLowerCase(), tenLoai: 'Nghỉ thử nghiệm', soNgayToiDa: 2.5 });
+    const res = await goi('post', '/loaiNghiPhep', token.hr).send({
+      maLoai: maLoai.toLowerCase(),
+      tenLoai: 'Nghỉ thử nghiệm',
+      soNgayToiDa: 2.5,
+    });
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
-      success: true, code: 201,
+      success: true,
+      code: 201,
       data: { maLoai, soNgayToiDa: 2.5, coLuong: true, truVaoQuyPhepNam: true, trangThai: 'DANG_AP_DUNG' }, // mặc định khớp schema DEFAULT 1
     });
     expect(await layNhatKy('THEM_LOAI_NGHI_PHEP')).toHaveLength(1);
     expect((await goi('post', '/loaiNghiPhep', token.hr).send({ maLoai, tenLoai: 'Trùng mã' })).status).toBe(409);
     for (const body of [
-      { maLoai: 'A B', tenLoai: 'Sai mã' }, { maLoai: 'X', tenLoai: 'Ngắn' }, { tenLoai: 'Thiếu mã' },
-      { maLoai: ma() + 'Z', tenLoai: 'Số âm', soNgayToiDa: -1 }, { maLoai: ma() + 'Y', tenLoai: 'Bước sai', soNgayToiDa: 1.3 },
+      { maLoai: 'A B', tenLoai: 'Sai mã' },
+      { maLoai: 'X', tenLoai: 'Ngắn' },
+      { tenLoai: 'Thiếu mã' },
+      { maLoai: ma() + 'Z', tenLoai: 'Số âm', soNgayToiDa: -1 },
+      { maLoai: ma() + 'Y', tenLoai: 'Bước sai', soNgayToiDa: 1.3 },
       { maLoai: ma() + 'W', tenLoai: 'Bằng 0', soNgayToiDa: 0 },
-      { maLoai: ma() + 'U', tenLoai: 'Cờ sai', coLuong: 'co' }, { maLoai: ma() + 'T', tenLoai: 'Mô tả số', moTa: 5 },
+      { maLoai: ma() + 'U', tenLoai: 'Cờ sai', coLuong: 'co' },
+      { maLoai: ma() + 'T', tenLoai: 'Mô tả số', moTa: 5 },
     ]) {
       expect([body, (await goi('post', '/loaiNghiPhep', token.hr).send(body)).status]).toEqual([body, 400]);
     }
@@ -711,7 +801,12 @@ describe('Loại nghỉ phép (HR)', () => {
   });
   test('thêm loại gửi truVaoQuyPhepNam/coLuong false tường minh -> trả false', async () => {
     const maLoai = ma() + 'F';
-    const res = await goi('post', '/loaiNghiPhep', token.hr).send({ maLoai, tenLoai: 'Không trừ quỹ', truVaoQuyPhepNam: false, coLuong: false });
+    const res = await goi('post', '/loaiNghiPhep', token.hr).send({
+      maLoai,
+      tenLoai: 'Không trừ quỹ',
+      truVaoQuyPhepNam: false,
+      coLuong: false,
+    });
     expect(res.status).toBe(201);
     expect(res.body.data).toMatchObject({ maLoai, truVaoQuyPhepNam: false, coLuong: false });
     const [[db]] = await pool.execute('SELECT truVaoQuyPhepNam, coLuong FROM loainghiphep WHERE maLoai = ?', [maLoai]);
@@ -767,14 +862,17 @@ describe('Quỹ phép (HR)', () => {
     const [[dem]] = await pool.execute(
       `SELECT COUNT(*) AS n FROM nhanvien nv WHERE nv.trangThaiLamViec <> 'DA_NGHI_VIEC' AND nv.ngayVaoLam <= ?
           AND NOT EXISTS (SELECT 1 FROM quyngayphep q WHERE q.nhanVienId = nv.id AND q.namHieuLuc = ?)`,
-      [`${nam}-12-31`, nam]
+      [`${nam}-12-31`, nam],
     );
     const [truoc] = await pool.execute('SELECT id, tongSoNgayPhep FROM quyngayphep WHERE namHieuLuc = ? ORDER BY id', [nam]);
     const res = await goi('post', '/quyPhep/capNam', token.hr).send({ nam, tongSoNgayPhep: 15 });
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ nam, tongSoNgayPhep: 15, soNhanVien: Number(dem.n) });
     expect(Number(dem.n)).toBeGreaterThanOrEqual(1);
-    const [[moi]] = await pool.execute('SELECT tongSoNgayPhep FROM quyngayphep WHERE nhanVienId = ? AND namHieuLuc = ?', [nhanVien.id, nam]);
+    const [[moi]] = await pool.execute('SELECT tongSoNgayPhep FROM quyngayphep WHERE nhanVienId = ? AND namHieuLuc = ?', [
+      nhanVien.id,
+      nam,
+    ]);
     expect(Number(moi.tongSoNgayPhep)).toBe(15);
     for (const q of truoc) {
       const [[sau]] = await pool.execute('SELECT tongSoNgayPhep FROM quyngayphep WHERE id = ?', [q.id]);

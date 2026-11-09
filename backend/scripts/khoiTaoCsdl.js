@@ -37,9 +37,7 @@ async function khoiTaoCsdl() {
   });
 
   try {
-    await ketNoi.query(
-      `CREATE DATABASE IF NOT EXISTS \`${TEN_CSDL}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci`
-    );
+    await ketNoi.query(`CREATE DATABASE IF NOT EXISTS \`${TEN_CSDL}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci`);
     await ketNoi.query(`USE \`${TEN_CSDL}\``);
 
     console.log('1/2 Import schema.sql ...');

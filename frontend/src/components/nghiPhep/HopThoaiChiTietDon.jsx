@@ -42,19 +42,36 @@ function HopThoaiChiTietDon({ don, cheDo, onDong, onDaXuLy }) {
     );
   }
 
-  let chanTrang = <NutBam bienThe="phu" onClick={onDong}>Đóng</NutBam>;
+  let chanTrang = (
+    <NutBam bienThe="phu" onClick={onDong}>
+      Đóng
+    </NutBam>
+  );
   if (cheDo === 'duyet' && don.duocDuyet) {
     chanTrang = (
       <>
-        <NutBam bienThe="phu" bieuTuong={X} disabled={dangGui} onClick={() => setDangTuChoi(true)}>Từ chối</NutBam>
-        <NutBam bieuTuong={Check} disabled={dangGui} onClick={() => thucHien('duyet')}>Duyệt</NutBam>
+        <NutBam bienThe="phu" bieuTuong={X} disabled={dangGui} onClick={() => setDangTuChoi(true)}>
+          Từ chối
+        </NutBam>
+        <NutBam bieuTuong={Check} disabled={dangGui} onClick={() => thucHien('duyet')}>
+          Duyệt
+        </NutBam>
       </>
     );
   } else if (cheDo === 'cuaToi' && don.trangThai === 'CHO_DUYET') {
     chanTrang = (
       <>
-        <NutBam bienThe="phu" onClick={onDong}>Đóng</NutBam>
-        <NutBam bienThe="vang" bieuTuong={Trash2} disabled={dangGui} onClick={() => window.confirm(`Hủy đơn ${don.maDon}? Thao tác không thể hoàn tác.`) && thucHien('huy')}>Hủy đơn</NutBam>
+        <NutBam bienThe="phu" onClick={onDong}>
+          Đóng
+        </NutBam>
+        <NutBam
+          bienThe="vang"
+          bieuTuong={Trash2}
+          disabled={dangGui}
+          onClick={() => window.confirm(`Hủy đơn ${don.maDon}? Thao tác không thể hoàn tác.`) && thucHien('huy')}
+        >
+          Hủy đơn
+        </NutBam>
       </>
     );
   }
@@ -63,27 +80,62 @@ function HopThoaiChiTietDon({ don, cheDo, onDong, onDaXuLy }) {
     <HopThoai tieuDe={`Đơn nghỉ phép ${don.maDon}`} onDong={onDong} chanTrang={chanTrang}>
       {loi && <div className="thongBao loi">{loi}</div>}
       <div className="luoiThongTin">
-        <div className="oThongTin"><span>Nhân viên</span><strong>{don.hoVaTen} ({don.maNhanVien})</strong></div>
-        <div className="oThongTin"><span>Phòng ban</span><strong>{don.tenPhongBan}</strong></div>
+        <div className="oThongTin">
+          <span>Nhân viên</span>
+          <strong>
+            {don.hoVaTen} ({don.maNhanVien})
+          </strong>
+        </div>
+        <div className="oThongTin">
+          <span>Phòng ban</span>
+          <strong>{don.tenPhongBan}</strong>
+        </div>
         <div className="oThongTin">
           <span>Loại nghỉ</span>
-          <strong>{don.tenLoai} · {don.coLuong ? 'có lương' : 'không lương'}{don.truVaoQuyPhepNam ? ' · trừ quỹ phép' : ''}</strong>
+          <strong>
+            {don.tenLoai} · {don.coLuong ? 'có lương' : 'không lương'}
+            {don.truVaoQuyPhepNam ? ' · trừ quỹ phép' : ''}
+          </strong>
         </div>
         <div className="oThongTin">
           <span>Thời gian</span>
-          <strong>{dinhDangNgay(don.ngayBatDau)} - {dinhDangNgay(don.ngayKetThuc)} ({don.soNgayNghi} ngày)</strong>
+          <strong>
+            {dinhDangNgay(don.ngayBatDau)} - {dinhDangNgay(don.ngayKetThuc)} ({don.soNgayNghi} ngày)
+          </strong>
         </div>
-        <div className="oThongTin"><span>Trạng thái</span><strong><ChipTrangThai trangThai={don.trangThai} /></strong></div>
-        <div className="oThongTin"><span>Ngày gửi</span><strong>{dinhDangThoiGian(don.ngayTao)}</strong></div>
+        <div className="oThongTin">
+          <span>Trạng thái</span>
+          <strong>
+            <ChipTrangThai trangThai={don.trangThai} />
+          </strong>
+        </div>
+        <div className="oThongTin">
+          <span>Ngày gửi</span>
+          <strong>{dinhDangThoiGian(don.ngayTao)}</strong>
+        </div>
         {don.trangThai === 'CHO_DUYET' && (
-          <div className="oThongTin"><span>Người duyệt dự kiến</span><strong>{moTaNguoiDuyetDuKien(don.nguoiDuyetDuKien)}</strong></div>
+          <div className="oThongTin">
+            <span>Người duyệt dự kiến</span>
+            <strong>{moTaNguoiDuyetDuKien(don.nguoiDuyetDuKien)}</strong>
+          </div>
         )}
         {don.tenNguoiDuyet && (
-          <div className="oThongTin"><span>Người xử lý</span><strong>{don.tenNguoiDuyet} · {dinhDangThoiGian(don.thoiGianDuyet)}</strong></div>
+          <div className="oThongTin">
+            <span>Người xử lý</span>
+            <strong>
+              {don.tenNguoiDuyet} · {dinhDangThoiGian(don.thoiGianDuyet)}
+            </strong>
+          </div>
         )}
       </div>
-      <p><strong>Lý do:</strong> {don.lyDo}</p>
-      {don.lyDoTuChoi && <p><strong>Lý do từ chối:</strong> {don.lyDoTuChoi}</p>}
+      <p>
+        <strong>Lý do:</strong> {don.lyDo}
+      </p>
+      {don.lyDoTuChoi && (
+        <p>
+          <strong>Lý do từ chối:</strong> {don.lyDoTuChoi}
+        </p>
+      )}
       {cheDo === 'duyet' && don.trangThai === 'CHO_DUYET' && !don.duocDuyet && (
         <div className="chuPhu">Đơn này thuộc quyền duyệt của {moTaNguoiDuyetDuKien(don.nguoiDuyetDuKien)}.</div>
       )}

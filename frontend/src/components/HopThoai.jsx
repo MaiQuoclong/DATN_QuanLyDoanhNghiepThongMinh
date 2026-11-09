@@ -15,7 +15,9 @@ function HopThoai({ tieuDe, onDong, children, chanTrang, rong = 520 }) {
       <div className="hopThoai the" style={{ maxWidth: rong }} role="dialog" aria-modal="true">
         <div className="dauHopThoai">
           <h2>{tieuDe}</h2>
-          <button type="button" className="nutDong" onClick={onDong} aria-label="Đóng"><X size={18} /></button>
+          <button type="button" className="nutDong" onClick={onDong} aria-label="Đóng">
+            <X size={18} />
+          </button>
         </div>
         <div className="thanHopThoai">{children}</div>
         {chanTrang && <div className="chanHopThoai">{chanTrang}</div>}

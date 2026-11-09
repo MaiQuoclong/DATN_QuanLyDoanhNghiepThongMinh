@@ -21,11 +21,14 @@ const COT_KY = `k.id, k.tenKyDanhGia, k.ngayBatDau, k.ngayKetThuc, k.trangThai,
 async function layDanhSachKy({ trangThai }) {
   const dieuKien = [];
   const thamSo = [];
-  if (trangThai) { dieuKien.push('k.trangThai = ?'); thamSo.push(trangThai); }
+  if (trangThai) {
+    dieuKien.push('k.trangThai = ?');
+    thamSo.push(trangThai);
+  }
   const [dong] = await pool.execute(
     `SELECT ${COT_KY} FROM kydanhgiakpi k ${dieuKien.length ? `WHERE ${dieuKien.join(' AND ')}` : ''}
       ORDER BY k.ngayBatDau DESC, k.id DESC`,
-    thamSo
+    thamSo,
   );
   return dong;
 }
@@ -39,7 +42,7 @@ async function layKyTheoId(id, ketNoi = pool) {
 async function khoaKy(id, ketNoi, khoa = 'UPDATE') {
   const [dong] = await ketNoi.execute(
     `SELECT id, tenKyDanhGia, ngayBatDau, ngayKetThuc, trangThai FROM kydanhgiakpi WHERE id = ? ${khoa === 'SHARE' ? 'LOCK IN SHARE MODE' : 'FOR UPDATE'}`,
-    [id]
+    [id],
   );
   return dong[0] ?? null;
 }
@@ -54,7 +57,7 @@ async function timKyTheoTen(tenKyDanhGia, boQuaId, ketNoi) {
 async function themKy({ tenKyDanhGia, ngayBatDau, ngayKetThuc }, ketNoi) {
   const [kq] = await ketNoi.execute(
     "INSERT INTO kydanhgiakpi (tenKyDanhGia, ngayBatDau, ngayKetThuc, trangThai) VALUES (?, ?, ?, 'DANG_MO')",
-    [tenKyDanhGia, ngayBatDau, ngayKetThuc]
+    [tenKyDanhGia, ngayBatDau, ngayKetThuc],
   );
   return kq.insertId;
 }
@@ -67,7 +70,10 @@ async function capNhatKy(id, truong, ketNoi) {
 }
 
 async function demPhieuTheoTrangThai(kyDanhGiaId, trangThai, ketNoi) {
-  const [[d]] = await ketNoi.execute('SELECT COUNT(*) AS so FROM phieudanhgiakpi WHERE kyDanhGiaId = ? AND trangThai = ?', [kyDanhGiaId, trangThai]);
+  const [[d]] = await ketNoi.execute('SELECT COUNT(*) AS so FROM phieudanhgiakpi WHERE kyDanhGiaId = ? AND trangThai = ?', [
+    kyDanhGiaId,
+    trangThai,
+  ]);
   return Number(d.so);
 }
 
@@ -95,10 +101,20 @@ const TU_CHI_TIEU = `FROM chitieukpi ct
 async function layDanhSachChiTieu({ chucDanhPhongBanId, phongBanId, chiTieuChung, tuKhoa, phamViPhongBanIds }) {
   const dieuKien = [];
   const thamSo = [];
-  if (chucDanhPhongBanId) { dieuKien.push('ct.chucDanhPhongBanId = ?'); thamSo.push(chucDanhPhongBanId); }
-  if (phongBanId) { dieuKien.push('cdpb.phongBanId = ?'); thamSo.push(phongBanId); }
+  if (chucDanhPhongBanId) {
+    dieuKien.push('ct.chucDanhPhongBanId = ?');
+    thamSo.push(chucDanhPhongBanId);
+  }
+  if (phongBanId) {
+    dieuKien.push('cdpb.phongBanId = ?');
+    thamSo.push(phongBanId);
+  }
   if (chiTieuChung) dieuKien.push('ct.chucDanhPhongBanId IS NULL');
-  if (tuKhoa) { const mau = `%${String(tuKhoa).replace(/[\\%_]/g, '\\$&')}%`; dieuKien.push('(ct.maChiTieu LIKE ? OR ct.tenChiTieu LIKE ?)'); thamSo.push(mau, mau); }
+  if (tuKhoa) {
+    const mau = `%${String(tuKhoa).replace(/[\\%_]/g, '\\$&')}%`;
+    dieuKien.push('(ct.maChiTieu LIKE ? OR ct.tenChiTieu LIKE ?)');
+    thamSo.push(mau, mau);
+  }
   if (phamViPhongBanIds) {
     const trong = [];
     themDieuKienIn(trong, thamSo, 'cdpb.phongBanId', phamViPhongBanIds);
@@ -107,7 +123,7 @@ async function layDanhSachChiTieu({ chucDanhPhongBanId, phongBanId, chiTieuChung
   const [dong] = await pool.execute(
     `SELECT ${COT_CHI_TIEU} ${TU_CHI_TIEU} ${dieuKien.length ? `WHERE ${dieuKien.join(' AND ')}` : ''}
       ORDER BY ct.chucDanhPhongBanId IS NOT NULL, pb.tenPhongBan, cd.tenChucDanh, ct.maChiTieu`,
-    thamSo
+    thamSo,
   );
   return dong;
 }
@@ -126,7 +142,7 @@ async function themChiTieu({ maChiTieu, tenChiTieu, moTa, donViDo, trongSoMacDin
   const [kq] = await ketNoi.execute(
     `INSERT INTO chitieukpi (maChiTieu, tenChiTieu, moTa, donViDo, trongSoMacDinh, chucDanhPhongBanId)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [maChiTieu, tenChiTieu, moTa, donViDo, trongSoMacDinh, chucDanhPhongBanId]
+    [maChiTieu, tenChiTieu, moTa, donViDo, trongSoMacDinh, chucDanhPhongBanId],
   );
   return kq.insertId;
 }
@@ -156,7 +172,7 @@ async function layViTriGanChiTieu(phamViPhongBanIds) {
     `SELECT cdpb.id, cdpb.phongBanId, pb.tenPhongBan, cd.tenChucDanh
        FROM chucdanhphongban cdpb JOIN phongban pb ON pb.id = cdpb.phongBanId JOIN chucdanh cd ON cd.id = cdpb.chucDanhId
       WHERE ${dieuKien.join(' AND ')} ORDER BY pb.tenPhongBan, cd.tenChucDanh`,
-    thamSo
+    thamSo,
   );
   return dong;
 }
@@ -166,7 +182,7 @@ async function layChiTieuChoViTri(chucDanhPhongBanId, ketNoi = pool) {
   const [dong] = await ketNoi.execute(
     `SELECT id, trongSoMacDinh FROM chitieukpi WHERE chucDanhPhongBanId = ? OR chucDanhPhongBanId IS NULL ORDER BY id
      ${ketNoi === pool ? '' : 'LOCK IN SHARE MODE'}`,
-    [chucDanhPhongBanId ?? 0]
+    [chucDanhPhongBanId ?? 0],
   );
   return dong;
 }
@@ -204,12 +220,31 @@ function chuanHoaPhieu(d) {
 function dieuKienPhieu({ kyDanhGiaId, phongBanId, trangThai, xepLoaiChung, tuKhoa, nhanVienId, phamViPhongBanIds }) {
   const dieuKien = [];
   const thamSo = [];
-  if (kyDanhGiaId) { dieuKien.push('p.kyDanhGiaId = ?'); thamSo.push(kyDanhGiaId); }
-  if (phongBanId) { dieuKien.push('cdpb.phongBanId = ?'); thamSo.push(phongBanId); }
-  if (trangThai) { dieuKien.push('p.trangThai = ?'); thamSo.push(trangThai); }
-  if (xepLoaiChung) { dieuKien.push('p.xepLoaiChung = ?'); thamSo.push(xepLoaiChung); }
-  if (nhanVienId) { dieuKien.push('p.nhanVienId = ?'); thamSo.push(nhanVienId); }
-  if (tuKhoa) { const mau = `%${String(tuKhoa).replace(/[\\%_]/g, '\\$&')}%`; dieuKien.push('(nv.maNhanVien LIKE ? OR nv.hoVaTen LIKE ?)'); thamSo.push(mau, mau); }
+  if (kyDanhGiaId) {
+    dieuKien.push('p.kyDanhGiaId = ?');
+    thamSo.push(kyDanhGiaId);
+  }
+  if (phongBanId) {
+    dieuKien.push('cdpb.phongBanId = ?');
+    thamSo.push(phongBanId);
+  }
+  if (trangThai) {
+    dieuKien.push('p.trangThai = ?');
+    thamSo.push(trangThai);
+  }
+  if (xepLoaiChung) {
+    dieuKien.push('p.xepLoaiChung = ?');
+    thamSo.push(xepLoaiChung);
+  }
+  if (nhanVienId) {
+    dieuKien.push('p.nhanVienId = ?');
+    thamSo.push(nhanVienId);
+  }
+  if (tuKhoa) {
+    const mau = `%${String(tuKhoa).replace(/[\\%_]/g, '\\$&')}%`;
+    dieuKien.push('(nv.maNhanVien LIKE ? OR nv.hoVaTen LIKE ?)');
+    thamSo.push(mau, mau);
+  }
   themDieuKienIn(dieuKien, thamSo, 'cdpb.phongBanId', phamViPhongBanIds);
   return { where: dieuKien.length ? `WHERE ${dieuKien.join(' AND ')}` : '', thamSo };
 }
@@ -220,7 +255,7 @@ async function layDanhSachPhieu(boLoc) {
   const gioiHan = boLoc.soLuong ? `LIMIT ${Number(boLoc.soLuong)} OFFSET ${Number(boLoc.viTri ?? 0)}` : '';
   const [dong] = await pool.execute(
     `SELECT ${COT_PHIEU} ${TU_PHIEU} ${where} ORDER BY k.ngayBatDau DESC, pb.tenPhongBan, nv.maNhanVien ${gioiHan}`,
-    thamSo
+    thamSo,
   );
   return { items: dong.map(chuanHoaPhieu), tongSo: Number(dem.tongSo) };
 }
@@ -241,7 +276,7 @@ async function layChiTietPhieu(phieuId, ketNoi = pool) {
             c.ketQuaThucTe, c.diemTuCham, c.diemNghiemThu, c.nhanXet
        FROM chitietdanhgiakpi c JOIN chitieukpi ct ON ct.id = c.chiTieuKPIId
       WHERE c.phieuDanhGiaKPIId = ? ORDER BY c.id`,
-    [phieuId]
+    [phieuId],
   );
   return dong.map((d) => ({
     ...d,
@@ -252,36 +287,39 @@ async function layChiTietPhieu(phieuId, ketNoi = pool) {
 }
 
 async function themPhieu(kyDanhGiaId, nhanVienId, ketNoi) {
-  const [kq] = await ketNoi.execute(
-    "INSERT INTO phieudanhgiakpi (kyDanhGiaId, nhanVienId, trangThai) VALUES (?, ?, 'BAN_NHAP')",
-    [kyDanhGiaId, nhanVienId]
-  );
+  const [kq] = await ketNoi.execute("INSERT INTO phieudanhgiakpi (kyDanhGiaId, nhanVienId, trangThai) VALUES (?, ?, 'BAN_NHAP')", [
+    kyDanhGiaId,
+    nhanVienId,
+  ]);
   return kq.insertId;
 }
 
 async function themChiTietPhieu(phieuId, cacChiTieu, ketNoi) {
   if (!cacChiTieu.length) return;
-  await ketNoi.query(
-    'INSERT INTO chitietdanhgiakpi (phieuDanhGiaKPIId, chiTieuKPIId, trongSo) VALUES ?',
-    [cacChiTieu.map((ct) => [phieuId, ct.id, ct.trongSoMacDinh])]
-  );
+  await ketNoi.query('INSERT INTO chitietdanhgiakpi (phieuDanhGiaKPIId, chiTieuKPIId, trongSo) VALUES ?', [
+    cacChiTieu.map((ct) => [phieuId, ct.id, ct.trongSoMacDinh]),
+  ]);
 }
 
 const COT_SUA_CHI_TIET = ['trongSo', 'mucTieu', 'ketQuaThucTe', 'diemTuCham', 'diemNghiemThu', 'nhanXet'];
 async function capNhatChiTiet(phieuId, chiTietId, truong, ketNoi) {
   const cot = Object.keys(truong).filter((c) => COT_SUA_CHI_TIET.includes(c));
   if (!cot.length) return;
-  await ketNoi.execute(
-    `UPDATE chitietdanhgiakpi SET ${cot.map((c) => `${c} = ?`).join(', ')} WHERE id = ? AND phieuDanhGiaKPIId = ?`,
-    [...cot.map((c) => truong[c]), chiTietId, phieuId]
-  );
+  await ketNoi.execute(`UPDATE chitietdanhgiakpi SET ${cot.map((c) => `${c} = ?`).join(', ')} WHERE id = ? AND phieuDanhGiaKPIId = ?`, [
+    ...cot.map((c) => truong[c]),
+    chiTietId,
+    phieuId,
+  ]);
 }
 
 const COT_SUA_PHIEU = ['giaiTrinhNhanVien', 'nhanXetQuanLy', 'xepLoaiChung', 'nguoiDanhGiaId', 'ngayNghiemThu', 'trangThai'];
 async function capNhatPhieu(id, truong, ketNoi) {
   const cot = Object.keys(truong).filter((c) => COT_SUA_PHIEU.includes(c));
   if (!cot.length) return;
-  await ketNoi.execute(`UPDATE phieudanhgiakpi SET ${cot.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`, [...cot.map((c) => truong[c]), id]);
+  await ketNoi.execute(`UPDATE phieudanhgiakpi SET ${cot.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`, [
+    ...cot.map((c) => truong[c]),
+    id,
+  ]);
 }
 
 async function xoaPhieu(id, ketNoi) {
@@ -299,24 +337,55 @@ async function laGiamDoc(nhanVienId, ketNoi = pool) {
 
 // Nhân viên đủ điều kiện tạo phiếu hàng loạt: đang làm việc, có vị trí, chưa có phiếu trong kỳ
 async function layNhanVienChuaCoPhieu(kyDanhGiaId, { phongBanId, phamViPhongBanIds, boQuaNhanVienId }, ketNoi) {
-  const dieuKien = ["nv.trangThaiLamViec IN ('THU_VIEC', 'CHINH_THUC')", 'nv.chucDanhPhongBanId IS NOT NULL',
+  const dieuKien = [
+    "nv.trangThaiLamViec IN ('THU_VIEC', 'CHINH_THUC')",
+    'nv.chucDanhPhongBanId IS NOT NULL',
     `NOT ${SQL_LA_GIAM_DOC}`,
-    'NOT EXISTS (SELECT 1 FROM phieudanhgiakpi p WHERE p.kyDanhGiaId = ? AND p.nhanVienId = nv.id)', 'nv.id <> ?'];
+    'NOT EXISTS (SELECT 1 FROM phieudanhgiakpi p WHERE p.kyDanhGiaId = ? AND p.nhanVienId = nv.id)',
+    'nv.id <> ?',
+  ];
   const thamSo = [kyDanhGiaId, boQuaNhanVienId ?? 0];
-  if (phongBanId) { dieuKien.push('cdpb.phongBanId = ?'); thamSo.push(phongBanId); }
+  if (phongBanId) {
+    dieuKien.push('cdpb.phongBanId = ?');
+    thamSo.push(phongBanId);
+  }
   themDieuKienIn(dieuKien, thamSo, 'cdpb.phongBanId', phamViPhongBanIds);
   const [dong] = await ketNoi.execute(
     `SELECT nv.id, nv.chucDanhPhongBanId FROM nhanvien nv JOIN chucdanhphongban cdpb ON cdpb.id = nv.chucDanhPhongBanId
       WHERE ${dieuKien.join(' AND ')} ORDER BY nv.id`,
-    thamSo
+    thamSo,
   );
   return dong;
 }
 
 module.exports = {
-  layDanhSachKy, layKyTheoId, khoaKy, timKyTheoTen, themKy, capNhatKy, demPhieuTheoTrangThai, demPhieuCuaKy, xoaKy,
-  layDanhSachChiTieu, layChiTieuTheoId, khoaChiTieu, themChiTieu, capNhatChiTieu, demLanSuDungChiTieu, xoaChiTieu,
-  layChiTieuChoViTri, layViTriGanChiTieu,
-  layDanhSachPhieu, layPhieuTheoId, khoaPhieu, layChiTietPhieu, themPhieu, themChiTietPhieu, capNhatChiTiet, capNhatPhieu,
-  xoaPhieu, layNhanVienChuaCoPhieu, laGiamDoc,
+  layDanhSachKy,
+  layKyTheoId,
+  khoaKy,
+  timKyTheoTen,
+  themKy,
+  capNhatKy,
+  demPhieuTheoTrangThai,
+  demPhieuCuaKy,
+  xoaKy,
+  layDanhSachChiTieu,
+  layChiTieuTheoId,
+  khoaChiTieu,
+  themChiTieu,
+  capNhatChiTieu,
+  demLanSuDungChiTieu,
+  xoaChiTieu,
+  layChiTieuChoViTri,
+  layViTriGanChiTieu,
+  layDanhSachPhieu,
+  layPhieuTheoId,
+  khoaPhieu,
+  layChiTietPhieu,
+  themPhieu,
+  themChiTietPhieu,
+  capNhatChiTiet,
+  capNhatPhieu,
+  xoaPhieu,
+  layNhanVienChuaCoPhieu,
+  laGiamDoc,
 };

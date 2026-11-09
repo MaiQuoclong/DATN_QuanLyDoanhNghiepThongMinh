@@ -1,9 +1,7 @@
 const nghiPhepService = require('../services/nghiPhepService');
 const { thanhCong } = require('../utils/phanHoi');
 const { TRANG_THAI_DON_NGHI_PHEP, TRANG_THAI_LOAI_NGHI_PHEP } = require('../utils/trangThai');
-const {
-  laySoNguyenDuong, layThang, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang,
-} = require('../utils/thamSoTruyVan');
+const { laySoNguyenDuong, layThang, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang } = require('../utils/thamSoTruyVan');
 
 const { thangHienTai } = require('../utils/ngayThang');
 

@@ -33,7 +33,7 @@ router.post(
     duongDanFileHopDong: DUONG_DAN_FILE,
     lyDo: LY_DO,
   }),
-  batLoiBatDongBo(hopDongController.taoHopDong)
+  batLoiBatDongBo(hopDongController.taoHopDong),
 );
 
 router.post(
@@ -43,7 +43,7 @@ router.post(
     ngayKetThucMoi: { nhan: 'Ngày kết thúc mới', batBuoc: true, kieu: 'ngay' },
     lyDo: LY_DO,
   }),
-  batLoiBatDongBo(hopDongController.giaHanHopDong)
+  batLoiBatDongBo(hopDongController.giaHanHopDong),
 );
 
 router.post(
@@ -55,7 +55,7 @@ router.post(
     duongDanFileHopDong: DUONG_DAN_FILE,
     lyDo: { ...LY_DO, batBuoc: true },
   }),
-  batLoiBatDongBo(hopDongController.dieuChinhHopDong)
+  batLoiBatDongBo(hopDongController.dieuChinhHopDong),
 );
 
 router.post(
@@ -65,7 +65,7 @@ router.post(
     ngayChamDut: { nhan: 'Ngày chấm dứt', batBuoc: true, kieu: 'ngay' },
     lyDo: { ...LY_DO, batBuoc: true },
   }),
-  batLoiBatDongBo(hopDongController.chamDutHopDong)
+  batLoiBatDongBo(hopDongController.chamDutHopDong),
 );
 
 module.exports = router;

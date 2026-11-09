@@ -20,7 +20,6 @@ const NGAY_QUA_KHU = '2021-03-15';
 const token = {};
 let anhChup;
 let mocNhatKy;
-let demMa = 0;
 
 function dangNhap(tenDangNhap) {
   return request(app).post('/api/v1/xacThuc/dangNhap').set('X-Tra-Token', '1').send({ tenDangNhap, matKhau: MAT_KHAU });
@@ -30,12 +29,19 @@ const goi = (phuongThuc, duongDan, tk) => {
   return tk ? r.set('Authorization', `Bearer ${tk}`) : r;
 };
 async function layNhatKy(hanhDong) {
-  const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id',
-    [mocNhatKy, hanhDong]);
+  const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id', [
+    mocNhatKy,
+    hanhDong,
+  ]);
   return d;
 }
 const bodyDeXuat = (ghiDe = {}) => ({
-  nhanVienId: NV_NHANVIEN, loaiDeXuat: 'KHEN_THUONG', tieuDe: 'QA khen thưởng', lyDo: 'Hoàn thành tốt nhiệm vụ', soTienDeXuat: 700000, ...ghiDe,
+  nhanVienId: NV_NHANVIEN,
+  loaiDeXuat: 'KHEN_THUONG',
+  tieuDe: 'QA khen thưởng',
+  lyDo: 'Hoàn thành tốt nhiệm vụ',
+  soTienDeXuat: 700000,
+  ...ghiDe,
 });
 async function taoDeXuat(tk = token.quanly, ghiDe = {}) {
   const res = await goi('post', '/deXuatKhenThuongKyLuat', tk).send(bodyDeXuat(ghiDe));
@@ -43,8 +49,14 @@ async function taoDeXuat(tk = token.quanly, ghiDe = {}) {
   return res.body.data;
 }
 const bodyQuyetDinh = (ghiDe = {}) => ({
-  nhanVienId: NV_NHANVIEN, loaiQuyetDinh: 'KHEN_THUONG', tieuDe: 'QA quyết định', lyDo: 'Thành tích tốt',
-  soTien: 400000, ngayBanHanh: NGAY_QUA_KHU, nguoiKyDuyetId: NV_GIAMDOC, ...ghiDe,
+  nhanVienId: NV_NHANVIEN,
+  loaiQuyetDinh: 'KHEN_THUONG',
+  tieuDe: 'QA quyết định',
+  lyDo: 'Thành tích tốt',
+  soTien: 400000,
+  ngayBanHanh: NGAY_QUA_KHU,
+  nguoiKyDuyetId: NV_GIAMDOC,
+  ...ghiDe,
 });
 async function layDeXuatDb(id) {
   const [[d]] = await pool.execute('SELECT * FROM dexuatkhenthuongkyluat WHERE id = ?', [id]);
@@ -89,7 +101,7 @@ afterEach(async () => {
   for (const d of anhChup.deXuatSeed) {
     await pool.execute(
       'UPDATE dexuatkhenthuongkyluat SET trangThai = ?, nguoiXuLyId = ?, ghiChuXuLy = ?, quyetDinhId = ?, tieuDe = ?, lyDo = ?, soTienDeXuat = ? WHERE id = ?',
-      [d.trangThai, d.nguoiXuLyId, d.ghiChuXuLy, d.quyetDinhId, d.tieuDe, d.lyDo, d.soTienDeXuat, d.id]
+      [d.trangThai, d.nguoiXuLyId, d.ghiChuXuLy, d.quyetDinhId, d.tieuDe, d.lyDo, d.soTienDeXuat, d.id],
     );
   }
   await datLaiAutoIncrement();
@@ -147,7 +159,12 @@ describe('Đề xuất - tạo, sửa, thu hồi', () => {
     const res = await goi('post', '/deXuatKhenThuongKyLuat', token.quanly).send(bodyDeXuat());
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ success: true, code: 201 });
-    expect(res.body.data).toMatchObject({ nguoiDeXuatId: NV_QUANLY, nhanVienId: NV_NHANVIEN, trangThai: 'CHO_DUYET', loaiDeXuat: 'KHEN_THUONG' });
+    expect(res.body.data).toMatchObject({
+      nguoiDeXuatId: NV_QUANLY,
+      nhanVienId: NV_NHANVIEN,
+      trangThai: 'CHO_DUYET',
+      loaiDeXuat: 'KHEN_THUONG',
+    });
     const nk = await layNhatKy('TAO_DE_XUAT_KTKL');
     expect(nk).toHaveLength(1);
     expect(nk[0].nguoiDungId).toBe(3);
@@ -160,8 +177,15 @@ describe('Đề xuất - tạo, sửa, thu hồi', () => {
 
   test('dữ liệu sai 400', async () => {
     const sai = [
-      { nhanVienId: 'x' }, { loaiDeXuat: 'THUONG' }, { tieuDe: '' }, { tieuDe: 'ab' }, { lyDo: '' },
-      { soTienDeXuat: -1 }, { soTienDeXuat: '1.234' }, { soTienDeXuat: 'abc' }, { tieuDe: 'a'.repeat(201) },
+      { nhanVienId: 'x' },
+      { loaiDeXuat: 'THUONG' },
+      { tieuDe: '' },
+      { tieuDe: 'ab' },
+      { lyDo: '' },
+      { soTienDeXuat: -1 },
+      { soTienDeXuat: '1.234' },
+      { soTienDeXuat: 'abc' },
+      { tieuDe: 'a'.repeat(201) },
     ];
     for (const ghiDe of sai) {
       const res = await goi('post', '/deXuatKhenThuongKyLuat', token.quanly).send(bodyDeXuat(ghiDe));
@@ -180,7 +204,8 @@ describe('Đề xuất - tạo, sửa, thu hồi', () => {
   test('nhân viên đã nghỉ việc 409', async () => {
     const [kq] = await pool.execute(
       `INSERT INTO nhanvien (maNhanVien, hoVaTen, gioiTinh, ngaySinh, chucDanhPhongBanId, ngayVaoLam, trangThaiLamViec)
-       VALUES (?, 'QA Nghỉ việc', 'NAM', '1995-01-01', 5, '2020-01-06', 'DA_NGHI_VIEC')`, [`QK${Date.now() % 100000}`]
+       VALUES (?, 'QA Nghỉ việc', 'NAM', '1995-01-01', 5, '2020-01-06', 'DA_NGHI_VIEC')`,
+      [`QK${Date.now() % 100000}`],
     );
     try {
       const res = await goi('post', '/deXuatKhenThuongKyLuat', token.quanly).send(bodyDeXuat({ nhanVienId: kq.insertId }));
@@ -225,7 +250,9 @@ describe('Đề xuất - HR từ chối và lập quyết định', () => {
   test('từ chối: bắt buộc ghiChuXuLy 400, thành công TU_CHOI, lần 2 409, sai vai trò 403', async () => {
     const dx = await taoDeXuat();
     expect((await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/tuChoi`, token.hr).send({})).status).toBe(400);
-    expect((await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/tuChoi`, token.giamdoc).send({ ghiChuXuLy: 'Không đủ căn cứ' })).status).toBe(403);
+    expect(
+      (await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/tuChoi`, token.giamdoc).send({ ghiChuXuLy: 'Không đủ căn cứ' })).status,
+    ).toBe(403);
     const ok = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/tuChoi`, token.hr).send({ ghiChuXuLy: 'Không đủ căn cứ' });
     expect(ok.status).toBe(200);
     expect(ok.body.data).toMatchObject({ trangThai: 'TU_CHOI', nguoiXuLyId: NV_HR, ghiChuXuLy: 'Không đủ căn cứ' });
@@ -236,12 +263,20 @@ describe('Đề xuất - HR từ chối và lập quyết định', () => {
 
   test('lập quyết định từ đề xuất 201: transaction quyết định + đề xuất DA_DUYET, số QĐ tự sinh, nhật ký', async () => {
     const dx = await taoDeXuat();
-    const res = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr)
-      .send({ nguoiKyDuyetId: NV_GIAMDOC, ngayBanHanh: NGAY_QUA_KHU, ghiChuXuLy: 'Đồng ý' });
+    const res = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr).send({
+      nguoiKyDuyetId: NV_GIAMDOC,
+      ngayBanHanh: NGAY_QUA_KHU,
+      ghiChuXuLy: 'Đồng ý',
+    });
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ success: true, code: 201 });
     const qd = res.body.data.quyetDinh;
-    expect(qd).toMatchObject({ nhanVienId: NV_NHANVIEN, loaiQuyetDinh: 'KHEN_THUONG', tieuDe: 'QA khen thưởng', nguoiKyDuyetId: NV_GIAMDOC });
+    expect(qd).toMatchObject({
+      nhanVienId: NV_NHANVIEN,
+      loaiQuyetDinh: 'KHEN_THUONG',
+      tieuDe: 'QA khen thưởng',
+      nguoiKyDuyetId: NV_GIAMDOC,
+    });
     expect(qd.soQuyetDinh).toMatch(/^QD2021-\d{4}$/);
     expect(Number(qd.soTien)).toBe(700000);
     // NV 5 chỉ có hợp đồng từ 2024 -> tháng 03/2021 không có HĐ hiệu lực, phải cảnh báo tiền không vào lương
@@ -249,8 +284,14 @@ describe('Đề xuất - HR từ chối và lập quyết định', () => {
     const db = await layDeXuatDb(dx.id);
     expect(db).toMatchObject({ trangThai: 'DA_DUYET', quyetDinhId: qd.id, nguoiXuLyId: NV_HR, ghiChuXuLy: 'Đồng ý' });
     expect(await layNhatKy('LAP_QUYET_DINH_KTKL')).toHaveLength(1);
-    expect((await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr)
-      .send({ nguoiKyDuyetId: NV_GIAMDOC, ngayBanHanh: NGAY_QUA_KHU })).status).toBe(409);
+    expect(
+      (
+        await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr).send({
+          nguoiKyDuyetId: NV_GIAMDOC,
+          ngayBanHanh: NGAY_QUA_KHU,
+        })
+      ).status,
+    ).toBe(409);
   });
 
   test('lập quyết định: người ký không phải giamDoc / ngày sai -> 400 và rollback (đề xuất vẫn CHO_DUYET)', async () => {
@@ -277,8 +318,11 @@ describe('Đề xuất - HR từ chối và lập quyết định', () => {
     const dx = await taoDeXuat();
     const [[seed]] = await pool.query('SELECT soQuyetDinh FROM quyetdinhkhenthuongkyluat WHERE id = 1');
     const truoc = await demQuyetDinh();
-    const res = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr)
-      .send({ nguoiKyDuyetId: NV_GIAMDOC, ngayBanHanh: NGAY_QUA_KHU, soQuyetDinh: seed.soQuyetDinh });
+    const res = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr).send({
+      nguoiKyDuyetId: NV_GIAMDOC,
+      ngayBanHanh: NGAY_QUA_KHU,
+      soQuyetDinh: seed.soQuyetDinh,
+    });
     expect(res.status).toBe(409);
     expect(await demQuyetDinh()).toBe(truoc);
     expect((await layDeXuatDb(dx.id)).trangThai).toBe('CHO_DUYET');
@@ -287,17 +331,27 @@ describe('Đề xuất - HR từ chối và lập quyết định', () => {
   test('HR không xử lý đề xuất về chính mình 403; hr2 xử lý được', async () => {
     const dx = await taoDeXuat(token.giamdoc, { nhanVienId: NV_HR });
     expect((await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/tuChoi`, token.hr).send({ ghiChuXuLy: 'Tự từ chối' })).status).toBe(403);
-    expect((await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr)
-      .send({ nguoiKyDuyetId: NV_GIAMDOC2, ngayBanHanh: NGAY_QUA_KHU })).status).toBe(403);
-    const ok = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr2)
-      .send({ nguoiKyDuyetId: NV_GIAMDOC2, ngayBanHanh: NGAY_QUA_KHU });
+    expect(
+      (
+        await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr).send({
+          nguoiKyDuyetId: NV_GIAMDOC2,
+          ngayBanHanh: NGAY_QUA_KHU,
+        })
+      ).status,
+    ).toBe(403);
+    const ok = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr2).send({
+      nguoiKyDuyetId: NV_GIAMDOC2,
+      ngayBanHanh: NGAY_QUA_KHU,
+    });
     expect(ok.status).toBe(201);
   });
 
   test('người ký không được là người nhận quyết định 400', async () => {
     const dx = await taoDeXuat(token.giamdoc, { nhanVienId: NV_GIAMDOC2 });
-    const res = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr)
-      .send({ nguoiKyDuyetId: NV_GIAMDOC2, ngayBanHanh: NGAY_QUA_KHU });
+    const res = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr).send({
+      nguoiKyDuyetId: NV_GIAMDOC2,
+      ngayBanHanh: NGAY_QUA_KHU,
+    });
     expect(res.status).toBe(400);
   });
 });
@@ -369,7 +423,9 @@ describe('Quyết định - lập trực tiếp', () => {
     const res = await goi('post', '/quyetDinhKhenThuongKyLuat', token.giamdoc).send(bodyQuyetDinh({ nguoiKyDuyetId: NV_GIAMDOC2 }));
     expect(res.status).toBe(201);
     expect(res.body.data.quyetDinh.nguoiKyDuyetId).toBe(NV_GIAMDOC);
-    expect((await goi('post', '/quyetDinhKhenThuongKyLuat', token.giamdoc).send(bodyQuyetDinh({ nhanVienId: NV_GIAMDOC }))).status).toBe(400);
+    expect((await goi('post', '/quyetDinhKhenThuongKyLuat', token.giamdoc).send(bodyQuyetDinh({ nhanVienId: NV_GIAMDOC }))).status).toBe(
+      400,
+    );
     expect((await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr).send(bodyQuyetDinh({ nhanVienId: NV_HR }))).status).toBe(400);
   });
 
@@ -382,8 +438,15 @@ describe('Quyết định - lập trực tiếp', () => {
   test('dữ liệu sai 400, nhân viên không tồn tại 404, số trùng 409', async () => {
     const truoc = await demQuyetDinh();
     const sai = [
-      { nhanVienId: 'x' }, { loaiQuyetDinh: 'THUONG' }, { ngayBanHanh: '15/03/2021' }, { ngayBanHanh: '2099-12-01' },
-      { soTien: -5 }, { tieuDe: '' }, { nguoiKyDuyetId: NV_QUANLY }, { nguoiKyDuyetId: undefined }, { soQuyetDinh: 'ab' },
+      { nhanVienId: 'x' },
+      { loaiQuyetDinh: 'THUONG' },
+      { ngayBanHanh: '15/03/2021' },
+      { ngayBanHanh: '2099-12-01' },
+      { soTien: -5 },
+      { tieuDe: '' },
+      { nguoiKyDuyetId: NV_QUANLY },
+      { nguoiKyDuyetId: undefined },
+      { soQuyetDinh: 'ab' },
     ];
     for (const ghiDe of sai) {
       const res = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr).send(bodyQuyetDinh(ghiDe));
@@ -411,18 +474,28 @@ describe('Quyết định - lập trực tiếp', () => {
 // ---------------------------------------------------------------------------
 describe('Quyết định và bảng lương tháng ban hành', () => {
   test('tháng có bảng lương CHO_DUYET/DA_DUYET -> 409, không ghi quyết định', async () => {
-    for (const [thang, trangThai] of [[7, 'CHO_DUYET'], [8, 'DA_DUYET']]) {
+    for (const [thang, trangThai] of [
+      [7, 'CHO_DUYET'],
+      [8, 'DA_DUYET'],
+    ]) {
       await pool.execute(
         `INSERT INTO bangtonghopluong (maBangLuong, thang, nam, tongChiPhiLuong, trangThai, nguoiLapId)
-         VALUES (?, ?, 2020, 0, ?, 4)`, [`QABL2020-0${thang}`, thang, trangThai]
+         VALUES (?, ?, 2020, 0, ?, 4)`,
+        [`QABL2020-0${thang}`, thang, trangThai],
       );
     }
     const truoc = await demQuyetDinh();
     expect((await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr).send(bodyQuyetDinh({ ngayBanHanh: '2020-07-10' }))).status).toBe(409);
     expect((await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr).send(bodyQuyetDinh({ ngayBanHanh: '2020-08-10' }))).status).toBe(409);
     const dx = await taoDeXuat();
-    expect((await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr)
-      .send({ nguoiKyDuyetId: NV_GIAMDOC, ngayBanHanh: '2020-07-10' })).status).toBe(409);
+    expect(
+      (
+        await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr).send({
+          nguoiKyDuyetId: NV_GIAMDOC,
+          ngayBanHanh: '2020-07-10',
+        })
+      ).status,
+    ).toBe(409);
     expect((await layDeXuatDb(dx.id)).trangThai).toBe('CHO_DUYET');
     expect(await demQuyetDinh()).toBe(truoc);
   });
@@ -434,21 +507,26 @@ describe('Quyết định và bảng lương tháng ban hành', () => {
     expect(lap.status).toBe(201);
     const bangId = lap.body.data.id ?? lap.body.data.bangLuong?.id;
     const layThuong = async () => {
-      const [[p]] = await pool.execute('SELECT thuongKPI FROM phieuluongnhanvien WHERE bangTongHopLuongId = ? AND nhanVienId = ?', [bangId, NV_QUANLY]);
+      const [[p]] = await pool.execute('SELECT thuongKPI FROM phieuluongnhanvien WHERE bangTongHopLuongId = ? AND nhanVienId = ?', [
+        bangId,
+        NV_QUANLY,
+      ]);
       return Number(p.thuongKPI);
     };
     const goc = await layThuong();
 
-    const khen = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr)
-      .send(bodyQuyetDinh({ nhanVienId: NV_QUANLY, soTien: 1000000, ngayBanHanh: '2020-06-15' }));
+    const khen = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr).send(
+      bodyQuyetDinh({ nhanVienId: NV_QUANLY, soTien: 1000000, ngayBanHanh: '2020-06-15' }),
+    );
     expect(khen.status).toBe(201);
     expect(khen.body.data.canhBao).toEqual(expect.stringContaining('BL'));
     expect(await layThuong()).toBe(goc + 1000000);
     expect(await layNhatKy('TINH_LAI_BANG_LUONG_KTKL')).toHaveLength(1);
     expect(await layNhatKy('TINH_LAI_BANG_LUONG')).toHaveLength(0);
 
-    const phat = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr)
-      .send(bodyQuyetDinh({ nhanVienId: NV_QUANLY, loaiQuyetDinh: 'KY_LUAT', soTien: 300000, ngayBanHanh: '2020-06-20' }));
+    const phat = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr).send(
+      bodyQuyetDinh({ nhanVienId: NV_QUANLY, loaiQuyetDinh: 'KY_LUAT', soTien: 300000, ngayBanHanh: '2020-06-20' }),
+    );
     expect(phat.status).toBe(201);
     expect(await layThuong()).toBe(goc + 700000);
     const [[b]] = await pool.execute('SELECT trangThai FROM bangtonghopluong WHERE id = ?', [bangId]);
@@ -461,8 +539,9 @@ describe('Quyết định và bảng lương tháng ban hành', () => {
     const lap = await goi('post', '/bangLuong', token.hr).send({ thang });
     expect(lap.status).toBe(201);
     const bangId = lap.body.data.id ?? lap.body.data.bangLuong?.id;
-    const qd = await goi('post', '/quyetDinhKhenThuongKyLuat', token.giamdoc)
-      .send(bodyQuyetDinh({ nhanVienId: NV_QUANLY, ngayBanHanh: '2020-09-15' }));
+    const qd = await goi('post', '/quyetDinhKhenThuongKyLuat', token.giamdoc).send(
+      bodyQuyetDinh({ nhanVienId: NV_QUANLY, ngayBanHanh: '2020-09-15' }),
+    );
     expect(qd.status).toBe(201);
     expect(qd.body.data.canhBao).toEqual(expect.any(String));
     expect(await layNhatKy('TINH_LAI_BANG_LUONG_KTKL')).toHaveLength(1);
@@ -478,14 +557,16 @@ describe('Quyết định và bảng lương tháng ban hành', () => {
     await pool.execute("INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, chiTiet) VALUES (4, 'CHOT_CONG_THANG', ?)", [thang]);
     const lap = await goi('post', '/bangLuong', token.hr).send({ thang });
     expect(lap.status).toBe(201);
-    const phat = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr)
-      .send(bodyQuyetDinh({ nhanVienId: NV_QUANLY, loaiQuyetDinh: 'KY_LUAT', soTien: 500000000, ngayBanHanh: '2020-05-20' }));
+    const phat = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr).send(
+      bodyQuyetDinh({ nhanVienId: NV_QUANLY, loaiQuyetDinh: 'KY_LUAT', soTien: 500000000, ngayBanHanh: '2020-05-20' }),
+    );
     expect(phat.status).toBe(201);
     expect(phat.body.data.canhBao).toEqual(expect.stringContaining('phạt vượt thu nhập bị bỏ'));
     expect(phat.body.data.canhBao).toEqual(expect.stringContaining('NV0003'));
     // Quyết định sau cùng tháng tính lại cả bảng: phạt của NV0003 vẫn bị cắt nên vẫn cảnh báo
-    const khen = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr)
-      .send(bodyQuyetDinh({ nhanVienId: NV_NHANVIEN, soTien: 100000, ngayBanHanh: '2020-05-21' }));
+    const khen = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr).send(
+      bodyQuyetDinh({ nhanVienId: NV_NHANVIEN, soTien: 100000, ngayBanHanh: '2020-05-21' }),
+    );
     expect(khen.status).toBe(201);
     expect(khen.body.data.canhBao).toEqual(expect.stringContaining('NV0003'));
   });
@@ -495,13 +576,17 @@ describe('Quyết định và bảng lương tháng ban hành', () => {
 describe('Kiểm tra lại điều kiện tại thời điểm xử lý', () => {
   test('lập quyết định với người ký giamDoc có tài khoản bị khóa -> 400, rollback; mở lại thì lập được', async () => {
     const [[nk]] = await pool.execute(
-      'SELECT nd.id, nd.trangThai FROM nhanvien nv JOIN nguoidung nd ON nd.id = nv.nguoiDungId WHERE nv.id = ?', [NV_GIAMDOC2]);
+      'SELECT nd.id, nd.trangThai FROM nhanvien nv JOIN nguoidung nd ON nd.id = nv.nguoiDungId WHERE nv.id = ?',
+      [NV_GIAMDOC2],
+    );
     const dx = await taoDeXuat();
     const truoc = await demQuyetDinh();
     await pool.execute("UPDATE nguoidung SET trangThai = 'BI_KHOA' WHERE id = ?", [nk.id]);
     try {
-      const r1 = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr)
-        .send({ nguoiKyDuyetId: NV_GIAMDOC2, ngayBanHanh: NGAY_QUA_KHU });
+      const r1 = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr).send({
+        nguoiKyDuyetId: NV_GIAMDOC2,
+        ngayBanHanh: NGAY_QUA_KHU,
+      });
       expect(r1.status).toBe(400);
       expect(r1.body).toMatchObject({ success: false, code: 400, data: null });
       const r2 = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr).send(bodyQuyetDinh({ nguoiKyDuyetId: NV_GIAMDOC2 }));
@@ -515,8 +600,10 @@ describe('Kiểm tra lại điều kiện tại thời điểm xử lý', () => 
     } finally {
       await pool.execute('UPDATE nguoidung SET trangThai = ? WHERE id = ?', [nk.trangThai, nk.id]);
     }
-    const ok = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr)
-      .send({ nguoiKyDuyetId: NV_GIAMDOC2, ngayBanHanh: NGAY_QUA_KHU });
+    const ok = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/lapQuyetDinh`, token.hr).send({
+      nguoiKyDuyetId: NV_GIAMDOC2,
+      ngayBanHanh: NGAY_QUA_KHU,
+    });
     expect(ok.status).toBe(201);
   });
 

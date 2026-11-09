@@ -15,7 +15,14 @@ const chiHR = [xacThucJwt, phanQuyen(['HR'])];
 const chiGiamDoc = [xacThucJwt, phanQuyen(['giamDoc'])];
 
 const MAU_MA = /^[A-Za-z0-9-]+$/;
-const LUAT_MA = (nhan) => ({ nhan, batBuoc: true, toiThieu: 2, toiDa: 20, mauKiemTra: MAU_MA, thongBaoMau: `${nhan} chỉ gồm chữ không dấu, số và dấu gạch ngang` });
+const LUAT_MA = (nhan) => ({
+  nhan,
+  batBuoc: true,
+  toiThieu: 2,
+  toiDa: 20,
+  mauKiemTra: MAU_MA,
+  thongBaoMau: `${nhan} chỉ gồm chữ không dấu, số và dấu gạch ngang`,
+});
 const luatTrangThai = (cacGiaTri) => kiemTraDuLieu({ trangThai: { nhan: 'Trạng thái', batBuoc: true, cacGiaTri } });
 
 // ----- Đọc: mọi vai trò xem sơ đồ phòng ban -----
@@ -34,7 +41,7 @@ router.post(
     tenPhongBan: { nhan: 'Tên phòng ban', batBuoc: true, toiThieu: 2, toiDa: 100 },
     phongBanChaId: { nhan: 'Phòng ban cha', kieu: 'soNguyenDuong' },
   }),
-  batLoiBatDongBo(coCauToChucController.themPhongBan)
+  batLoiBatDongBo(coCauToChucController.themPhongBan),
 );
 router.patch(
   '/phongBan/:id',
@@ -43,16 +50,21 @@ router.patch(
     tenPhongBan: { nhan: 'Tên phòng ban', toiThieu: 2, toiDa: 100 },
     phongBanChaId: { nhan: 'Phòng ban cha', kieu: 'soNguyenDuong' },
   }),
-  batLoiBatDongBo(coCauToChucController.suaPhongBan)
+  batLoiBatDongBo(coCauToChucController.suaPhongBan),
 );
-router.post('/phongBan/:id/doiTrangThai', ...chiHR, luatTrangThai(TRANG_THAI_PHONG_BAN), batLoiBatDongBo(coCauToChucController.doiTrangThaiPhongBan));
+router.post(
+  '/phongBan/:id/doiTrangThai',
+  ...chiHR,
+  luatTrangThai(TRANG_THAI_PHONG_BAN),
+  batLoiBatDongBo(coCauToChucController.doiTrangThaiPhongBan),
+);
 
 // ----- Bổ nhiệm (giamDoc) -----
 router.post(
   '/phongBan/:id/boNhiem',
   ...chiGiamDoc,
   kiemTraDuLieu({ nhanVienId: { nhan: 'Nhân viên', batBuoc: true, kieu: 'soNguyenDuong' } }),
-  batLoiBatDongBo(coCauToChucController.boNhiemTruongBoPhan)
+  batLoiBatDongBo(coCauToChucController.boNhiemTruongBoPhan),
 );
 router.post('/phongBan/:id/mienNhiem', ...chiGiamDoc, batLoiBatDongBo(coCauToChucController.mienNhiemTruongBoPhan));
 
@@ -65,7 +77,7 @@ router.post(
     tenChucDanh: { nhan: 'Tên chức danh', batBuoc: true, toiThieu: 2, toiDa: 100 },
     capBac: { nhan: 'Cấp bậc', batBuoc: true, toiThieu: 2, toiDa: 50 },
   }),
-  batLoiBatDongBo(coCauToChucController.themChucDanh)
+  batLoiBatDongBo(coCauToChucController.themChucDanh),
 );
 router.patch(
   '/chucDanh/:id',
@@ -75,9 +87,14 @@ router.patch(
     capBac: { nhan: 'Cấp bậc', toiThieu: 2, toiDa: 50 },
     trangThai: { nhan: 'Trạng thái', cacGiaTri: TRANG_THAI_CHUC_DANH },
   }),
-  batLoiBatDongBo(coCauToChucController.suaChucDanh)
+  batLoiBatDongBo(coCauToChucController.suaChucDanh),
 );
-router.post('/chucDanh/:id/doiTrangThai', ...chiHR, luatTrangThai(TRANG_THAI_CHUC_DANH), batLoiBatDongBo(coCauToChucController.doiTrangThaiChucDanh));
+router.post(
+  '/chucDanh/:id/doiTrangThai',
+  ...chiHR,
+  luatTrangThai(TRANG_THAI_CHUC_DANH),
+  batLoiBatDongBo(coCauToChucController.doiTrangThaiChucDanh),
+);
 
 // ----- Vị trí = chức danh trong phòng ban (HR) -----
 router.post(
@@ -89,7 +106,7 @@ router.post(
     dinhBien: { nhan: 'Định biên', batBuoc: true, kieu: 'soNguyenDuong' },
     ghiChu: { nhan: 'Ghi chú', toiDa: 255 },
   }),
-  batLoiBatDongBo(coCauToChucController.themViTri)
+  batLoiBatDongBo(coCauToChucController.themViTri),
 );
 router.patch(
   '/chucDanhPhongBan/:id',
@@ -99,8 +116,13 @@ router.patch(
     ghiChu: { nhan: 'Ghi chú', toiDa: 255 },
     trangThai: { nhan: 'Trạng thái', cacGiaTri: TRANG_THAI_VI_TRI },
   }),
-  batLoiBatDongBo(coCauToChucController.suaViTri)
+  batLoiBatDongBo(coCauToChucController.suaViTri),
 );
-router.post('/chucDanhPhongBan/:id/doiTrangThai', ...chiHR, luatTrangThai(TRANG_THAI_VI_TRI), batLoiBatDongBo(coCauToChucController.doiTrangThaiViTri));
+router.post(
+  '/chucDanhPhongBan/:id/doiTrangThai',
+  ...chiHR,
+  luatTrangThai(TRANG_THAI_VI_TRI),
+  batLoiBatDongBo(coCauToChucController.doiTrangThaiViTri),
+);
 
 module.exports = router;

@@ -8,11 +8,7 @@ async function kiemTraSucKhoe(req, res) {
   } catch {
     csdl = 'MAT_KET_NOI';
   }
-  return thanhCong(
-    res,
-    { mayChu: 'HOAT_DONG', csdl, thoiGian: new Date().toISOString() },
-    'Hệ thống đang hoạt động'
-  );
+  return thanhCong(res, { mayChu: 'HOAT_DONG', csdl, thoiGian: new Date().toISOString() }, 'Hệ thống đang hoạt động');
 }
 
 module.exports = { kiemTraSucKhoe };

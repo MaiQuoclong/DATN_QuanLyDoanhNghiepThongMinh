@@ -19,12 +19,24 @@ const homNay = () => new Date().toLocaleDateString('en-CA');
 // Trường lập quyết định; HR chọn người ký (giamDoc), giamDoc tự ký
 export function truongQuyetDinh(dsNguoiKy, { coNhanVien = true, coLoai = true } = {}) {
   return [
-    ...(coNhanVien ? [{ ten: 'nhanVienId', nhan: 'Nhân viên', kieu: 'nhanVien', batBuoc: true, locNhanVien: { trangThai: ['THU_VIEC', 'CHINH_THUC'] } }] : []),
+    ...(coNhanVien
+      ? [{ ten: 'nhanVienId', nhan: 'Nhân viên', kieu: 'nhanVien', batBuoc: true, locNhanVien: { trangThai: ['THU_VIEC', 'CHINH_THUC'] } }]
+      : []),
     ...(coLoai ? [{ ten: 'loaiQuyetDinh', nhan: 'Loại', kieu: 'select', batBuoc: true, luaChon: thanhLuaChon(NHAN_LOAI_KTKL) }] : []),
     { ten: 'tieuDe', nhan: 'Tiêu đề', batBuoc: true, rongHet: true },
     { ten: 'soTien', nhan: 'Số tiền (VNĐ)', kieu: 'number', ghiChu: 'Khen thưởng cộng, kỷ luật trừ vào lương tháng ban hành' },
     { ten: 'ngayBanHanh', nhan: 'Ngày ban hành', kieu: 'date', batBuoc: true, ghiChu: 'Không chọn được tháng đã gửi/duyệt bảng lương' },
-    ...(dsNguoiKy ? [{ ten: 'nguoiKyDuyetId', nhan: 'Người ký', kieu: 'select', batBuoc: true, luaChon: dsNguoiKy.map((n) => ({ giaTri: n.id, nhan: `${n.maNhanVien} - ${n.hoVaTen}` })) }] : []),
+    ...(dsNguoiKy
+      ? [
+          {
+            ten: 'nguoiKyDuyetId',
+            nhan: 'Người ký',
+            kieu: 'select',
+            batBuoc: true,
+            luaChon: dsNguoiKy.map((n) => ({ giaTri: n.id, nhan: `${n.maNhanVien} - ${n.hoVaTen}` })),
+          },
+        ]
+      : []),
     { ten: 'soQuyetDinh', nhan: 'Số quyết định', goiY: 'Để trống để tự sinh QD<năm>-NNNN' },
     { ten: 'lyDo', nhan: 'Lý do', kieu: 'textarea', batBuoc: true },
   ];
@@ -47,12 +59,24 @@ function TrangQuyetDinh() {
   const [dangLap, setDangLap] = useState(false);
 
   const tai = useCallback(() => {
-    goiApi.get('/quyetDinhKhenThuongKyLuat', { params: locThamSo({ tuKhoa: tuKhoa.trim(), ...loc, trang, kichThuoc: KICH_THUOC }) })
-      .then((r) => { setKq(r.data); setLoi(''); }).catch((e) => setLoi(e.message));
+    goiApi
+      .get('/quyetDinhKhenThuongKyLuat', { params: locThamSo({ tuKhoa: tuKhoa.trim(), ...loc, trang, kichThuoc: KICH_THUOC }) })
+      .then((r) => {
+        setKq(r.data);
+        setLoi('');
+      })
+      .catch((e) => setLoi(e.message));
   }, [tuKhoa, loc, trang]);
-  useEffect(() => { const hen = setTimeout(tai, 250); return () => clearTimeout(hen); }, [tai]);
   useEffect(() => {
-    if (laHR) goiApi.get('/quyetDinhKhenThuongKyLuat/nguoiKy').then((r) => setDsNguoiKy(r.data)).catch((e) => setLoi(e.message));
+    const hen = setTimeout(tai, 250);
+    return () => clearTimeout(hen);
+  }, [tai]);
+  useEffect(() => {
+    if (laHR)
+      goiApi
+        .get('/quyetDinhKhenThuongKyLuat/nguoiKy')
+        .then((r) => setDsNguoiKy(r.data))
+        .catch((e) => setLoi(e.message));
   }, [laHR]);
 
   const nam = new Date().getFullYear();
@@ -75,26 +99,47 @@ function TrangQuyetDinh() {
           <h1 className="tieuDeTrang">Quyết định khen thưởng - kỷ luật</h1>
           <div className="chuPhu">Quyết định do Giám đốc ký · số tiền cộng (khen thưởng) hoặc trừ (kỷ luật) vào lương tháng ban hành</div>
         </div>
-        {duocLap && <NutBam bieuTuong={Plus} onClick={() => { setThongBao(''); setDangLap(true); }}>Lập quyết định</NutBam>}
+        {duocLap && (
+          <NutBam
+            bieuTuong={Plus}
+            onClick={() => {
+              setThongBao('');
+              setDangLap(true);
+            }}
+          >
+            Lập quyết định
+          </NutBam>
+        )}
       </div>
       {loi && <div className="thongBao loi">{loi}</div>}
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
       {tk && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
           <TheThongKe tieuDe="Khen thưởng" giaTri={tk.soKhenThuong} moTa={dinhDangTien(tk.tongKhenThuong)} trangThai="thanhCong" />
-          <TheThongKe tieuDe="Kỷ luật" giaTri={tk.soKyLuat} moTa={dinhDangTien(tk.tongKyLuat)} trangThai={tk.soKyLuat ? 'canhBao' : undefined} />
+          <TheThongKe
+            tieuDe="Kỷ luật"
+            giaTri={tk.soKyLuat}
+            moTa={dinhDangTien(tk.tongKyLuat)}
+            trangThai={tk.soKyLuat ? 'canhBao' : undefined}
+          />
         </div>
       )}
       <ThanhLoc
         tuKhoa={tuKhoa}
-        onDoiTuKhoa={(v) => { setTuKhoa(v); setTrang(1); }}
+        onDoiTuKhoa={(v) => {
+          setTuKhoa(v);
+          setTrang(1);
+        }}
         goiYTim="Tìm số QĐ, mã/tên nhân viên, tiêu đề..."
         boLoc={[
           { khoa: 'loaiQuyetDinh', nhan: 'Tất cả loại', luaChon: thanhLuaChon(NHAN_LOAI_KTKL) },
           { khoa: 'nam', nhan: 'Tất cả năm', luaChon: [nam, nam - 1, nam - 2].map((n) => ({ giaTri: String(n), nhan: `Năm ${n}` })) },
         ]}
         giaTriLoc={loc}
-        onDoiLoc={(k, v) => { setLoc((c) => ({ ...c, [k]: v })); setTrang(1); }}
+        onDoiLoc={(k, v) => {
+          setLoc((c) => ({ ...c, [k]: v }));
+          setTrang(1);
+        }}
       />
       <BangDuLieu cot={cot} duLieu={kq?.items ?? []} onHanhDong={setChiTiet} thongBaoRong="Chưa có quyết định" />
       <PhanTrang phanTrang={kq?.phanTrang} onDoiTrang={setTrang} />
@@ -102,14 +147,36 @@ function TrangQuyetDinh() {
       {chiTiet && (
         <HopThoai tieuDe={`Quyết định ${chiTiet.soQuyetDinh}`} onDong={() => setChiTiet(null)}>
           <div className="bieuMau">
-            <div className="truongForm rongHet"><strong>{chiTiet.tieuDe}</strong> <ChipTrangThai trangThai={chiTiet.loaiQuyetDinh} /></div>
-            <div className="truongForm">Nhân viên<div>{chiTiet.maNhanVien} - {chiTiet.hoVaTen}</div></div>
-            <div className="truongForm">Phòng ban<div>{chiTiet.tenPhongBan ?? '—'}</div></div>
-            <div className="truongForm">Số tiền<div>{dinhDangTien(chiTiet.soTien)}</div></div>
-            <div className="truongForm">Ngày ban hành<div>{dinhDangNgay(chiTiet.ngayBanHanh)}</div></div>
-            <div className="truongForm">Người ký<div>{chiTiet.maNguoiKy} - {chiTiet.tenNguoiKy}</div></div>
-            <div className="truongForm">Nguồn<div>{chiTiet.deXuatId ? `Từ đề xuất #${chiTiet.deXuatId}` : 'Lập trực tiếp'}</div></div>
-            <div className="truongForm rongHet">Lý do<div style={{ whiteSpace: 'pre-wrap' }}>{chiTiet.lyDo}</div></div>
+            <div className="truongForm rongHet">
+              <strong>{chiTiet.tieuDe}</strong> <ChipTrangThai trangThai={chiTiet.loaiQuyetDinh} />
+            </div>
+            <div className="truongForm">
+              Nhân viên
+              <div>
+                {chiTiet.maNhanVien} - {chiTiet.hoVaTen}
+              </div>
+            </div>
+            <div className="truongForm">
+              Phòng ban<div>{chiTiet.tenPhongBan ?? '—'}</div>
+            </div>
+            <div className="truongForm">
+              Số tiền<div>{dinhDangTien(chiTiet.soTien)}</div>
+            </div>
+            <div className="truongForm">
+              Ngày ban hành<div>{dinhDangNgay(chiTiet.ngayBanHanh)}</div>
+            </div>
+            <div className="truongForm">
+              Người ký
+              <div>
+                {chiTiet.maNguoiKy} - {chiTiet.tenNguoiKy}
+              </div>
+            </div>
+            <div className="truongForm">
+              Nguồn<div>{chiTiet.deXuatId ? `Từ đề xuất #${chiTiet.deXuatId}` : 'Lập trực tiếp'}</div>
+            </div>
+            <div className="truongForm rongHet">
+              Lý do<div style={{ whiteSpace: 'pre-wrap' }}>{chiTiet.lyDo}</div>
+            </div>
           </div>
         </HopThoai>
       )}
@@ -126,7 +193,10 @@ function TrangQuyetDinh() {
             setThongBao([r.message, r.data.canhBao].filter(Boolean).join('. '));
             // Đang lọc năm khác năm ban hành thì chuyển bộ lọc sang năm đó để thấy quyết định vừa lập
             const namBanHanh = String(g.ngayBanHanh ?? '').slice(0, 4);
-            if (loc.nam && namBanHanh && loc.nam !== namBanHanh) { setLoc((c) => ({ ...c, nam: namBanHanh })); setTrang(1); } else tai();
+            if (loc.nam && namBanHanh && loc.nam !== namBanHanh) {
+              setLoc((c) => ({ ...c, nam: namBanHanh }));
+              setTrang(1);
+            } else tai();
           }}
           onDong={() => setDangLap(false)}
         />

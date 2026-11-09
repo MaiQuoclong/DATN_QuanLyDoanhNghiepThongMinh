@@ -15,7 +15,13 @@ function TrangDonCuaToi() {
   const [lamMoi, setLamMoi] = useState(0);
 
   const taiQuy = useCallback(() => {
-    goiApi.get('/quyPhep/cuaToi').then((kq) => { setQuy(kq.data); setLoi(''); }).catch((e) => setLoi(e.message));
+    goiApi
+      .get('/quyPhep/cuaToi')
+      .then((kq) => {
+        setQuy(kq.data);
+        setLoi('');
+      })
+      .catch((e) => setLoi(e.message));
   }, []);
   useEffect(taiQuy, [taiQuy]);
 
@@ -27,15 +33,27 @@ function TrangDonCuaToi() {
           <h1 className="tieuDeTrang">Đơn nghỉ phép của tôi</h1>
           <div className="chuPhu">Đơn được gửi tới trưởng bộ phận theo chuỗi duyệt; nghỉ dài ngày chuyển Ban Giám đốc</div>
         </div>
-        <NutBam bieuTuong={Plus} onClick={() => setDangTao(true)}>Tạo đơn</NutBam>
+        <NutBam bieuTuong={Plus} onClick={() => setDangTao(true)}>
+          Tạo đơn
+        </NutBam>
       </div>
 
       {loi && <div className="thongBao loi">{loi}</div>}
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
       <div className="luoiThe" style={{ marginBottom: 16 }}>
-        <TheThongKe tieuDe={`Quỹ phép năm ${quy?.nam ?? ''}`} giaTri={coQuy ? quy.quy.tongSoNgayPhep : '—'} moTa={coQuy ? 'ngày' : 'Chưa được cấp, liên hệ phòng Nhân sự'} trangThai={coQuy ? undefined : 'canhBao'} />
+        <TheThongKe
+          tieuDe={`Quỹ phép năm ${quy?.nam ?? ''}`}
+          giaTri={coQuy ? quy.quy.tongSoNgayPhep : '—'}
+          moTa={coQuy ? 'ngày' : 'Chưa được cấp, liên hệ phòng Nhân sự'}
+          trangThai={coQuy ? undefined : 'canhBao'}
+        />
         <TheThongKe tieuDe="Đã nghỉ" giaTri={coQuy ? quy.quy.soNgayDaNghi : '—'} moTa="ngày (đơn đã duyệt)" />
-        <TheThongKe tieuDe="Đang chờ duyệt" giaTri={quy?.soNgayChoDuyet ?? '—'} moTa="ngày đã giữ chỗ trong quỹ" trangThai={quy?.soNgayChoDuyet ? 'canhBao' : undefined} />
+        <TheThongKe
+          tieuDe="Đang chờ duyệt"
+          giaTri={quy?.soNgayChoDuyet ?? '—'}
+          moTa="ngày đã giữ chỗ trong quỹ"
+          trangThai={quy?.soNgayChoDuyet ? 'canhBao' : undefined}
+        />
         <TheThongKe
           tieuDe="Còn lại"
           giaTri={coQuy ? quy.soNgayConLai : '—'}
@@ -50,7 +68,12 @@ function TrangDonCuaToi() {
         <HopThoaiTaoDon
           quy={quy}
           onDong={() => setDangTao(false)}
-          onDaGui={(kq) => { setDangTao(false); setThongBao(kq.message); setLamMoi((n) => n + 1); taiQuy(); }}
+          onDaGui={(kq) => {
+            setDangTao(false);
+            setThongBao(kq.message);
+            setLamMoi((n) => n + 1);
+            taiQuy();
+          }}
         />
       )}
     </div>

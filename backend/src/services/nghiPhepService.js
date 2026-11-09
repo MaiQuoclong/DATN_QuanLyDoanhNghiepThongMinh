@@ -16,7 +16,6 @@ const SO_NGAY_TOI_DA_CUA_O = 99.5; // giới hạn nghiệp vụ cho quỹ/số 
 
 const namHienTai = () => Number(ngayHomNay().slice(0, 4));
 
-
 function xemToanCongTy(vaiTro) {
   return vaiTro.includes('HR') || vaiTro.includes('giamDoc');
 }
@@ -80,11 +79,19 @@ function xacDinhNguoiDuyet({ nhanVienId, phongBanId, soNgayNghi }, cayPhongBan) 
   let phong = theoId.get(phongBanId);
   while (phong && !daDi.has(phong.id)) {
     daDi.add(phong.id);
-    const truongDuyetDuoc = phong.truongBoPhanId && phong.truongBoPhanId !== nhanVienId && phong.truongCoQuanLy
-      && phong.trangThai === 'DANG_HOAT_DONG' && !TRANG_THAI_KHONG_NGHI_PHEP.includes(phong.trangThaiTruong);
+    const truongDuyetDuoc =
+      phong.truongBoPhanId &&
+      phong.truongBoPhanId !== nhanVienId &&
+      phong.truongCoQuanLy &&
+      phong.trangThai === 'DANG_HOAT_DONG' &&
+      !TRANG_THAI_KHONG_NGHI_PHEP.includes(phong.trangThaiTruong);
     if (truongDuyetDuoc) {
       return {
-        loai: 'TRUONG_BO_PHAN', nhanVienId: phong.truongBoPhanId, maNhanVien: phong.maTruong, hoVaTen: phong.tenTruong, phongBanId: phong.id,
+        loai: 'TRUONG_BO_PHAN',
+        nhanVienId: phong.truongBoPhanId,
+        maNhanVien: phong.maTruong,
+        hoVaTen: phong.tenTruong,
+        phongBanId: phong.id,
       };
     }
     phong = theoId.get(phong.phongBanChaId);
@@ -141,7 +148,10 @@ async function themLoai(nguoiDung, body, diaChiIP) {
   const loai = {
     maLoai,
     tenLoai: body.tenLoai.trim(),
-    soNgayToiDa: body.soNgayToiDa === undefined || body.soNgayToiDa === '' || body.soNgayToiDa === null ? null : laySoNgay(body.soNgayToiDa, 'Số ngày tối đa'),
+    soNgayToiDa:
+      body.soNgayToiDa === undefined || body.soNgayToiDa === '' || body.soNgayToiDa === null
+        ? null
+        : laySoNgay(body.soNgayToiDa, 'Số ngày tối đa'),
     coLuong: body.coLuong === undefined ? true : layLogic(body.coLuong, 'Có lương'),
     truVaoQuyPhepNam: body.truVaoQuyPhepNam === undefined ? true : layLogic(body.truVaoQuyPhepNam, 'Trừ vào quỹ phép năm'),
     moTa: layChuoiTuyChon(body.moTa, 'Mô tả'),
@@ -167,7 +177,8 @@ async function suaLoai(nguoiDung, id, body, diaChiIP) {
     if (!loai) throw new LoiUngDung(404, 'Không tìm thấy loại nghỉ phép');
     const moi = {};
     if (body.tenLoai !== undefined) {
-      if (typeof body.tenLoai !== 'string' || body.tenLoai.trim().length < 2) throw new LoiUngDung(400, 'Tên loại nghỉ phép phải có ít nhất 2 ký tự');
+      if (typeof body.tenLoai !== 'string' || body.tenLoai.trim().length < 2)
+        throw new LoiUngDung(400, 'Tên loại nghỉ phép phải có ít nhất 2 ký tự');
       moi.tenLoai = body.tenLoai.trim();
     }
     if (body.soNgayToiDa !== undefined) {
@@ -189,7 +200,11 @@ async function suaLoai(nguoiDung, id, body, diaChiIP) {
     }
     await nghiPhepRepository.capNhatLoai(id, Object.fromEntries(thayDoi.map((cot) => [cot, moi[cot]])), ketNoi);
     await nhatKyRepository.themNhatKy(
-      nguoiDung.nguoiDungId, 'SUA_LOAI_NGHI_PHEP', diaChiIP ?? null, `${loai.maLoai}: ${thayDoi.join(', ')}`, ketNoi
+      nguoiDung.nguoiDungId,
+      'SUA_LOAI_NGHI_PHEP',
+      diaChiIP ?? null,
+      `${loai.maLoai}: ${thayDoi.join(', ')}`,
+      ketNoi,
     );
   });
   return nghiPhepRepository.layLoaiTheoId(id);
@@ -214,8 +229,12 @@ async function layQuyCuaToi(nguoiDung, namTruyVan) {
 async function layDanhSachQuy(nguoiDung, { nam, phongBanId, tuKhoa, trang, kichThuoc }) {
   const namLoc = layNam(nam);
   const { items, tongSo } = await nghiPhepRepository.layDanhSachQuy({
-    nam: namLoc, phamViPhongBanIds: await layPhamVi(nguoiDung), phongBanId, tuKhoa,
-    viTri: (trang - 1) * kichThuoc, soLuong: kichThuoc,
+    nam: namLoc,
+    phamViPhongBanIds: await layPhamVi(nguoiDung),
+    phongBanId,
+    tuKhoa,
+    viTri: (trang - 1) * kichThuoc,
+    soLuong: kichThuoc,
   });
   return { nam: namLoc, items: items.map(themSoNgayConLai), phanTrang: { trang, kichThuoc, tongSo } };
 }
@@ -225,19 +244,26 @@ async function capQuyNam(nguoiDung, body, diaChiIP) {
   const nam = layNam(body.nam);
   const hienTai = namHienTai();
   if (nam < hienTai - 1 || nam > hienTai + 1) throw new LoiUngDung(400, `Chỉ cấp quỹ phép cho năm ${hienTai - 1} đến ${hienTai + 1}`);
-  const tongSoNgayPhep = body.tongSoNgayPhep === undefined || body.tongSoNgayPhep === ''
-    ? THAM_SO_NGHI_PHEP.soNgayPhepNamMacDinh
-    : laySoNgay(body.tongSoNgayPhep, 'Số ngày phép');
+  const tongSoNgayPhep =
+    body.tongSoNgayPhep === undefined || body.tongSoNgayPhep === ''
+      ? THAM_SO_NGHI_PHEP.soNgayPhepNamMacDinh
+      : laySoNgay(body.tongSoNgayPhep, 'Số ngày phép');
   // INSERT ... SELECT khóa chia sẻ nhiều dòng nhanvien, có thể deadlock với tạo đơn -> thử lại
-  const soNhanVien = await chayVoiThuLai(() => chayTransaction(async (ketNoi) => {
-    const soLuong = await nghiPhepRepository.capQuyHangLoat(nam, tongSoNgayPhep, ketNoi);
-    if (soLuong > 0) {
-      await nhatKyRepository.themNhatKy(
-        nguoiDung.nguoiDungId, 'CAP_QUY_PHEP_NAM', diaChiIP ?? null, `Năm ${nam}: ${soLuong} nhân viên x ${tongSoNgayPhep} ngày`, ketNoi
-      );
-    }
-    return soLuong;
-  }));
+  const soNhanVien = await chayVoiThuLai(() =>
+    chayTransaction(async (ketNoi) => {
+      const soLuong = await nghiPhepRepository.capQuyHangLoat(nam, tongSoNgayPhep, ketNoi);
+      if (soLuong > 0) {
+        await nhatKyRepository.themNhatKy(
+          nguoiDung.nguoiDungId,
+          'CAP_QUY_PHEP_NAM',
+          diaChiIP ?? null,
+          `Năm ${nam}: ${soLuong} nhân viên x ${tongSoNgayPhep} ngày`,
+          ketNoi,
+        );
+      }
+      return soLuong;
+    }),
+  );
   return { nam, tongSoNgayPhep, soNhanVien };
 }
 
@@ -260,8 +286,11 @@ async function suaQuy(nguoiDung, id, body, diaChiIP) {
     }
     await nghiPhepRepository.capNhatTongQuy(id, tongMoi, ketNoi);
     await nhatKyRepository.themNhatKy(
-      nguoiDung.nguoiDungId, 'SUA_QUY_PHEP', diaChiIP ?? null,
-      `${hoSo.maNhanVien} năm ${quy.namHieuLuc}: ${quy.tongSoNgayPhep} -> ${tongMoi}${lyDo ? ` (${lyDo})` : ''}`, ketNoi
+      nguoiDung.nguoiDungId,
+      'SUA_QUY_PHEP',
+      diaChiIP ?? null,
+      `${hoSo.maNhanVien} năm ${quy.namHieuLuc}: ${quy.tongSoNgayPhep} -> ${tongMoi}${lyDo ? ` (${lyDo})` : ''}`,
+      ketNoi,
     );
   });
   return nghiPhepRepository.layQuyTheoId(id);
@@ -294,8 +323,12 @@ async function chayVoiThuLai(congViec) {
 function kiemTraDuLieuDon(body) {
   if (!body || typeof body !== 'object') throw new LoiUngDung(400, 'Dữ liệu đơn nghỉ phép không hợp lệ');
   if (!/^[1-9]\d{0,9}$/.test(String(body.loaiNghiPhepId ?? ''))) throw new LoiUngDung(400, 'Loại nghỉ phép phải là số nguyên dương');
-  for (const [truong, nhan] of [['ngayBatDau', 'Ngày bắt đầu'], ['ngayKetThuc', 'Ngày kết thúc']]) {
-    if (typeof body[truong] !== 'string' || !laNgayHopLe(body[truong])) throw new LoiUngDung(400, `${nhan} phải là ngày hợp lệ dạng YYYY-MM-DD`);
+  for (const [truong, nhan] of [
+    ['ngayBatDau', 'Ngày bắt đầu'],
+    ['ngayKetThuc', 'Ngày kết thúc'],
+  ]) {
+    if (typeof body[truong] !== 'string' || !laNgayHopLe(body[truong]))
+      throw new LoiUngDung(400, `${nhan} phải là ngày hợp lệ dạng YYYY-MM-DD`);
   }
   const lyDo = typeof body.lyDo === 'string' ? body.lyDo.trim() : '';
   if (lyDo.length < 5 || lyDo.length > 1000) throw new LoiUngDung(400, 'Lý do phải từ 5 đến 1000 ký tự');
@@ -319,39 +352,50 @@ async function taoDon(nguoiDung, body, phuongThucTao = 'FORM_GIAO_DIEN') {
   if (soNgayNghi === 0) throw new LoiUngDung(400, 'Khoảng ngày chỉ gồm thứ 7, Chủ nhật nên không cần xin nghỉ');
   canHoSo(nguoiDung);
 
-  const id = await chayVoiThuLai(() => chayTransaction(async (ketNoi) => {
-    const hoSo = await khoaNhanVienTonTai(nguoiDung.nhanVienId, ketNoi);
-    if (TRANG_THAI_KHONG_NGHI_PHEP.includes(hoSo.trangThaiLamViec)) {
-      throw new LoiUngDung(409, 'Nhân viên đang tạm nghỉ hoặc đã nghỉ việc nên không thể tạo đơn nghỉ phép');
-    }
-    if (ngayBatDau < hoSo.ngayVaoLam) throw new LoiUngDung(400, 'Ngày bắt đầu nghỉ không được trước ngày vào làm');
-    const loai = await nghiPhepRepository.layLoaiTheoId(loaiNghiPhepId, ketNoi, 'LOCK IN SHARE MODE');
-    if (!loai) throw new LoiUngDung(400, 'Loại nghỉ phép không tồn tại');
-    if (loai.trangThai !== 'DANG_AP_DUNG') throw new LoiUngDung(409, `Loại "${loai.tenLoai}" đã ngừng áp dụng`);
-    if (loai.soNgayToiDa !== null && soNgayNghi > loai.soNgayToiDa) {
-      throw new LoiUngDung(400, `Loại "${loai.tenLoai}" chỉ được nghỉ tối đa ${loai.soNgayToiDa} ngày mỗi đơn`);
-    }
-    await chanThangDaChot(ngayBatDau, ngayKetThuc, ketNoi);
-    const chongLan = await nghiPhepRepository.timDonChongLan(hoSo.id, ngayBatDau, ngayKetThuc, ketNoi);
-    if (chongLan) throw new LoiUngDung(409, `Khoảng ngày nghỉ trùng với đơn ${chongLan.maDon} đang chờ duyệt hoặc đã duyệt`);
-
-    const nam = Number(ngayBatDau.slice(0, 4));
-    const soMa = (await nghiPhepRepository.laySoMaLonNhat(nam, ketNoi)) + 1;
-    if (loai.truVaoQuyPhepNam) {
-      // Quỹ còn lại = tổng - đã nghỉ - các đơn đang chờ duyệt (giữ chỗ để không xin vượt quỹ bằng nhiều đơn)
-      const quy = await nghiPhepRepository.layQuy(hoSo.id, nam, ketNoi, true);
-      if (!quy) throw new LoiUngDung(409, `Bạn chưa được cấp quỹ phép năm ${nam}, liên hệ phòng Nhân sự`);
-      const choDuyet = await nghiPhepRepository.demNgayChoDuyetTrongNam(hoSo.id, nam, null, ketNoi);
-      const conLai = quy.tongSoNgayPhep - quy.soNgayDaNghi - choDuyet;
-      if (soNgayNghi > conLai) {
-        throw new LoiUngDung(409, `Quỹ phép năm ${nam} chỉ còn ${conLai} ngày (đã trừ ${choDuyet} ngày đang chờ duyệt)`);
+  const id = await chayVoiThuLai(() =>
+    chayTransaction(async (ketNoi) => {
+      const hoSo = await khoaNhanVienTonTai(nguoiDung.nhanVienId, ketNoi);
+      if (TRANG_THAI_KHONG_NGHI_PHEP.includes(hoSo.trangThaiLamViec)) {
+        throw new LoiUngDung(409, 'Nhân viên đang tạm nghỉ hoặc đã nghỉ việc nên không thể tạo đơn nghỉ phép');
       }
-    }
-    return nghiPhepRepository.themDon({
-      maDon: `DNP${nam}-${String(soMa).padStart(4, '0')}`,
-      nhanVienId: hoSo.id, loaiNghiPhepId, ngayBatDau, ngayKetThuc, soNgayNghi, lyDo, phuongThucTao,
-    }, ketNoi);
-  }));
+      if (ngayBatDau < hoSo.ngayVaoLam) throw new LoiUngDung(400, 'Ngày bắt đầu nghỉ không được trước ngày vào làm');
+      const loai = await nghiPhepRepository.layLoaiTheoId(loaiNghiPhepId, ketNoi, 'LOCK IN SHARE MODE');
+      if (!loai) throw new LoiUngDung(400, 'Loại nghỉ phép không tồn tại');
+      if (loai.trangThai !== 'DANG_AP_DUNG') throw new LoiUngDung(409, `Loại "${loai.tenLoai}" đã ngừng áp dụng`);
+      if (loai.soNgayToiDa !== null && soNgayNghi > loai.soNgayToiDa) {
+        throw new LoiUngDung(400, `Loại "${loai.tenLoai}" chỉ được nghỉ tối đa ${loai.soNgayToiDa} ngày mỗi đơn`);
+      }
+      await chanThangDaChot(ngayBatDau, ngayKetThuc, ketNoi);
+      const chongLan = await nghiPhepRepository.timDonChongLan(hoSo.id, ngayBatDau, ngayKetThuc, ketNoi);
+      if (chongLan) throw new LoiUngDung(409, `Khoảng ngày nghỉ trùng với đơn ${chongLan.maDon} đang chờ duyệt hoặc đã duyệt`);
+
+      const nam = Number(ngayBatDau.slice(0, 4));
+      const soMa = (await nghiPhepRepository.laySoMaLonNhat(nam, ketNoi)) + 1;
+      if (loai.truVaoQuyPhepNam) {
+        // Quỹ còn lại = tổng - đã nghỉ - các đơn đang chờ duyệt (giữ chỗ để không xin vượt quỹ bằng nhiều đơn)
+        const quy = await nghiPhepRepository.layQuy(hoSo.id, nam, ketNoi, true);
+        if (!quy) throw new LoiUngDung(409, `Bạn chưa được cấp quỹ phép năm ${nam}, liên hệ phòng Nhân sự`);
+        const choDuyet = await nghiPhepRepository.demNgayChoDuyetTrongNam(hoSo.id, nam, null, ketNoi);
+        const conLai = quy.tongSoNgayPhep - quy.soNgayDaNghi - choDuyet;
+        if (soNgayNghi > conLai) {
+          throw new LoiUngDung(409, `Quỹ phép năm ${nam} chỉ còn ${conLai} ngày (đã trừ ${choDuyet} ngày đang chờ duyệt)`);
+        }
+      }
+      return nghiPhepRepository.themDon(
+        {
+          maDon: `DNP${nam}-${String(soMa).padStart(4, '0')}`,
+          nhanVienId: hoSo.id,
+          loaiNghiPhepId,
+          ngayBatDau,
+          ngayKetThuc,
+          soNgayNghi,
+          lyDo,
+          phuongThucTao,
+        },
+        ketNoi,
+      );
+    }),
+  );
   const cay = await phongBanRepository.layCayPhongBan();
   return themThongTinDuyet(await kemQuyenTuDuyet(nguoiDung), await nghiPhepRepository.layDonTheoId(id), cay);
 }
@@ -380,7 +424,10 @@ async function layDonCuaToi(nguoiDung, boLoc) {
   const { items, tongSo } = await nghiPhepRepository.layDanhSachDon(layBoLocKhoang({ ...boLoc, nhanVienId: nguoiDung.nhanVienId }));
   const cay = await phongBanRepository.layCayPhongBan();
   const nguoiXem = await kemQuyenTuDuyet(nguoiDung);
-  return { items: items.map((d) => themThongTinDuyet(nguoiXem, d, cay)), phanTrang: { trang: boLoc.trang, kichThuoc: boLoc.kichThuoc, tongSo } };
+  return {
+    items: items.map((d) => themThongTinDuyet(nguoiXem, d, cay)),
+    phanTrang: { trang: boLoc.trang, kichThuoc: boLoc.kichThuoc, tongSo },
+  };
 }
 
 // HR, giamDoc toàn công ty; quanLy phòng mình phụ trách. Mỗi dòng có duocDuyet theo chuỗi duyệt
@@ -389,7 +436,10 @@ async function layDanhSachDon(nguoiDung, boLoc) {
   const { items, tongSo } = await nghiPhepRepository.layDanhSachDon(layBoLocKhoang({ ...boLoc, phamViPhongBanIds }));
   const cay = await phongBanRepository.layCayPhongBan();
   const nguoiXem = await kemQuyenTuDuyet(nguoiDung);
-  return { items: items.map((d) => themThongTinDuyet(nguoiXem, d, cay)), phanTrang: { trang: boLoc.trang, kichThuoc: boLoc.kichThuoc, tongSo } };
+  return {
+    items: items.map((d) => themThongTinDuyet(nguoiXem, d, cay)),
+    phanTrang: { trang: boLoc.trang, kichThuoc: boLoc.kichThuoc, tongSo },
+  };
 }
 
 // Lịch nghỉ tháng: đơn đã duyệt + chờ duyệt có ngày nghỉ trong tháng
@@ -397,8 +447,13 @@ const SO_DON_TOI_DA_LICH = 1000;
 async function layLichNghi(nguoiDung, { thang, phongBanId }) {
   const { tuNgay, denNgay } = khoangNgayCuaThang(thang);
   const { items, tongSo } = await nghiPhepRepository.layDanhSachDon({
-    phamViPhongBanIds: await layPhamVi(nguoiDung), phongBanId, cacTrangThai: ['CHO_DUYET', 'DA_DUYET'],
-    tuNgay, denNgay, viTri: 0, soLuong: SO_DON_TOI_DA_LICH,
+    phamViPhongBanIds: await layPhamVi(nguoiDung),
+    phongBanId,
+    cacTrangThai: ['CHO_DUYET', 'DA_DUYET'],
+    tuNgay,
+    denNgay,
+    viTri: 0,
+    soLuong: SO_DON_TOI_DA_LICH,
   });
   const cay = await phongBanRepository.layCayPhongBan();
   const nguoiXem = await kemQuyenTuDuyet(nguoiDung);
@@ -448,8 +503,13 @@ async function duyetDon(nguoiDungGoc, id, diaChiIP) {
       await nghiPhepRepository.congNgayDaNghi(quy.id, donKhoa.soNgayNghi, ketNoi);
     }
     await nghiPhepRepository.capNhatTrangThaiDon(id, { trangThai: 'DA_DUYET', nguoiDuyetId: nguoiDung.nhanVienId }, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'DUYET_DON_NGHI_PHEP', diaChiIP ?? null,
-      `${don.maDon} của ${hoSo.maNhanVien}${hoSo.id === nguoiDung.nhanVienId ? ' (tự duyệt: không còn giám đốc khác)' : ''}`, ketNoi);
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'DUYET_DON_NGHI_PHEP',
+      diaChiIP ?? null,
+      `${don.maDon} của ${hoSo.maNhanVien}${hoSo.id === nguoiDung.nhanVienId ? ' (tự duyệt: không còn giám đốc khác)' : ''}`,
+      ketNoi,
+    );
   });
   return traVeSauXuLy(nguoiDung, id);
 }
@@ -459,10 +519,22 @@ async function tuChoiDon(nguoiDungGoc, id, { lyDoTuChoi }, diaChiIP) {
   const don = await kiemTraTruocKhiDuyet(nguoiDung, id);
   await chayTransaction(async (ketNoi) => {
     const { hoSo } = await khoaDonChoDuyet(nguoiDung, don, ketNoi);
-    await nghiPhepRepository.capNhatTrangThaiDon(id, {
-      trangThai: 'TU_CHOI', nguoiDuyetId: nguoiDung.nhanVienId, lyDoTuChoi: lyDoTuChoi.trim(),
-    }, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'TU_CHOI_DON_NGHI_PHEP', diaChiIP ?? null, `${don.maDon} của ${hoSo.maNhanVien}`, ketNoi);
+    await nghiPhepRepository.capNhatTrangThaiDon(
+      id,
+      {
+        trangThai: 'TU_CHOI',
+        nguoiDuyetId: nguoiDung.nhanVienId,
+        lyDoTuChoi: lyDoTuChoi.trim(),
+      },
+      ketNoi,
+    );
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'TU_CHOI_DON_NGHI_PHEP',
+      diaChiIP ?? null,
+      `${don.maDon} của ${hoSo.maNhanVien}`,
+      ketNoi,
+    );
   });
   return traVeSauXuLy(nguoiDung, id);
 }

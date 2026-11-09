@@ -23,20 +23,30 @@ function OChonNhanVien({ value, onChange, loc = {}, batBuoc }) {
         });
         if (huy) return;
         setLoi('');
-        setLuaChon(kq.data.items.filter((nv) => (!phongBanId || Number(nv.phongBanId) === Number(phongBanId))
-          && (!trangThai || trangThai.includes(nv.trangThaiLamViec))
-          && !(boQuaIds ?? []).includes(nv.id)));
+        setLuaChon(
+          kq.data.items.filter(
+            (nv) =>
+              (!phongBanId || Number(nv.phongBanId) === Number(phongBanId)) &&
+              (!trangThai || trangThai.includes(nv.trangThaiLamViec)) &&
+              !(boQuaIds ?? []).includes(nv.id),
+          ),
+        );
       } catch (e) {
         if (!huy) setLoi(e.message);
       }
     }, 300);
-    return () => { huy = true; clearTimeout(hen); };
+    return () => {
+      huy = true;
+      clearTimeout(hen);
+    };
+    // Chỉ tìm lại theo khoaLoc (chuỗi ổn định) thay vì object bộ lọc mới mỗi lần render -> tránh gọi API liên tục
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tuKhoa, khoaLoc]);
 
   // Người đã chọn không còn trong kết quả tìm mới -> bỏ chọn, tránh gửi id không thấy trên màn hình
   useEffect(() => {
     if (value && !luaChon.some((nv) => String(nv.id) === String(value))) onChange({ target: { value: '' } });
+    // Chỉ chạy khi kết quả tìm đổi; value/onChange không phải tác nhân (onChange của cha đổi mỗi lần render)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [luaChon]);
 

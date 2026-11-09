@@ -1,9 +1,7 @@
 const chamCongService = require('../services/chamCongService');
 const { thanhCong } = require('../utils/phanHoi');
 const { TRANG_THAI_DIEU_CHINH_CONG } = require('../utils/trangThai');
-const {
-  laySoNguyenDuong, layThang, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang,
-} = require('../utils/thamSoTruyVan');
+const { laySoNguyenDuong, layThang, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang } = require('../utils/thamSoTruyVan');
 
 function layIdTuDuongDan(req, nhan = 'Mã yêu cầu') {
   return laySoNguyenDuong(req.params.id, undefined, nhan);
@@ -41,9 +39,7 @@ async function layBangCong(req, res) {
 }
 
 async function layCongNhanVien(req, res) {
-  const ketQua = await chamCongService.layCongNhanVien(
-    req.nguoiDung, layIdTuDuongDan(req, 'Mã nhân viên'), layThang(req.query.thang)
-  );
+  const ketQua = await chamCongService.layCongNhanVien(req.nguoiDung, layIdTuDuongDan(req, 'Mã nhân viên'), layThang(req.query.thang));
   return thanhCong(res, ketQua, 'Lấy bảng công của nhân viên thành công');
 }
 

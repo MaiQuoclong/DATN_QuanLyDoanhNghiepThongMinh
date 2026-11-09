@@ -2,9 +2,7 @@ const kpiService = require('../services/kpiService');
 const { thanhCong } = require('../utils/phanHoi');
 const LoiUngDung = require('../utils/LoiUngDung');
 const { TRANG_THAI_KY_DANH_GIA, TRANG_THAI_PHIEU_KPI, XEP_LOAI_KPI } = require('../utils/trangThai');
-const {
-  laySoNguyenDuong, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang,
-} = require('../utils/thamSoTruyVan');
+const { laySoNguyenDuong, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang } = require('../utils/thamSoTruyVan');
 
 const layId = (req, nhan) => laySoNguyenDuong(req.params.id, undefined, nhan);
 
@@ -106,7 +104,8 @@ async function layBaoCao(req, res) {
   const kyDanhGiaId = laySoNguyenDuong(req.query.kyDanhGiaId, undefined, 'Kỳ đánh giá');
   if (!kyDanhGiaId) throw new LoiUngDung(400, 'Kỳ đánh giá không được để trống');
   const ketQua = await kpiService.layBaoCao(req.nguoiDung, {
-    kyDanhGiaId, phongBanId: laySoNguyenDuong(req.query.phongBanId, undefined, 'Phòng ban'),
+    kyDanhGiaId,
+    phongBanId: laySoNguyenDuong(req.query.phongBanId, undefined, 'Phòng ban'),
   });
   return thanhCong(res, ketQua, 'Lấy báo cáo xếp loại KPI thành công');
 }
@@ -150,8 +149,28 @@ async function traLai(req, res) {
 }
 
 module.exports = {
-  layDanhSachKy, layChiTietKy, themKy, suaKy, dongKy, moLaiKy, xoaKy,
-  layDanhSachChiTieu, layViTriGanChiTieu, themChiTieu, suaChiTieu, xoaChiTieu,
-  layDanhSachPhieu, layPhieuCuaToi, layChiTietPhieu, layBaoCao, taoPhieu, taoPhieuHangLoat, suaPhieu, xoaPhieu,
-  tuCham, guiDuyet, nghiemThu, traLai,
+  layDanhSachKy,
+  layChiTietKy,
+  themKy,
+  suaKy,
+  dongKy,
+  moLaiKy,
+  xoaKy,
+  layDanhSachChiTieu,
+  layViTriGanChiTieu,
+  themChiTieu,
+  suaChiTieu,
+  xoaChiTieu,
+  layDanhSachPhieu,
+  layPhieuCuaToi,
+  layChiTietPhieu,
+  layBaoCao,
+  taoPhieu,
+  taoPhieuHangLoat,
+  suaPhieu,
+  xoaPhieu,
+  tuCham,
+  guiDuyet,
+  nghiemThu,
+  traLai,
 };

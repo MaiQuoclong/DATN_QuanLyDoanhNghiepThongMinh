@@ -26,7 +26,7 @@ bangLuongRouter.post(
   '/:id/traLai',
   phanQuyen(['giamDoc']),
   kiemTraDuLieu({ lyDo: { nhan: 'Lý do trả lại', batBuoc: true, toiThieu: 5, toiDa: 900 } }),
-  batLoiBatDongBo(luongController.traLaiBang)
+  batLoiBatDongBo(luongController.traLaiBang),
 );
 
 // ===================== /api/v1/phieuLuong =====================

@@ -16,7 +16,18 @@ const DS_VAI_TRO = ['Admin', 'giamDoc', 'quanLy', 'HR', 'nhanVien'];
 
 const COT = [
   { khoa: 'tenDangNhap', tieuDe: 'Tên đăng nhập' },
-  { khoa: 'hoVaTen', tieuDe: 'Nhân viên', hienThi: (d) => (d.hoVaTen ? <>{d.hoVaTen} <span className="chuPhu">{d.maNhanVien}</span></> : '—') },
+  {
+    khoa: 'hoVaTen',
+    tieuDe: 'Nhân viên',
+    hienThi: (d) =>
+      d.hoVaTen ? (
+        <>
+          {d.hoVaTen} <span className="chuPhu">{d.maNhanVien}</span>
+        </>
+      ) : (
+        '—'
+      ),
+  },
   { khoa: 'email', tieuDe: 'Email' },
   { khoa: 'vaiTro', tieuDe: 'Vai trò', sapXep: false, hienThi: (d) => d.vaiTro.map((vt) => NHAN_VAI_TRO[vt] ?? vt).join(', ') },
   { khoa: 'lanDangNhapCuoi', tieuDe: 'Đăng nhập cuối', hienThi: (d) => dinhDangThoiGian(d.lanDangNhapCuoi) },
@@ -40,7 +51,14 @@ function HopThoaiVaiTro({ taiKhoan, onDong, onXong }) {
     <HopThoai
       tieuDe={`Phân quyền ${taiKhoan.tenDangNhap}`}
       onDong={onDong}
-      chanTrang={<><NutBam bienThe="phu" onClick={onDong}>Hủy</NutBam><NutBam onClick={luu}>Lưu</NutBam></>}
+      chanTrang={
+        <>
+          <NutBam bienThe="phu" onClick={onDong}>
+            Hủy
+          </NutBam>
+          <NutBam onClick={luu}>Lưu</NutBam>
+        </>
+      }
     >
       {loi && <div className="thongBao loi">{loi}</div>}
       <div className="danhSachChon">
@@ -51,7 +69,9 @@ function HopThoaiVaiTro({ taiKhoan, onDong, onXong }) {
           </label>
         ))}
       </div>
-      <p className="chuPhu">Tài khoản có hồ sơ nhân viên luôn giữ vai trò Nhân viên. Quản lý gắn với trưởng bộ phận do Giám đốc bổ nhiệm.</p>
+      <p className="chuPhu">
+        Tài khoản có hồ sơ nhân viên luôn giữ vai trò Nhân viên. Quản lý gắn với trưởng bộ phận do Giám đốc bổ nhiệm.
+      </p>
     </HopThoai>
   );
 }
@@ -70,7 +90,10 @@ function TrangTaiKhoan() {
   const tai = useCallback(() => {
     goiApi
       .get('/nguoiDung', { params: locThamSo({ tuKhoa, ...loc, trang, kichThuoc: 20 }) })
-      .then((kq) => { setKetQua(kq.data); setLoi(''); })
+      .then((kq) => {
+        setKetQua(kq.data);
+        setLoi('');
+      })
       .catch((e) => setLoi(e.message));
   }, [tuKhoa, loc, trang]);
 
@@ -79,8 +102,15 @@ function TrangTaiKhoan() {
     return () => clearTimeout(hen);
   }, [tai]);
 
-  const dong = () => { setThaoTac(null); setDangChon(null); setMatKhauTam(null); };
-  const xong = () => { dong(); tai(); };
+  const dong = () => {
+    setThaoTac(null);
+    setDangChon(null);
+    setMatKhauTam(null);
+  };
+  const xong = () => {
+    dong();
+    tai();
+  };
   const laMinh = dangChon?.nguoiDungId === nguoiDung.nguoiDungId;
 
   const capMatKhau = async () => {
@@ -104,32 +134,61 @@ function TrangTaiKhoan() {
       </div>
       <ThanhLoc
         tuKhoa={tuKhoa}
-        onDoiTuKhoa={(v) => { setTuKhoa(v); setTrang(1); }}
+        onDoiTuKhoa={(v) => {
+          setTuKhoa(v);
+          setTrang(1);
+        }}
         goiYTim="Tên đăng nhập, email, họ tên..."
         boLoc={[
-          { khoa: 'trangThai', nhan: 'Trạng thái', luaChon: [{ giaTri: 'DANG_HOAT_DONG', nhan: 'Hoạt động' }, { giaTri: 'KHOA', nhan: 'Bị khóa' }] },
+          {
+            khoa: 'trangThai',
+            nhan: 'Trạng thái',
+            luaChon: [
+              { giaTri: 'DANG_HOAT_DONG', nhan: 'Hoạt động' },
+              { giaTri: 'KHOA', nhan: 'Bị khóa' },
+            ],
+          },
           { khoa: 'vaiTro', nhan: 'Vai trò', luaChon: thanhLuaChon(NHAN_VAI_TRO) },
         ]}
         giaTriLoc={loc}
-        onDoiLoc={(khoa, v) => { setLoc((cu) => ({ ...cu, [khoa]: v })); setTrang(1); }}
+        onDoiLoc={(khoa, v) => {
+          setLoc((cu) => ({ ...cu, [khoa]: v }));
+          setTrang(1);
+        }}
         phanPhai={<span />}
       />
       {loi && <div className="thongBao loi">{loi}</div>}
-      <BangDuLieu cot={COT} khoaDong="nguoiDungId" duLieu={ketQua?.items ?? []} onHanhDong={(d) => { setDangChon(d); setThaoTac('menu'); }} />
+      <BangDuLieu
+        cot={COT}
+        khoaDong="nguoiDungId"
+        duLieu={ketQua?.items ?? []}
+        onHanhDong={(d) => {
+          setDangChon(d);
+          setThaoTac('menu');
+        }}
+      />
       <PhanTrang phanTrang={ketQua?.phanTrang} onDoiTrang={setTrang} />
 
       {thaoTac === 'menu' && dangChon && (
         <HopThoai tieuDe={dangChon.tenDangNhap} onDong={dong} rong={420}>
           <div style={{ display: 'grid', gap: 8 }}>
-            <NutBam bienThe="phu" bieuTuong={ShieldCheck} onClick={() => setThaoTac('vaiTro')}>Phân quyền</NutBam>
+            <NutBam bienThe="phu" bieuTuong={ShieldCheck} onClick={() => setThaoTac('vaiTro')}>
+              Phân quyền
+            </NutBam>
             {!laMinh && (
-              <NutBam bienThe="phu" bieuTuong={KeyRound} onClick={() => setThaoTac('matKhau')}>Cấp mật khẩu tạm</NutBam>
+              <NutBam bienThe="phu" bieuTuong={KeyRound} onClick={() => setThaoTac('matKhau')}>
+                Cấp mật khẩu tạm
+              </NutBam>
             )}
             {!laMinh && dangChon.trangThai === 'DANG_HOAT_DONG' && (
-              <NutBam bienThe="phu" bieuTuong={Lock} onClick={() => setThaoTac('khoa')}>Khóa tài khoản</NutBam>
+              <NutBam bienThe="phu" bieuTuong={Lock} onClick={() => setThaoTac('khoa')}>
+                Khóa tài khoản
+              </NutBam>
             )}
             {dangChon.trangThai === 'KHOA' && (
-              <NutBam bienThe="phu" bieuTuong={Unlock} onClick={() => setThaoTac('moKhoa')}>Mở khóa</NutBam>
+              <NutBam bienThe="phu" bieuTuong={Unlock} onClick={() => setThaoTac('moKhoa')}>
+                Mở khóa
+              </NutBam>
             )}
           </div>
         </HopThoai>
@@ -140,7 +199,10 @@ function TrangTaiKhoan() {
           tieuDe={`${thaoTac === 'khoa' ? 'Khóa' : 'Mở khóa'} ${dangChon.tenDangNhap}`}
           truong={[{ ten: 'lyDo', nhan: 'Lý do', kieu: 'textarea', batBuoc: true }]}
           nhanNutGui={thaoTac === 'khoa' ? 'Khóa' : 'Mở khóa'}
-          onGui={async (g) => { await goiApi.post(`/nguoiDung/${dangChon.nguoiDungId}/${thaoTac}`, g); xong(); }}
+          onGui={async (g) => {
+            await goiApi.post(`/nguoiDung/${dangChon.nguoiDungId}/${thaoTac}`, g);
+            xong();
+          }}
           onDong={dong}
         />
       )}
@@ -148,9 +210,18 @@ function TrangTaiKhoan() {
         <HopThoai
           tieuDe="Cấp mật khẩu tạm"
           onDong={dong}
-          chanTrang={matKhauTam
-            ? <NutBam onClick={dong}>Xong</NutBam>
-            : <><NutBam bienThe="phu" onClick={dong}>Hủy</NutBam><NutBam onClick={capMatKhau}>Cấp mật khẩu</NutBam></>}
+          chanTrang={
+            matKhauTam ? (
+              <NutBam onClick={dong}>Xong</NutBam>
+            ) : (
+              <>
+                <NutBam bienThe="phu" onClick={dong}>
+                  Hủy
+                </NutBam>
+                <NutBam onClick={capMatKhau}>Cấp mật khẩu</NutBam>
+              </>
+            )
+          }
         >
           {matKhauTam ? (
             <>
@@ -158,7 +229,9 @@ function TrangTaiKhoan() {
               <div className="matKhauTam">{matKhauTam}</div>
             </>
           ) : (
-            <p>Mật khẩu hiện tại của <strong>{dangChon.tenDangNhap}</strong> sẽ mất hiệu lực và mọi phiên đăng nhập bị thu hồi.</p>
+            <p>
+              Mật khẩu hiện tại của <strong>{dangChon.tenDangNhap}</strong> sẽ mất hiệu lực và mọi phiên đăng nhập bị thu hồi.
+            </p>
           )}
         </HopThoai>
       )}

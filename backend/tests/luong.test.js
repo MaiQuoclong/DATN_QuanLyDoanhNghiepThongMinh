@@ -1,9 +1,7 @@
 const request = require('supertest');
 const app = require('../src/app');
 const { pool } = require('../src/config/ketNoiCsdl');
-const {
-  demNgayCongChuan, tinhNgayCong, tinhBaoHiem, tinhThueTNCN, lapPhieu, tinhChiTietPhieu,
-} = require('../src/utils/tinhLuong');
+const { demNgayCongChuan, tinhNgayCong, tinhBaoHiem, tinhThueTNCN, lapPhieu, tinhChiTietPhieu } = require('../src/utils/tinhLuong');
 const { layNgayLamViec } = require('../src/utils/tinhNgayNghi');
 const { khoangNgayCuaThang } = require('../src/utils/ngayThang');
 
@@ -39,24 +37,29 @@ async function chenChot(thang) {
   await pool.execute("INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, chiTiet) VALUES (4, 'CHOT_CONG_THANG', ?)", [thang]);
 }
 async function layNhatKy(hanhDong) {
-  const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id',
-    [mocNhatKy, hanhDong]);
+  const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id', [
+    mocNhatKy,
+    hanhDong,
+  ]);
   return d;
 }
 async function chenCong(nhanVienId, ngay, ot = 0) {
   await pool.execute(
     `INSERT INTO banghichamcong (nhanVienId, ngayChamCong, gioVao, gioRa, soGioLamThucTe, soGioLamThemOT, trangThai)
      VALUES (?, ?, '08:00:00', '17:00:00', 8, ?, 'HOP_LE')`,
-    [nhanVienId, ngay, ot]
+    [nhanVienId, ngay, ot],
   );
 }
-const ngayLamViec = (thang) => { const { tuNgay, denNgay } = khoangNgayCuaThang(thang); return layNgayLamViec(tuNgay, denNgay); };
+const ngayLamViec = (thang) => {
+  const { tuNgay, denNgay } = khoangNgayCuaThang(thang);
+  return layNgayLamViec(tuNgay, denNgay);
+};
 async function chenDon(nhanVienId, loai, ngayBatDau, ngayKetThuc, soNgay, trangThai = 'DA_DUYET') {
   demMa += 1;
   await pool.execute(
     `INSERT INTO dondexuatnghiphep (maDon, nhanVienId, loaiNghiPhepId, ngayBatDau, ngayKetThuc, soNgayNghi, lyDo, trangThai)
      VALUES (?, ?, ?, ?, ?, ?, 'Test lương', ?)`,
-    [`QALG${Date.now() % 100000}${demMa}`, nhanVienId, loai, ngayBatDau, ngayKetThuc, soNgay, trangThai]
+    [`QALG${Date.now() % 100000}${demMa}`, nhanVienId, loai, ngayBatDau, ngayKetThuc, soNgay, trangThai],
   );
 }
 async function chenQuyetDinh(nhanVienId, loai, soTien, ngay) {
@@ -64,23 +67,30 @@ async function chenQuyetDinh(nhanVienId, loai, soTien, ngay) {
   await pool.execute(
     `INSERT INTO quyetdinhkhenthuongkyluat (soQuyetDinh, nhanVienId, loaiQuyetDinh, tieuDe, soTien, lyDo, ngayBanHanh, nguoiKyDuyetId)
      VALUES (?, ?, ?, 'Test', ?, 'Test lương', ?, 2)`,
-    [`QAQD${Date.now() % 100000}${demMa}`, nhanVienId, loai, soTien, ngay]
+    [`QAQD${Date.now() % 100000}${demMa}`, nhanVienId, loai, soTien, ngay],
   );
 }
 // Nhân viên + hợp đồng tạo bằng SQL (không cần tài khoản)
-async function chenNhanVien({ hoVaTen = 'QA Lương', trangThaiLamViec = 'CHINH_THUC', luong = 10000000, phuCap = 1000000,
-  ngayBatDau = '2020-01-06', ngayKetThuc = null, trangThaiHd = 'HIEU_LUC' } = {}) {
+async function chenNhanVien({
+  hoVaTen = 'QA Lương',
+  trangThaiLamViec = 'CHINH_THUC',
+  luong = 10000000,
+  phuCap = 1000000,
+  ngayBatDau = '2020-01-06',
+  ngayKetThuc = null,
+  trangThaiHd = 'HIEU_LUC',
+} = {}) {
   demMa += 1;
   const ma = `QL${Date.now() % 100000}${demMa}`;
   const [kq] = await pool.execute(
     `INSERT INTO nhanvien (maNhanVien, hoVaTen, gioiTinh, ngaySinh, chucDanhPhongBanId, ngayVaoLam, trangThaiLamViec)
      VALUES (?, ?, 'NAM', '1995-01-01', 5, '2020-01-06', ?)`,
-    [ma, hoVaTen, trangThaiLamViec]
+    [ma, hoVaTen, trangThaiLamViec],
   );
   await pool.execute(
     `INSERT INTO hopdonglaodong (maHopDong, nhanVienId, loaiHopDong, ngayBatDau, ngayKetThuc, luongCoBan, mucPhuCap, trangThai)
      VALUES (?, ?, 'XAC_DINH_THOI_HAN', ?, ?, ?, ?, ?)`,
-    [`HD${ma}`, kq.insertId, ngayBatDau, ngayKetThuc, luong, phuCap, trangThaiHd]
+    [`HD${ma}`, kq.insertId, ngayBatDau, ngayKetThuc, luong, phuCap, trangThaiHd],
   );
   return { id: kq.insertId, maNhanVien: ma };
 }
@@ -92,7 +102,10 @@ async function lapBangOk(thang, tk = token.hr) {
   return res.body.data;
 }
 async function layPhieuDb(bangId, nhanVienId) {
-  const [[p]] = await pool.execute('SELECT * FROM phieuluongnhanvien WHERE bangTongHopLuongId = ? AND nhanVienId = ?', [bangId, nhanVienId]);
+  const [[p]] = await pool.execute('SELECT * FROM phieuluongnhanvien WHERE bangTongHopLuongId = ? AND nhanVienId = ?', [
+    bangId,
+    nhanVienId,
+  ]);
   return p;
 }
 async function layBangDb(id) {
@@ -101,8 +114,16 @@ async function layBangDb(id) {
 }
 const guiDuyet = (id) => goi('post', `/bangLuong/${id}/guiDuyet`, token.hr);
 
-const BANG_DAT_LAI = ['bangtonghopluong', 'phieuluongnhanvien', 'banghichamcong', 'dondexuatnghiphep', 'quyetdinhkhenthuongkyluat',
-  'hopdonglaodong', 'nhanvien', 'nhatkyhethong'];
+const BANG_DAT_LAI = [
+  'bangtonghopluong',
+  'phieuluongnhanvien',
+  'banghichamcong',
+  'dondexuatnghiphep',
+  'quyetdinhkhenthuongkyluat',
+  'hopdonglaodong',
+  'nhanvien',
+  'nhatkyhethong',
+];
 async function datLaiAutoIncrement() {
   for (const bang of BANG_DAT_LAI) await pool.query(`ALTER TABLE ${bang} AUTO_INCREMENT = 1`);
 }
@@ -197,8 +218,14 @@ describe('Unit tinhLuong', () => {
 // ---------------------------------------------------------------------------
 describe('Xác thực và phân quyền', () => {
   test('không token -> 401', async () => {
-    for (const [pt, dd] of [['get', '/bangLuong'], ['post', '/bangLuong'], ['get', '/phieuLuong/cuaToi'], ['get', '/phieuLuong/1'],
-      ['patch', '/phieuLuong/1'], ['get', '/bangLuong/baoCao']]) {
+    for (const [pt, dd] of [
+      ['get', '/bangLuong'],
+      ['post', '/bangLuong'],
+      ['get', '/phieuLuong/cuaToi'],
+      ['get', '/phieuLuong/1'],
+      ['patch', '/phieuLuong/1'],
+      ['get', '/bangLuong/baoCao'],
+    ]) {
       const res = await goi(pt, dd);
       expect([dd, res.status]).toEqual([dd, 401]);
       expect(res.body).toMatchObject({ success: false, code: 401, data: null });
@@ -206,8 +233,16 @@ describe('Xác thực và phân quyền', () => {
   });
   test('nhanVien/quanLy/Admin -> 403 với /bangLuong*', async () => {
     for (const ten of ['nhanvien', 'quanly', 'admin']) {
-      for (const [pt, dd] of [['get', '/bangLuong'], ['get', '/bangLuong/baoCao'], ['post', '/bangLuong'], ['get', '/bangLuong/1'],
-        ['get', '/bangLuong/1/xuatExcel'], ['delete', '/bangLuong/1'], ['post', '/bangLuong/1/duyet'], ['patch', '/phieuLuong/1']]) {
+      for (const [pt, dd] of [
+        ['get', '/bangLuong'],
+        ['get', '/bangLuong/baoCao'],
+        ['post', '/bangLuong'],
+        ['get', '/bangLuong/1'],
+        ['get', '/bangLuong/1/xuatExcel'],
+        ['delete', '/bangLuong/1'],
+        ['post', '/bangLuong/1/duyet'],
+        ['patch', '/phieuLuong/1'],
+      ]) {
         expect([ten, dd, (await goi(pt, dd, token[ten]).send({})).status]).toEqual([ten, dd, 403]);
       }
     }
@@ -257,7 +292,8 @@ describe('Lập bảng lương', () => {
     const res = await goi('post', '/bangLuong', token.hr).send({ thang });
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
-      success: true, code: 201,
+      success: true,
+      code: 201,
       data: { maBangLuong: 'BL2020-06', thang: 6, nam: 2020, trangThai: 'BAN_NHAP', nguoiLapId: 4, ngayCongChuan: 22, thangNam: thang },
     });
     const bang = res.body.data;
@@ -341,8 +377,15 @@ describe('Sửa phiếu lương', () => {
     const ok = await goi('patch', `/phieuLuong/${phieuId}`, token.hr).send({ luongLamThemOT: 1000000.29 });
     expect(ok.status).toBe(200);
     expect(ok.body).toMatchObject({ success: true, code: 200, data: { id: phieuId, luongLamThemOT: 1000000.29 } });
-    for (const body of [{ luongLamThemOT: 1000000.299 }, { luongLamThemOT: 'abc' }, { luongLamThemOT: -5 }, { tongPhuCap: -1 },
-      { tongPhuCap: '1e6' }, { thuongKPI: null }, { soNgayCongThucTe: true }]) {
+    for (const body of [
+      { luongLamThemOT: 1000000.299 },
+      { luongLamThemOT: 'abc' },
+      { luongLamThemOT: -5 },
+      { tongPhuCap: -1 },
+      { tongPhuCap: '1e6' },
+      { thuongKPI: null },
+      { soNgayCongThucTe: true },
+    ]) {
       expect([body, (await goi('patch', `/phieuLuong/${phieuId}`, token.hr).send(body)).status]).toEqual([body, 400]);
     }
     const am = await goi('patch', `/phieuLuong/${phieuId}`, token.hr).send({ thuongKPI: -100000 });
@@ -355,7 +398,9 @@ describe('Sửa phiếu lương', () => {
     for (const so of [chuan + 0.5, 10.3, -1]) {
       expect([so, (await goi('patch', `/phieuLuong/${phieuId}`, token.hr).send({ soNgayCongThucTe: so })).status]).toEqual([so, 400]);
     }
-    expect(Number((await pool.execute('SELECT soNgayCongThucTe FROM phieuluongnhanvien WHERE id = ?', [phieuId]))[0][0].soNgayCongThucTe)).toBe(15);
+    expect(
+      Number((await pool.execute('SELECT soNgayCongThucTe FROM phieuluongnhanvien WHERE id = ?', [phieuId]))[0][0].soNgayCongThucTe),
+    ).toBe(15);
   });
   test('đổi ngày công: phụ cấp chia lại, thuế tự tính lại, tổng bảng cập nhật, ghi nhật ký', async () => {
     const { bang, phieuId, chuan } = await chuanBi();
@@ -432,8 +477,13 @@ describe('Luồng duyệt bảng lương', () => {
     expect((await layBangDb(bang.id)).nguoiDuyetId).toBe(2);
     expect(await layNhatKy('DUYET_BANG_LUONG')).toHaveLength(1);
     // Đã duyệt: mọi thao tác HR/giamDoc đều 409
-    for (const [pt, dd, tk] of [['post', 'tinhLai', token.hr], ['delete', '', token.hr], ['post', 'guiDuyet', token.hr],
-      ['post', 'duyet', token.giamdoc2], ['post', 'traLai', token.giamdoc2]]) {
+    for (const [pt, dd, tk] of [
+      ['post', 'tinhLai', token.hr],
+      ['delete', '', token.hr],
+      ['post', 'guiDuyet', token.hr],
+      ['post', 'duyet', token.giamdoc2],
+      ['post', 'traLai', token.giamdoc2],
+    ]) {
       const res = await goi(pt, `/bangLuong/${bang.id}${dd ? `/${dd}` : ''}`, tk).send({ lyDo: 'Trả lại lần nữa' });
       expect([dd, res.status]).toEqual([dd, 409]);
     }
@@ -507,7 +557,8 @@ describe('Xem phiếu lương', () => {
     // Chèn phiếu của nhanvien (NV0005) vào bảng nháp
     const [kq] = await pool.execute(
       `INSERT INTO phieuluongnhanvien (bangTongHopLuongId, nhanVienId, soNgayCongThucTe, luongCoBan, luongLamThemOT, thuongKPI,
-         tongPhuCap, khauTruBaoHiem, khauTruThueTNCN) VALUES (?, 5, 10, 13000000, 0, 0, 0, 0, 0)`, [bang.id]
+         tongPhuCap, khauTruBaoHiem, khauTruThueTNCN) VALUES (?, 5, 10, 13000000, 0, 0, 0, 0, 0)`,
+      [bang.id],
     );
     const res = await goi('get', '/phieuLuong/cuaToi', token.nhanvien);
     expect(res.status).toBe(200);
@@ -545,17 +596,26 @@ describe('Xuất Excel và báo cáo', () => {
   test('xuatExcel: text/csv, BOM, dòng tiêu đề, chặn chèn công thức', async () => {
     const nv = await chenNhanVien({ hoVaTen: '=HYPERLINK("x")' });
     const bang = await lapBangOk('2020-10');
-    const res = await goi('get', `/bangLuong/${bang.id}/xuatExcel`, token.giamdoc).buffer(true).parse((r, cb) => {
-      let s = ''; r.setEncoding('utf8'); r.on('data', (c) => { s += c; }); r.on('end', () => cb(null, s));
-    });
+    const res = await goi('get', `/bangLuong/${bang.id}/xuatExcel`, token.giamdoc)
+      .buffer(true)
+      .parse((r, cb) => {
+        let s = '';
+        r.setEncoding('utf8');
+        r.on('data', (c) => {
+          s += c;
+        });
+        r.on('end', () => cb(null, s));
+      });
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(/^text\/csv/);
     expect(res.headers['content-disposition']).toContain('BL2020-10_2020-10.csv');
     const noiDung = res.body;
     expect(noiDung.charCodeAt(0)).toBe(0xfeff);
     const dong = noiDung.slice(1).split('\r\n');
-    expect(dong[0]).toBe('Mã NV,Họ và tên,Phòng ban,Chức danh,Ngày công chuẩn,Ngày công thực tế,Lương cơ bản,Lương theo công,'
-      + 'Lương làm thêm,Thưởng/Phạt,Trong đó thưởng KPI,Trong đó khen thưởng - kỷ luật,Phụ cấp,Tổng thu nhập,Bảo hiểm,Thuế TNCN,Thực lĩnh');
+    expect(dong[0]).toBe(
+      'Mã NV,Họ và tên,Phòng ban,Chức danh,Ngày công chuẩn,Ngày công thực tế,Lương cơ bản,Lương theo công,' +
+        'Lương làm thêm,Thưởng/Phạt,Trong đó thưởng KPI,Trong đó khen thưởng - kỷ luật,Phụ cấp,Tổng thu nhập,Bảo hiểm,Thuế TNCN,Thực lĩnh',
+    );
     const dongNv = dong.find((x) => x.startsWith(nv.maNhanVien));
     expect(dongNv).toContain('"\'=HYPERLINK(""x"")"');
     expect((await goi('get', '/bangLuong/99999999/xuatExcel', token.hr)).status).toBe(404);

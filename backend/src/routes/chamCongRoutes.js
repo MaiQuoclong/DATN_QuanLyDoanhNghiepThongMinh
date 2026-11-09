@@ -26,7 +26,7 @@ chamCongRouter.post(
   kiemTraDuLieu({
     thang: { nhan: 'Tháng', batBuoc: true, mauKiemTra: /^\d{4}-(0[1-9]|1[0-2])$/, thongBaoMau: 'Tháng phải có dạng YYYY-MM' },
   }),
-  batLoiBatDongBo(chamCongController.chotCong)
+  batLoiBatDongBo(chamCongController.chotCong),
 );
 
 // ===================== /api/v1/dieuChinhCong =====================
@@ -44,14 +44,14 @@ dieuChinhRouter.post(
     gioRaDeXuat: { nhan: 'Giờ ra đề xuất', kieu: 'gio' },
     lyDoGiaiTrinh: { nhan: 'Lý do giải trình', batBuoc: true, toiThieu: 5, toiDa: 1000 },
   }),
-  batLoiBatDongBo(chamCongController.taoYeuCau)
+  batLoiBatDongBo(chamCongController.taoYeuCau),
 );
 dieuChinhRouter.post('/:id/duyet', phanQuyen(XEM_BANG_CONG), batLoiBatDongBo(chamCongController.duyetYeuCau));
 dieuChinhRouter.post(
   '/:id/tuChoi',
   phanQuyen(XEM_BANG_CONG),
   kiemTraDuLieu({ lyDoTuChoi: { nhan: 'Lý do từ chối', batBuoc: true, toiDa: 1000 } }),
-  batLoiBatDongBo(chamCongController.tuChoiYeuCau)
+  batLoiBatDongBo(chamCongController.tuChoiYeuCau),
 );
 
 module.exports = { chamCongRouter, dieuChinhRouter };

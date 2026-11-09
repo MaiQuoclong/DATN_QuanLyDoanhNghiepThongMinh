@@ -22,7 +22,10 @@ function TrangNhatKy() {
   const tai = useCallback(() => {
     goiApi
       .get('/nhatKyHeThong', { params: locThamSo({ ...loc, hanhDong: loc.hanhDong.trim().toUpperCase(), trang, kichThuoc: 50 }) })
-      .then((kq) => { setKetQua(kq.data); setLoi(''); })
+      .then((kq) => {
+        setKetQua(kq.data);
+        setLoi('');
+      })
       .catch((e) => setLoi(e.message));
   }, [loc, trang]);
 
@@ -31,7 +34,10 @@ function TrangNhatKy() {
     return () => clearTimeout(hen);
   }, [tai]);
 
-  const doi = (khoa) => (e) => { setLoc((cu) => ({ ...cu, [khoa]: e.target.value })); setTrang(1); };
+  const doi = (khoa) => (e) => {
+    setLoc((cu) => ({ ...cu, [khoa]: e.target.value }));
+    setTrang(1);
+  };
 
   return (
     <div>

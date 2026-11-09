@@ -25,7 +25,13 @@ function TrangKyDanhGia() {
   const [dangSua, setDangSua] = useState(null);
 
   const tai = useCallback(() => {
-    goiApi.get('/kyDanhGiaKPI').then((kq) => { setDs(kq.data); setLoi(''); }).catch((e) => setLoi(e.message));
+    goiApi
+      .get('/kyDanhGiaKPI')
+      .then((kq) => {
+        setDs(kq.data);
+        setLoi('');
+      })
+      .catch((e) => setLoi(e.message));
   }, []);
   useEffect(tai, [tai]);
 
@@ -58,11 +64,27 @@ function TrangKyDanhGia() {
           <h1 className="tieuDeTrang">Kỳ đánh giá KPI</h1>
           <div className="chuPhu">Chỉ kỳ đang mở mới tạo phiếu, tự chấm, nghiệm thu được · đóng kỳ khi không còn phiếu chờ nghiệm thu</div>
         </div>
-        {laHR && <NutBam bieuTuong={Plus} onClick={() => setDangThem(true)}>Mở kỳ mới</NutBam>}
+        {laHR && (
+          <NutBam bieuTuong={Plus} onClick={() => setDangThem(true)}>
+            Mở kỳ mới
+          </NutBam>
+        )}
       </div>
       {loi && <div className="thongBao loi">{loi}</div>}
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
-      <BangDuLieu cot={cot} duLieu={ds} onHanhDong={laHR ? (d) => { setLoi(''); setDangSua(d); } : undefined} thongBaoRong="Chưa có kỳ đánh giá" />
+      <BangDuLieu
+        cot={cot}
+        duLieu={ds}
+        onHanhDong={
+          laHR
+            ? (d) => {
+                setLoi('');
+                setDangSua(d);
+              }
+            : undefined
+        }
+        thongBaoRong="Chưa có kỳ đánh giá"
+      />
 
       {dangThem && (
         <HopThoaiBieuMau
@@ -81,19 +103,25 @@ function TrangKyDanhGia() {
       {dangSua && dangSua.trangThai === 'DANG_MO' && (
         <HopThoaiBieuMau
           tieuDe={`Sửa kỳ ${dangSua.tenKyDanhGia}`}
-          moTa={(
+          moTa={
             <>
-              <button type="button" className="lienKet" onClick={() => hanhDong(`/kyDanhGiaKPI/${dangSua.id}/dong`)}>Đóng kỳ</button>
+              <button type="button" className="lienKet" onClick={() => hanhDong(`/kyDanhGiaKPI/${dangSua.id}/dong`)}>
+                Đóng kỳ
+              </button>
               {!dangSua.soPhieu && (
                 <>
                   {' · '}
-                  <button type="button" className="lienKet" onClick={() => window.confirm('Xóa kỳ đánh giá này?') && hanhDong(`/kyDanhGiaKPI/${dangSua.id}`, 'delete')}>
+                  <button
+                    type="button"
+                    className="lienKet"
+                    onClick={() => window.confirm('Xóa kỳ đánh giá này?') && hanhDong(`/kyDanhGiaKPI/${dangSua.id}`, 'delete')}
+                  >
                     Xóa kỳ
                   </button>
                 </>
               )}
             </>
-          )}
+          }
           truong={TRUONG_KY}
           giaTriBanDau={{ tenKyDanhGia: dangSua.tenKyDanhGia, ngayBatDau: dangSua.ngayBatDau, ngayKetThuc: dangSua.ngayKetThuc }}
           onGui={async (g) => {

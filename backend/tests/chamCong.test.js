@@ -37,8 +37,14 @@ async function taoNhanVien(ghiDe = {}, laHr = false) {
   demTen += 1;
   const ten = `qacc${Date.now() % 100000}${demTen}`;
   const res = await goi('post', '/nhanVien', token.hr).send({
-    hoVaTen: 'Lê Chấm Công', gioiTinh: 'NAM', ngaySinh: '1995-05-20', ngayVaoLam: NGAY_VAO_LAM,
-    chucDanhPhongBanId: 5, tenDangNhap: ten, email: `${ten}@smarthrm.local`, ...ghiDe,
+    hoVaTen: 'Lê Chấm Công',
+    gioiTinh: 'NAM',
+    ngaySinh: '1995-05-20',
+    ngayVaoLam: NGAY_VAO_LAM,
+    chucDanhPhongBanId: 5,
+    tenDangNhap: ten,
+    email: `${ten}@smarthrm.local`,
+    ...ghiDe,
   });
   expect(res.status).toBe(201);
   const { nhanVien, taiKhoan } = res.body.data;
@@ -47,17 +53,22 @@ async function taoNhanVien(ghiDe = {}, laHr = false) {
   }
   const dn = await dangNhap(taiKhoan.tenDangNhap, taiKhoan.matKhauTam);
   expect(dn.status).toBe(200);
-  const doi = await goi('post', '/xacThuc/doiMatKhau', dn.body.data.token)
-    .send({ matKhauCu: taiKhoan.matKhauTam, matKhauMoi: 'ChamCong123' });
+  const doi = await goi('post', '/xacThuc/doiMatKhau', dn.body.data.token).send({
+    matKhauCu: taiKhoan.matKhauTam,
+    matKhauMoi: 'ChamCong123',
+  });
   expect(doi.status).toBe(200);
   const dn2 = await dangNhap(taiKhoan.tenDangNhap, 'ChamCong123');
   expect(dn2.status).toBe(200);
   return { nhanVien, tk: dn2.body.data.token };
 }
 
-const taoYeuCau = (tk, body) => goi('post', '/dieuChinhCong', tk).send({
-  ngayCanDieuChinh: NGAY_DC, lyDoGiaiTrinh: 'Quên chấm công do đi công tác', ...body,
-});
+const taoYeuCau = (tk, body) =>
+  goi('post', '/dieuChinhCong', tk).send({
+    ngayCanDieuChinh: NGAY_DC,
+    lyDoGiaiTrinh: 'Quên chấm công do đi công tác',
+    ...body,
+  });
 async function taoYeuCauOk(tk, body) {
   const res = await taoYeuCau(tk, body);
   expect(res.status).toBe(201);
@@ -68,7 +79,7 @@ async function chenBanGhi(nhanVienId, ngayCong, gioVao, gioRa) {
   const [kq] = await pool.execute(
     `INSERT INTO banghichamcong (nhanVienId, ngayChamCong, gioVao, gioRa, soGioLamThucTe, soGioLamThemOT, diMuon, veSom, trangThai)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'HOP_LE')`,
-    [nhanVienId, ngayCong, gioVao, gioRa, cs.soGioLamThucTe, cs.soGioLamThemOT, cs.diMuon ? 1 : 0, cs.veSom ? 1 : 0]
+    [nhanVienId, ngayCong, gioVao, gioRa, cs.soGioLamThucTe, cs.soGioLamThemOT, cs.diMuon ? 1 : 0, cs.veSom ? 1 : 0],
   );
   return kq.insertId;
 }
@@ -76,8 +87,10 @@ async function chenChot(thang) {
   await pool.execute("INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, chiTiet) VALUES (4, 'CHOT_CONG_THANG', ?)", [thang]);
 }
 async function layNhatKy(hanhDong) {
-  const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id',
-    [mocNhatKy, hanhDong]);
+  const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id', [
+    mocNhatKy,
+    hanhDong,
+  ]);
   return d;
 }
 
@@ -157,8 +170,12 @@ describe('Unit tinhChiSoCong (ca 08:00-17:00, nghỉ trưa 12:00-13:00)', () => 
     expect(laCuoiTuan('2021-06-19')).toBe(true);
     expect(laCuoiTuan('2021-06-20')).toBe(true);
     expect(laCuoiTuan(T)).toBe(false);
-    expect(tinhChiSoCong('2021-06-19', '09:00:00', '15:00:00'))
-      .toEqual({ soGioLamThucTe: 0, soGioLamThemOT: 5, diMuon: false, veSom: false });
+    expect(tinhChiSoCong('2021-06-19', '09:00:00', '15:00:00')).toEqual({
+      soGioLamThucTe: 0,
+      soGioLamThemOT: 5,
+      diMuon: false,
+      veSom: false,
+    });
   });
   test('chưa check-out: chưa có giờ công nhưng vẫn xét đi muộn', () => {
     expect(tinhChiSoCong(T, '09:00:00', null)).toEqual({ soGioLamThucTe: 0, soGioLamThemOT: 0, diMuon: true, veSom: false });
@@ -168,10 +185,21 @@ describe('Unit tinhChiSoCong (ca 08:00-17:00, nghỉ trưa 12:00-13:00)', () => 
 // ---------------------------------------------------------------------------
 describe('Phân quyền', () => {
   test('chưa đăng nhập trả 401 chuẩn', async () => {
-    for (const [pt, dd] of [['get', '/chamCong/homNay'], ['post', '/chamCong/checkIn'], ['post', '/chamCong/checkOut'],
-      ['get', '/chamCong/cuaToi'], ['get', '/chamCong/bangCong'], ['get', '/chamCong/bangCong/5'], ['get', '/chamCong/chotCong'],
-      ['post', '/chamCong/chotCong'], ['get', '/dieuChinhCong'], ['get', '/dieuChinhCong/cuaToi'], ['post', '/dieuChinhCong'],
-      ['post', '/dieuChinhCong/1/duyet'], ['post', '/dieuChinhCong/1/tuChoi']]) {
+    for (const [pt, dd] of [
+      ['get', '/chamCong/homNay'],
+      ['post', '/chamCong/checkIn'],
+      ['post', '/chamCong/checkOut'],
+      ['get', '/chamCong/cuaToi'],
+      ['get', '/chamCong/bangCong'],
+      ['get', '/chamCong/bangCong/5'],
+      ['get', '/chamCong/chotCong'],
+      ['post', '/chamCong/chotCong'],
+      ['get', '/dieuChinhCong'],
+      ['get', '/dieuChinhCong/cuaToi'],
+      ['post', '/dieuChinhCong'],
+      ['post', '/dieuChinhCong/1/duyet'],
+      ['post', '/dieuChinhCong/1/tuChoi'],
+    ]) {
       const res = await goi(pt, dd);
       expect(res.status).toBe(401);
       expect(res.body).toEqual({ success: false, code: 401, message: expect.any(String), data: null });
@@ -250,7 +278,9 @@ describe('Check-in / check-out', () => {
     const res = await goi('get', '/chamCong/cuaToi?thang=2021-06', tk);
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({
-      thang: '2021-06', soNgayCongChuan: 22, daChot: false,
+      thang: '2021-06',
+      soNgayCongChuan: 22,
+      daChot: false,
       tongHop: { soNgayChamCong: 2, soNgayThieuCheckOut: 1, tongGioLamThucTe: 7.5, tongGioLamThem: 0.75, soLanDiMuon: 1, soLanVeSom: 0 },
     });
     expect(res.body.data.items).toHaveLength(2);
@@ -309,7 +339,13 @@ describe('Tạo yêu cầu điều chỉnh công', () => {
   test('tạo thành công trạng thái CHO_DUYET, xuất hiện trong cuaToi', async () => {
     const { nhanVien, tk } = await taoNhanVien();
     const yc = await taoYeuCauOk(tk, { gioVaoDeXuat: '08:00', gioRaDeXuat: '17:00' });
-    expect(yc).toMatchObject({ nhanVienId: nhanVien.id, trangThai: 'CHO_DUYET', gioVaoDeXuat: '08:00:00', gioRaDeXuat: '17:00:00', banGhiChamCongId: null });
+    expect(yc).toMatchObject({
+      nhanVienId: nhanVien.id,
+      trangThai: 'CHO_DUYET',
+      gioVaoDeXuat: '08:00:00',
+      gioRaDeXuat: '17:00:00',
+      banGhiChamCongId: null,
+    });
     const ds = await goi('get', '/dieuChinhCong/cuaToi', tk);
     expect(ds.status).toBe(200);
     expect(ds.body.data.items.map((d) => d.id)).toEqual([yc.id]);

@@ -21,7 +21,10 @@ function TrangLichNghi() {
   const [dangXem, setDangXem] = useState(null);
 
   useEffect(() => {
-    goiApi.get('/phongBan').then((kq) => setPhongBan(kq.data)).catch(() => {});
+    goiApi
+      .get('/phongBan')
+      .then((kq) => setPhongBan(kq.data))
+      .catch(() => {});
   }, []);
 
   const [lamMoi, setLamMoi] = useState(0);
@@ -30,10 +33,23 @@ function TrangLichNghi() {
   useEffect(() => {
     // Bỏ qua phản hồi cũ khi đổi tháng/phòng ban nhanh
     let daHuy = false;
-    goiApi.get('/donNghiPhep/lich', { params: { thang, ...(phongBanId ? { phongBanId } : {}) } })
-      .then((kq) => { if (!daHuy) { setLich(kq.data); setLoi(''); } })
-      .catch((e) => { if (!daHuy) { setLich(null); setLoi(e.message); } });
-    return () => { daHuy = true; };
+    goiApi
+      .get('/donNghiPhep/lich', { params: { thang, ...(phongBanId ? { phongBanId } : {}) } })
+      .then((kq) => {
+        if (!daHuy) {
+          setLich(kq.data);
+          setLoi('');
+        }
+      })
+      .catch((e) => {
+        if (!daHuy) {
+          setLich(null);
+          setLoi(e.message);
+        }
+      });
+    return () => {
+      daHuy = true;
+    };
   }, [thang, phongBanId, lamMoi]);
 
   const cacNgay = useMemo(() => layCacNgay(thang), [thang]);
@@ -67,7 +83,11 @@ function TrangLichNghi() {
             Phòng ban
             <select value={phongBanId} onChange={(e) => setPhongBanId(e.target.value)}>
               <option value="">Tất cả</option>
-              {phongBan.map((pb) => <option key={pb.id} value={pb.id}>{pb.tenPhongBan}</option>)}
+              {phongBan.map((pb) => (
+                <option key={pb.id} value={pb.id}>
+                  {pb.tenPhongBan}
+                </option>
+              ))}
             </select>
           </label>
           <label className="truongForm">
@@ -92,9 +112,18 @@ function TrangLichNghi() {
       </div>
 
       <div className="chuThichLich">
-        <span><i style={{ background: 'var(--mauThanhCong)' }} />Đã duyệt</span>
-        <span><i style={{ background: 'var(--mauCanhBao)' }} />Chờ duyệt</span>
-        <span><i style={{ background: 'var(--mauTrungTinhNhat)' }} />Thứ 7, Chủ nhật</span>
+        <span>
+          <i style={{ background: 'var(--mauThanhCong)' }} />
+          Đã duyệt
+        </span>
+        <span>
+          <i style={{ background: 'var(--mauCanhBao)' }} />
+          Chờ duyệt
+        </span>
+        <span>
+          <i style={{ background: 'var(--mauTrungTinhNhat)' }} />
+          Thứ 7, Chủ nhật
+        </span>
       </div>
       <div className="the luoiLichNghi">
         <table>
@@ -105,7 +134,9 @@ function TrangLichNghi() {
                 const thu = layThu(ngay);
                 return (
                   <th key={ngay} className={`${['T7', 'CN'].includes(thu) ? 'cuoiTuan' : ''} ${ngay === homNay ? 'homNay' : ''}`}>
-                    {Number(ngay.slice(8))}<br />{thu}
+                    {Number(ngay.slice(8))}
+                    <br />
+                    {thu}
                   </th>
                 );
               })}
@@ -113,15 +144,24 @@ function TrangLichNghi() {
           </thead>
           <tbody>
             {hang.length === 0 && (
-              <tr><td className="oRong" colSpan={cacNgay.length + 1} style={{ padding: 16 }}>Không có lịch nghỉ trong tháng</td></tr>
+              <tr>
+                <td className="oRong" colSpan={cacNgay.length + 1} style={{ padding: 16 }}>
+                  Không có lịch nghỉ trong tháng
+                </td>
+              </tr>
             )}
             {hang.map((nguoi) => (
               <tr key={nguoi.nhanVienId}>
-                <td className="cotTen">{nguoi.hoVaTen} <span className="chuPhu">{nguoi.maNhanVien} · {nguoi.tenPhongBan}</span></td>
+                <td className="cotTen">
+                  {nguoi.hoVaTen}{' '}
+                  <span className="chuPhu">
+                    {nguoi.maNhanVien} · {nguoi.tenPhongBan}
+                  </span>
+                </td>
                 {cacNgay.map((ngay) => {
                   const cuoiTuan = ['T7', 'CN'].includes(layThu(ngay));
                   const don = cuoiTuan ? null : donTrongNgay(nguoi, ngay);
-                  const lop = don ? (don.trangThai === 'DA_DUYET' ? 'daDuyet' : 'choDuyet') : (cuoiTuan ? 'cuoiTuan' : '');
+                  const lop = don ? (don.trangThai === 'DA_DUYET' ? 'daDuyet' : 'choDuyet') : cuoiTuan ? 'cuoiTuan' : '';
                   return (
                     <td
                       key={ngay}
@@ -144,7 +184,11 @@ function TrangLichNghi() {
           don={dangXem}
           cheDo="duyet"
           onDong={() => setDangXem(null)}
-          onDaXuLy={(tb) => { setDangXem(null); setThongBao(tb); setLamMoi((n) => n + 1); }}
+          onDaXuLy={(tb) => {
+            setDangXem(null);
+            setThongBao(tb);
+            setLamMoi((n) => n + 1);
+          }}
         />
       )}
     </div>
