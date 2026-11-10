@@ -8,15 +8,32 @@ function layIdTuDuongDan(req) {
 }
 
 async function layDanhSachNhanVien(req, res) {
-  const { tuKhoa, phongBanId, trangThaiLamViec } = req.query;
-  if (trangThaiLamViec && !nhanVienService.TRANG_THAI_LAM_VIEC.includes(trangThaiLamViec)) {
+  const { tuKhoa, phongBanId } = req.query;
+  // trangThaiLamViec: một giá trị hoặc nhiều giá trị cách nhau bởi dấu phẩy (THU_VIEC,CHINH_THUC)
+  const chuoiTrangThai = typeof req.query.trangThaiLamViec === 'string' ? req.query.trangThaiLamViec.trim() : '';
+  const trangThaiLamViec = chuoiTrangThai ? [...new Set(chuoiTrangThai.split(',').map((t) => t.trim()))] : undefined;
+  if (
+    (req.query.trangThaiLamViec !== undefined && typeof req.query.trangThaiLamViec !== 'string') ||
+    (trangThaiLamViec ?? []).some((t) => !nhanVienService.TRANG_THAI_LAM_VIEC.includes(t))
+  ) {
     throw new LoiUngDung(400, 'Trạng thái làm việc không hợp lệ');
+  }
+  // boQuaIds: id cách nhau bởi dấu phẩy, loại khỏi kết quả (ô chọn nhân viên bỏ người đã chọn) - tối đa 100
+  const chuoiBoQua = typeof req.query.boQuaIds === 'string' ? req.query.boQuaIds.trim() : '';
+  const boQuaIds = chuoiBoQua ? [...new Set(chuoiBoQua.split(',').map((t) => t.trim()))] : undefined;
+  if (
+    (req.query.boQuaIds !== undefined && typeof req.query.boQuaIds !== 'string') ||
+    (boQuaIds ?? []).some((t) => !/^[1-9]\d{0,9}$/.test(t)) ||
+    (boQuaIds?.length ?? 0) > 100
+  ) {
+    throw new LoiUngDung(400, 'Danh sách nhân viên bỏ qua không hợp lệ');
   }
   const { trang, kichThuoc } = layPhanTrang(req.query);
   const ketQua = await nhanVienService.layDanhSach(req.nguoiDung, {
     tuKhoa: layTuKhoa(tuKhoa),
     phongBanId: laySoNguyenDuong(phongBanId, undefined, 'Phòng ban'),
     trangThaiLamViec,
+    boQuaIds: boQuaIds?.map(Number),
     trang,
     kichThuoc,
   });
@@ -29,8 +46,8 @@ async function layHoSoCuaToi(req, res) {
 }
 
 async function capNhatHoSoCuaToi(req, res) {
-  const hoSo = await nhanVienService.capNhatHoSoCuaToi(req.nguoiDung, req.body, req.ip);
-  return thanhCong(res, hoSo, 'Cập nhật hồ sơ cá nhân thành công');
+  const { hoSo, daThayDoi } = await nhanVienService.capNhatHoSoCuaToi(req.nguoiDung, req.body, req.ip);
+  return thanhCong(res, hoSo, daThayDoi ? 'Cập nhật hồ sơ cá nhân thành công' : 'Không có thông tin nào thay đổi');
 }
 
 async function layChiTietNhanVien(req, res) {
@@ -45,8 +62,8 @@ async function themNhanVien(req, res) {
 }
 
 async function capNhatNhanVien(req, res) {
-  const hoSo = await nhanVienService.capNhatHoSo(req.nguoiDung, layIdTuDuongDan(req), req.body, req.ip);
-  return thanhCong(res, hoSo, 'Cập nhật hồ sơ nhân viên thành công');
+  const { hoSo, daThayDoi } = await nhanVienService.capNhatHoSo(req.nguoiDung, layIdTuDuongDan(req), req.body, req.ip);
+  return thanhCong(res, hoSo, daThayDoi ? 'Cập nhật hồ sơ nhân viên thành công' : 'Không có thông tin nào thay đổi');
 }
 
 async function doiTrangThaiNhanVien(req, res) {

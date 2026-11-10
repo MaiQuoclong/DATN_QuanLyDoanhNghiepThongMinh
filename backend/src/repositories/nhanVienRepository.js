@@ -24,7 +24,7 @@ const COT_CAP_NHAT = [
 ];
 
 // boLoc.phamViPhongBanIds: null = toàn công ty, mảng = chỉ các phòng ban đó (quanLy)
-async function layDanhSach({ tuKhoa, phongBanId, trangThaiLamViec, phamViPhongBanIds, viTri, soLuong }) {
+async function layDanhSach({ tuKhoa, phongBanId, trangThaiLamViec, boQuaIds, phamViPhongBanIds, viTri, soLuong }) {
   const dieuKien = [];
   const thamSo = [];
   if (phamViPhongBanIds) {
@@ -41,9 +41,14 @@ async function layDanhSach({ tuKhoa, phongBanId, trangThaiLamViec, phamViPhongBa
     dieuKien.push('cdpb.phongBanId = ?');
     thamSo.push(phongBanId);
   }
-  if (trangThaiLamViec) {
-    dieuKien.push('nv.trangThaiLamViec = ?');
-    thamSo.push(trangThaiLamViec);
+  // trangThaiLamViec: mảng trạng thái (lọc IN)
+  if (trangThaiLamViec?.length) {
+    dieuKien.push(`nv.trangThaiLamViec IN (${trangThaiLamViec.map(() => '?').join(', ')})`);
+    thamSo.push(...trangThaiLamViec);
+  }
+  if (boQuaIds?.length) {
+    dieuKien.push(`nv.id NOT IN (${boQuaIds.map(() => '?').join(', ')})`);
+    thamSo.push(...boQuaIds);
   }
   const where = dieuKien.length ? `WHERE ${dieuKien.join(' AND ')}` : '';
 

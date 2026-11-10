@@ -12,8 +12,11 @@ async function timDeDangNhap(tenDangNhapHoacEmail) {
   return dong[0] ?? null;
 }
 
-async function layMatKhauMaHoa(nguoiDungId) {
-  const [dong] = await pool.execute('SELECT matKhauMaHoa FROM nguoidung WHERE id = ?', [nguoiDungId]);
+// ketNoi (transaction): khóa FOR UPDATE để không ai đổi/cấp lại mật khẩu chen giữa lúc kiểm tra và cập nhật
+async function layMatKhauMaHoa(nguoiDungId, ketNoi = null) {
+  const [dong] = await (ketNoi ?? pool).execute(`SELECT matKhauMaHoa FROM nguoidung WHERE id = ?${ketNoi ? ' FOR UPDATE' : ''}`, [
+    nguoiDungId,
+  ]);
   return dong[0]?.matKhauMaHoa ?? null;
 }
 
