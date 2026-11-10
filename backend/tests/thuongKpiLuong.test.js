@@ -326,27 +326,31 @@ describe('Đọc phiếu lương có tách thưởng KPI', () => {
 
 // ---------------------------------------------------------------------------
 describe('Nghiệm thu KPI khi đã có bảng lương tháng hiện tại', () => {
-  test('bảng BAN_NHAP -> tính lại có thưởng KPI, nhật ký TINH_LAI_BANG_LUONG_KPI, message có cảnh báo', async () => {
+  test('bảng BAN_NHAP -> cộng thưởng KPI vào đúng phiếu, giữ chỉnh sửa tay, nhật ký TINH_LAI_BANG_LUONG_KPI', async () => {
     const { phieu } = await phieuKpiChoDuyetQuaApi();
     const bang = await chenBangThangHienTai('BAN_NHAP');
+    // Phiếu lương nháp của NV0005 với phụ cấp HR đã sửa tay (123456) và thưởng/phạt có sẵn 50000
+    const [[hd]] = await pool.execute(
+      "SELECT luongCoBan FROM hopdonglaodong WHERE nhanVienId = ? AND trangThai = 'HIEU_LUC' ORDER BY ngayBatDau DESC LIMIT 1",
+      [NV_NHANVIEN],
+    );
+    await pool.execute(
+      `INSERT INTO phieuluongnhanvien (bangTongHopLuongId, nhanVienId, soNgayCongThucTe, luongCoBan, luongLamThemOT, thuongKPI, tongPhuCap,
+        khauTruBaoHiem, khauTruThueTNCN) VALUES (?, ?, 20, ?, 0, 50000, 123456, 0, 0)`,
+      [bang.id, NV_NHANVIEN, hd.luongCoBan],
+    );
     const res = await goi('post', `/phieuDanhGiaKPI/${phieu.id}/nghiemThu`, token.quanly).send(bodyNghiemThu(phieu));
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ trangThai: 'DA_DUYET', xepLoaiChung: 'XUAT_SAC' });
-    expect(res.body.message).toContain(`Đã tính lại bảng lương nháp BL${bang.thang}`);
+    expect(res.body.message).toContain(`bảng lương nháp BL${bang.thang}`);
     expect(await layNhatKy('TINH_LAI_BANG_LUONG_KPI')).toHaveLength(1);
 
-    // Kỳ vọng = tổng thưởng mọi phiếu DA_DUYET của NV0005 nghiệm thu trong tháng hiện tại (kể cả seed nếu có)
     const p = await layPhieuTrongBang(bang.id, NV_NHANVIEN);
     expect(p).toBeDefined();
-    const [cacKpi] = await pool.execute(
-      `SELECT p.xepLoaiChung, k.ngayBatDau, k.ngayKetThuc FROM phieudanhgiakpi p JOIN kydanhgiakpi k ON k.id = p.kyDanhGiaId
-        WHERE p.nhanVienId = ? AND p.trangThai = 'DA_DUYET' AND DATE_FORMAT(p.ngayNghiemThu, '%Y-%m') = ?`,
-      [NV_NHANVIEN, bang.thang],
-    );
-    const kyVong = cacKpi.reduce((s, k) => s + tinhThuongKpi(k.xepLoaiChung, p.luongCoBan, demSoThangKy(k.ngayBatDau, k.ngayKetThuc)), 0);
-    expect(kyVong).toBeGreaterThanOrEqual(Math.round(1.3 * Number(p.luongCoBan) * 0.1 * 3));
-    expect(p.thuongKpi).toBe(kyVong);
-    expect(p.thuongPhatKhac).toBe(Number(p.thuongKPI) - kyVong);
+    // Kỳ quý 3 tháng, XUAT_SAC: chỉ cộng thêm đúng thưởng của phiếu vừa nghiệm thu
+    expect(Number(p.thuongKPI)).toBe(50000 + tinhThuongKpi('XUAT_SAC', p.luongCoBan, 3));
+    expect(Number(p.tongPhuCap)).toBe(123456);
+    expect(Number(p.soNgayCongThucTe)).toBe(20);
   });
 
   test('bảng CHO_DUYET -> 409, phiếu KPI giữ CHO_DUYET, không sinh phiếu lương', async () => {
