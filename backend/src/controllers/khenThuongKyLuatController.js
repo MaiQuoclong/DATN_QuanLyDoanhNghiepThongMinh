@@ -3,7 +3,7 @@ const { thanhCong } = require('../utils/phanHoi');
 const { LOAI_QUYET_DINH } = require('../utils/trangThai');
 const { laySoNguyenDuong, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang } = require('../utils/thamSoTruyVan');
 
-const TRANG_THAI_DE_XUAT = ['CHO_DUYET', 'DA_DUYET', 'TU_CHOI'];
+const TRANG_THAI_DE_XUAT = ['CHO_DUYET', 'CHO_KY', 'DA_DUYET', 'TU_CHOI'];
 const layId = (req, nhan) => laySoNguyenDuong(req.params.id, undefined, nhan);
 
 // ===================== Đề xuất =====================
@@ -26,7 +26,8 @@ async function layChiTietDeXuat(req, res) {
 }
 
 async function taoDeXuat(req, res) {
-  return thanhCong(res, await ktklService.taoDeXuat(req.nguoiDung, req.body ?? {}, req.ip), 'Đã gửi đề xuất', 201);
+  const dx = await ktklService.taoDeXuat(req.nguoiDung, req.body ?? {}, req.ip);
+  return thanhCong(res, dx, dx.trangThai === 'CHO_KY' ? 'Đã trình Giám đốc ký' : 'Đã gửi đề xuất', 201);
 }
 
 async function suaDeXuat(req, res) {
@@ -44,9 +45,19 @@ async function tuChoiDeXuat(req, res) {
   return thanhCong(res, dx, 'Đã từ chối đề xuất');
 }
 
-async function lapQuyetDinhTuDeXuat(req, res) {
-  const kq = await ktklService.lapQuyetDinhTuDeXuat(req.nguoiDung, layId(req, 'Mã đề xuất'), req.body ?? {}, req.ip);
-  return thanhCong(res, kq, 'Đã lập quyết định từ đề xuất', 201);
+async function trinhKy(req, res) {
+  const dx = await ktklService.trinhKy(req.nguoiDung, layId(req, 'Mã đề xuất'), req.body ?? {}, req.ip);
+  return thanhCong(res, dx, 'Đã trình Giám đốc ký');
+}
+
+async function kyDeXuat(req, res) {
+  const kq = await ktklService.kyDeXuat(req.nguoiDung, layId(req, 'Mã đề xuất'), req.body ?? {}, req.ip);
+  return thanhCong(res, kq, 'Đã ký và ban hành quyết định', 201);
+}
+
+async function traLaiDeXuat(req, res) {
+  const dx = await ktklService.traLaiDeXuat(req.nguoiDung, layId(req, 'Mã đề xuất'), req.body ?? {}, req.ip);
+  return thanhCong(res, dx, 'Đã trả lại đề xuất');
 }
 
 // ===================== Quyết định =====================
@@ -86,7 +97,9 @@ module.exports = {
   suaDeXuat,
   xoaDeXuat,
   tuChoiDeXuat,
-  lapQuyetDinhTuDeXuat,
+  trinhKy,
+  kyDeXuat,
+  traLaiDeXuat,
   layDanhSachQuyetDinh,
   layChiTietQuyetDinh,
   layDanhSachNguoiKy,

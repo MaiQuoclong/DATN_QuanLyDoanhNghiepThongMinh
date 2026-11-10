@@ -93,7 +93,7 @@ async function layDanhSachDeXuat(boLoc, { viTri, soLuong }) {
   const { where, thamSo } = dieuKienDeXuat(boLoc);
   const [dong] = await pool.query(
     `SELECT ${COT_DE_XUAT} ${NOI_DE_XUAT} ${where}
-      ORDER BY FIELD(dx.trangThai, 'CHO_DUYET') DESC, dx.ngayTao DESC, dx.id DESC LIMIT ? OFFSET ?`,
+      ORDER BY FIELD(dx.trangThai, 'CHO_KY', 'CHO_DUYET') DESC, dx.ngayTao DESC, dx.id DESC LIMIT ? OFFSET ?`,
     [...thamSo, Number(soLuong), Number(viTri)],
   );
   const [[dem]] = await pool.query(`SELECT COUNT(*) AS tongSo ${NOI_DE_XUAT} ${where}`, thamSo);
@@ -107,18 +107,22 @@ async function layDeXuatTheoId(id, ketNoi = pool) {
 
 async function khoaDeXuat(id, ketNoi) {
   const [dong] = await ketNoi.execute(
-    `SELECT id, nguoiDeXuatId, nhanVienId, loaiDeXuat, tieuDe, lyDo, soTienDeXuat, trangThai
+    `SELECT id, nguoiDeXuatId, nhanVienId, loaiDeXuat, tieuDe, lyDo, soTienDeXuat, trangThai, nguoiXuLyId, ngayCapNhat
        FROM dexuatkhenthuongkyluat WHERE id = ? FOR UPDATE`,
     [id],
   );
   return dong[0] ? { ...dong[0], soTienDeXuat: Number(dong[0].soTienDeXuat ?? 0) } : null;
 }
 
-async function themDeXuat({ nguoiDeXuatId, nhanVienId, loaiDeXuat, tieuDe, lyDo, soTienDeXuat }, ketNoi) {
+// trangThai CHO_DUYET (quanLy/giamDoc đề xuất) hoặc CHO_KY (HR lập trực tiếp, nguoiXuLyId = giamDoc được trình ký)
+async function themDeXuat(
+  { nguoiDeXuatId, nhanVienId, loaiDeXuat, tieuDe, lyDo, soTienDeXuat, trangThai = 'CHO_DUYET', nguoiXuLyId = null },
+  ketNoi,
+) {
   const [kq] = await ketNoi.execute(
-    `INSERT INTO dexuatkhenthuongkyluat (nguoiDeXuatId, nhanVienId, loaiDeXuat, tieuDe, lyDo, soTienDeXuat, trangThai)
-     VALUES (?, ?, ?, ?, ?, ?, 'CHO_DUYET')`,
-    [nguoiDeXuatId, nhanVienId, loaiDeXuat, tieuDe, lyDo, soTienDeXuat],
+    `INSERT INTO dexuatkhenthuongkyluat (nguoiDeXuatId, nhanVienId, loaiDeXuat, tieuDe, lyDo, soTienDeXuat, trangThai, nguoiXuLyId)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [nguoiDeXuatId, nhanVienId, loaiDeXuat, tieuDe, lyDo, soTienDeXuat, trangThai, nguoiXuLyId],
   );
   return kq.insertId;
 }
