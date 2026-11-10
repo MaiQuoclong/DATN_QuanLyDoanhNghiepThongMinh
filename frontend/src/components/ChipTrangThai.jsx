@@ -10,6 +10,7 @@ const BANG_TRANG_THAI = {
   DANG_MO: ['Đang mở', 'xanh'],
   DANG_AP_DUNG: ['Đang áp dụng', 'xanh'],
   CHO_DUYET: ['Chờ duyệt', 'cam'],
+  CHO_KY: ['Chờ ký', 'cam'],
   THU_VIEC: ['Thử việc', 'cam'],
   TU_CHOI: ['Từ chối', 'do'],
   KHOA: ['Bị khóa', 'do'],
