@@ -14,3 +14,7 @@ venv/
 
 # Logs
 *.log
+
+# Tệp quy chế do HR tải lên (giữ tệp mẫu seed trong mau/)
+backend/uploads/quyChe/*
+!backend/uploads/quyChe/mau/

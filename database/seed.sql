@@ -570,3 +570,17 @@ INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao
   (4, 'TU_CHOI_DE_XUAT_KTKL', '127.0.0.1', 'Đề xuất #3', LEAST(TIMESTAMP(CURDATE() - INTERVAL 9 DAY, '15:00:00'), NOW())),
   (3, 'TAO_DE_XUAT_KTKL', '127.0.0.1', 'KHEN_THUONG NV0005: Khen thưởng hỗ trợ khách hàng xuất sắc', LEAST(TIMESTAMP(CURDATE() - INTERVAL 2 DAY, '09:00:00'), NOW())),
   (9, 'TAO_DE_XUAT_KTKL', '127.0.0.1', 'KY_LUAT NV0010: Kỷ luật vi phạm quy trình báo giá', LEAST(TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '14:00:00'), NOW()));
+
+-- ---------------------------------------------------------------------
+-- Tài liệu quy chế (Module 5 RAG): tệp mẫu .md nằm sẵn trong backend/uploads/quyChe/mau/ (commit kèm mã nguồn);
+-- duongDanTep tương đối so với THU_MUC_TAI_LIEU. HR NV0004 tải lên.
+-- ---------------------------------------------------------------------
+INSERT INTO tailieuquyche (id, maTaiLieu, tieuDe, duongDanTep, nguoiTaiLenId, ngayTao) VALUES
+  (1, 'QC-NOIQUY',   'Nội quy lao động',       'mau/QC-NOIQUY.md',   4, LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:00:00'), NOW())),
+  (2, 'QC-NGHIPHEP', 'Quy chế nghỉ phép',      'mau/QC-NGHIPHEP.md', 4, LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:10:00'), NOW())),
+  (3, 'QC-LUONG',    'Quy chế lương, thưởng',  'mau/QC-LUONG.md',    4, LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:20:00'), NOW()));
+
+INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
+  (4, 'TAI_LEN_TAI_LIEU', '127.0.0.1', 'QC-NOIQUY (id 1)',   LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:00:00'), NOW())),
+  (4, 'TAI_LEN_TAI_LIEU', '127.0.0.1', 'QC-NGHIPHEP (id 2)', LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:10:00'), NOW())),
+  (4, 'TAI_LEN_TAI_LIEU', '127.0.0.1', 'QC-LUONG (id 3)',    LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:20:00'), NOW()));
