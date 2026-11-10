@@ -11,6 +11,7 @@ describe('GET /api/v1/sucKhoe', () => {
     expect(res.body).toMatchObject({ success: true, code: 200 });
     expect(res.body.data.mayChu).toBe('HOAT_DONG');
     expect(['KET_NOI', 'MAT_KET_NOI']).toContain(res.body.data.csdl);
+    expect(['HOAT_DONG', 'MAT_KET_NOI']).toContain(res.body.data.ai);
   });
 });
 
