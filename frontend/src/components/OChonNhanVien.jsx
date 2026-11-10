@@ -4,10 +4,11 @@ import goiApi from '../services/goiApi';
 const SO_KET_QUA = 50;
 
 // Chọn nhân viên bằng tìm kiếm (tên/mã) qua GET /nhanVien, không tải sẵn cả danh sách.
-// loc: { phongBanId?, trangThai?: [...trangThaiLamViec], boQuaIds?: [...id] } - lọc thêm phía giao diện.
+// loc: { phongBanId?, trangThai?: [...trangThaiLamViec], boQuaIds?: [...id] } - lọc ở server (giao diện kiểm tra lại).
 function OChonNhanVien({ value, onChange, loc = {}, batBuoc }) {
   const [tuKhoa, setTuKhoa] = useState('');
   const [luaChon, setLuaChon] = useState([]);
+  const [daTai, setDaTai] = useState(false); // đã có kết quả tìm kiếm đầu tiên
   const [loi, setLoi] = useState('');
   const { phongBanId, trangThai, boQuaIds } = loc;
   const khoaLoc = JSON.stringify([phongBanId, trangThai, boQuaIds]);
@@ -16,13 +17,19 @@ function OChonNhanVien({ value, onChange, loc = {}, batBuoc }) {
     let huy = false;
     const hen = setTimeout(async () => {
       try {
-        // API chỉ lọc được 1 trạng thái: một trạng thái thì lọc ở server, nhiều trạng thái thì lấy dư rồi lọc lại
-        const motTrangThai = trangThai?.length === 1 ? trangThai[0] : undefined;
+        // Lọc trạng thái ở server (nhiều trạng thái cách nhau bởi dấu phẩy) để 50 kết quả đều hợp lệ
         const kq = await goiApi.get('/nhanVien', {
-          params: { tuKhoa: tuKhoa.trim() || undefined, phongBanId, trangThaiLamViec: motTrangThai, kichThuoc: SO_KET_QUA },
+          params: {
+            tuKhoa: tuKhoa.trim() || undefined,
+            phongBanId,
+            trangThaiLamViec: trangThai?.length ? trangThai.join(',') : undefined,
+            boQuaIds: boQuaIds?.length ? boQuaIds.join(',') : undefined,
+            kichThuoc: SO_KET_QUA,
+          },
         });
         if (huy) return;
         setLoi('');
+        setDaTai(true);
         setLuaChon(
           kq.data.items.filter(
             (nv) =>
@@ -45,7 +52,7 @@ function OChonNhanVien({ value, onChange, loc = {}, batBuoc }) {
 
   // Người đã chọn không còn trong kết quả tìm mới -> bỏ chọn, tránh gửi id không thấy trên màn hình
   useEffect(() => {
-    if (value && !luaChon.some((nv) => String(nv.id) === String(value))) onChange({ target: { value: '' } });
+    if (daTai && value && !luaChon.some((nv) => String(nv.id) === String(value))) onChange({ target: { value: '' } });
     // Chỉ chạy khi kết quả tìm đổi; value/onChange không phải tác nhân (onChange của cha đổi mỗi lần render)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [luaChon]);

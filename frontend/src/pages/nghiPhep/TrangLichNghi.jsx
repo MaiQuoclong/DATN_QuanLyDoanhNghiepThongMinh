@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import goiApi from '../../services/goiApi';
 import useThongBao from '../../hooks/useThongBao';
+import useNgayLe from '../../hooks/useNgayLe';
 import TheThongKe from '../../components/TheThongKe';
 import HopThoaiChiTietDon from '../../components/nghiPhep/HopThoaiChiTietDon';
 import { layThu, thangHienTai } from '../../utils/dinhDang';
+import { locPhongBanTrongPhamVi } from '../../utils/phongBan';
+import { useXacThuc } from '../../context/NguCanhXacThuc';
 import './TrangLichNghi.css';
 
 function layCacNgay(thang) {
@@ -18,15 +21,17 @@ function TrangLichNghi() {
   const [phongBanId, setPhongBanId] = useState('');
   const [phongBan, setPhongBan] = useState([]);
   const [lich, setLich] = useState(null);
+  const [dangTai, setDangTai] = useState(true); // chỉ lần tải đầu (lần sau giữ lịch cũ tới khi có dữ liệu mới)
+  const { nguoiDung } = useXacThuc();
   const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangXem, setDangXem] = useState(null);
 
   useEffect(() => {
     goiApi
       .get('/phongBan')
-      .then((kq) => setPhongBan(kq.data))
+      .then((kq) => setPhongBan(locPhongBanTrongPhamVi(kq.data, nguoiDung)))
       .catch(() => {});
-  }, []);
+  }, [nguoiDung]);
 
   const [lamMoi, setLamMoi] = useState(0);
 
@@ -46,6 +51,9 @@ function TrangLichNghi() {
           setLich(null);
           baoLoi(e.message);
         }
+      })
+      .finally(() => {
+        if (!daHuy) setDangTai(false);
       });
     return () => {
       daHuy = true;
@@ -53,6 +61,8 @@ function TrangLichNghi() {
   }, [thang, phongBanId, lamMoi, baoLoi]);
 
   const cacNgay = useMemo(() => layCacNgay(thang), [thang]);
+  const { ngayLe, loi: loiNgayLe } = useNgayLe([thang.slice(0, 4)]);
+  const laNgayNghi = (ngay) => ['T7', 'CN'].includes(layThu(ngay)) || ngayLe.has(ngay);
   const homNay = new Date().toLocaleDateString('sv-SE');
 
   // Gom đơn theo nhân viên: { nhanVienId: { hoVaTen, maNhanVien, tenPhongBan, don: [...] } }
@@ -67,9 +77,13 @@ function TrangLichNghi() {
     return [...theoNguoi.values()].sort((a, b) => a.maNhanVien.localeCompare(b.maNhanVien));
   }, [lich]);
 
-  const donTrongNgay = (nguoi, ngay) => nguoi.danhSachDon.find((d) => d.ngayBatDau <= ngay && ngay <= d.ngayKetThuc);
+  // Một ngày có thể có 2 đơn nửa ngày (sáng + chiều)
+  const donTrongNgay = (nguoi, ngay) => nguoi.danhSachDon.filter((d) => d.ngayBatDau <= ngay && ngay <= d.ngayKetThuc);
   const items = lich?.items ?? [];
-  const homNayNghi = items.filter((d) => d.trangThai === 'DA_DUYET' && d.ngayBatDau <= homNay && homNay <= d.ngayKetThuc).length;
+  // Đếm theo người (2 đơn nửa ngày của một người vẫn là 1 người)
+  const homNayNghi = new Set(
+    items.filter((d) => d.trangThai === 'DA_DUYET' && d.ngayBatDau <= homNay && homNay <= d.ngayKetThuc).map((d) => d.nhanVienId),
+  ).size;
 
   return (
     <div>
@@ -99,6 +113,7 @@ function TrangLichNghi() {
 
       {loi && <div className="thongBao loi">{loi}</div>}
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
+      {dangTai && <div className="thongBao">Đang tải lịch nghỉ...</div>}
       {lich?.biCat && <div className="thongBao canhBao">Tháng có quá nhiều đơn, lịch chỉ hiện 1000 đơn đầu; hãy lọc theo phòng ban.</div>}
       <div className="luoiThe" style={{ marginBottom: 16 }}>
         <TheThongKe tieuDe="Người có lịch nghỉ trong tháng" giaTri={hang.length} moTa={`${items.length} đơn`} />
@@ -122,8 +137,9 @@ function TrangLichNghi() {
         </span>
         <span>
           <i style={{ background: 'var(--mauTrungTinhNhat)' }} />
-          Thứ 7, Chủ nhật
+          Thứ 7, Chủ nhật, ngày lễ
         </span>
+        {loiNgayLe && <span>(chưa tải được ngày lễ)</span>}
       </div>
       <div className="the luoiLichNghi">
         <table>
@@ -133,7 +149,11 @@ function TrangLichNghi() {
               {cacNgay.map((ngay) => {
                 const thu = layThu(ngay);
                 return (
-                  <th key={ngay} className={`${['T7', 'CN'].includes(thu) ? 'cuoiTuan' : ''} ${ngay === homNay ? 'homNay' : ''}`}>
+                  <th
+                    key={ngay}
+                    className={`${laNgayNghi(ngay) ? 'cuoiTuan' : ''} ${ngay === homNay ? 'homNay' : ''}`}
+                    title={ngayLe.has(ngay) ? 'Ngày lễ' : undefined}
+                  >
                     {Number(ngay.slice(8))}
                     <br />
                     {thu}
@@ -159,17 +179,25 @@ function TrangLichNghi() {
                   </span>
                 </td>
                 {cacNgay.map((ngay) => {
-                  const cuoiTuan = ['T7', 'CN'].includes(layThu(ngay));
-                  const don = cuoiTuan ? null : donTrongNgay(nguoi, ngay);
-                  const lop = don ? (don.trangThai === 'DA_DUYET' ? 'daDuyet' : 'choDuyet') : cuoiTuan ? 'cuoiTuan' : '';
+                  const ngayNghi = laNgayNghi(ngay);
+                  const dsDon = ngayNghi ? [] : donTrongNgay(nguoi, ngay);
+                  const coChoDuyet = dsDon.some((d) => d.trangThai === 'CHO_DUYET');
+                  const lop = dsDon.length ? (coChoDuyet ? 'choDuyet' : 'daDuyet') : ngayNghi ? 'cuoiTuan' : '';
                   return (
                     <td
                       key={ngay}
                       className={lop}
-                      title={don ? `${don.maDon} · ${don.tenLoai}` : undefined}
-                      onClick={don ? () => setDangXem(don) : undefined}
+                      title={dsDon.length ? dsDon.map((d) => `${d.maDon} · ${d.tenLoai}`).join(' | ') : undefined}
+                      onClick={dsDon.length === 1 ? () => setDangXem(dsDon[0]) : undefined}
                     >
-                      {don && don.soNgayNghi === 0.5 ? '½' : ''}
+                      {dsDon.length === 1 && dsDon[0].soNgayNghi === 0.5 && '½'}
+                      {/* 2 đơn nửa ngày: mỗi nửa ô mở đúng đơn của nó */}
+                      {dsDon.length > 1 &&
+                        dsDon.map((d) => (
+                          <span key={d.id} className="nuaO" role="button" onClick={() => setDangXem(d)}>
+                            ½
+                          </span>
+                        ))}
                     </td>
                   );
                 })}

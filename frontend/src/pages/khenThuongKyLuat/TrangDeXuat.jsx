@@ -21,13 +21,15 @@ const truongNoiDung = [
   { ten: 'lyDo', nhan: 'Lý do', kieu: 'textarea', batBuoc: true },
 ];
 
+// dsNguoiKy: mảng, hoặc hàm (giaTriForm) => mảng khi phải loại người nhận đang chọn trong form
 const truongNguoiKy = (dsNguoiKy) => ({
   ten: 'nguoiKyDuyetId',
   nhan: 'Giám đốc ký',
   kieu: 'select',
   batBuoc: true,
   rongHet: true,
-  luaChon: dsNguoiKy.map((n) => ({ giaTri: n.id, nhan: `${n.maNhanVien} - ${n.hoVaTen}` })),
+  luaChon: (g) =>
+    (typeof dsNguoiKy === 'function' ? dsNguoiKy(g) : dsNguoiKy).map((n) => ({ giaTri: n.id, nhan: `${n.maNhanVien} - ${n.hoVaTen}` })),
 });
 
 const truongDeXuat = ({ coNhanVien, dsNguoiKy }) => [
@@ -222,7 +224,11 @@ function TrangDeXuat() {
         <HopThoaiBieuMau
           tieuDe={laHR ? 'Lập khen thưởng - kỷ luật và trình Giám đốc ký' : 'Tạo đề xuất khen thưởng - kỷ luật'}
           moTa={laHR ? 'Quyết định chỉ được ban hành (và tính vào lương) khi Giám đốc được chọn ký.' : undefined}
-          truong={truongDeXuat({ coNhanVien: true, dsNguoiKy: laHR ? dsKyDuoc : null })}
+          truong={truongDeXuat({
+            coNhanVien: true,
+            // Giám đốc không ký quyết định về chính mình: bỏ nhân viên đang chọn khỏi danh sách người ký
+            dsNguoiKy: laHR ? (g) => dsKyDuoc.filter((n) => String(n.id) !== String(g.nhanVienId)) : null,
+          })}
           nhanNutGui={laHR ? 'Trình ký' : 'Gửi đề xuất'}
           onGui={async (g) => xong((await goiApi.post('/deXuatKhenThuongKyLuat', locThamSo(g))).message)}
           onDong={() => setDangTao(false)}

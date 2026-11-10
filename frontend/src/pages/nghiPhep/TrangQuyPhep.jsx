@@ -3,6 +3,7 @@ import { CalendarPlus, Plus } from 'lucide-react';
 import goiApi from '../../services/goiApi';
 import useThongBao from '../../hooks/useThongBao';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
+import { locPhongBanTrongPhamVi } from '../../utils/phongBan';
 import BangDuLieu from '../../components/BangDuLieu';
 import ChipTrangThai from '../../components/ChipTrangThai';
 import HopThoaiBieuMau from '../../components/HopThoaiBieuMau';
@@ -26,6 +27,8 @@ function BangQuyPhep({ laHR, nhanVienIdCuaToi }) {
   const [trang, setTrang] = useState(1);
   const [phongBan, setPhongBan] = useState([]);
   const [ketQua, setKetQua] = useState(null);
+  const [dangTai, setDangTai] = useState(true);
+  const { nguoiDung } = useXacThuc();
   const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangSua, setDangSua] = useState(null);
   const [dangCap, setDangCap] = useState(false);
@@ -33,18 +36,20 @@ function BangQuyPhep({ laHR, nhanVienIdCuaToi }) {
   useEffect(() => {
     goiApi
       .get('/phongBan')
-      .then((kq) => setPhongBan(kq.data))
+      .then((kq) => setPhongBan(locPhongBanTrongPhamVi(kq.data, nguoiDung)))
       .catch(() => {});
-  }, []);
+  }, [nguoiDung]);
 
   const tai = useCallback(() => {
+    setDangTai(true);
     goiApi
       .get('/quyPhep', { params: locThamSo({ nam, tuKhoa, ...loc, trang, kichThuoc: 20 }) })
       .then((kq) => {
         setKetQua(kq.data);
         baoLoi('');
       })
-      .catch((e) => baoLoi(e.message));
+      .catch((e) => baoLoi(e.message))
+      .finally(() => setDangTai(false));
   }, [nam, tuKhoa, loc, trang, baoLoi]);
 
   useEffect(() => {
@@ -142,6 +147,7 @@ function BangQuyPhep({ laHR, nhanVienIdCuaToi }) {
         cot={cot}
         khoaDong="nhanVienId"
         duLieu={ketQua?.items ?? []}
+        dangTai={dangTai}
         onHanhDong={
           laHR
             ? (d) =>
@@ -158,11 +164,22 @@ function BangQuyPhep({ laHR, nhanVienIdCuaToi }) {
         <HopThoaiBieuMau
           tieuDe={`Cấp quỹ phép năm ${nam}`}
           moTa="Chỉ cấp cho nhân viên chưa nghỉ việc và chưa có quỹ năm này; người đã có quỹ giữ nguyên."
-          truong={[{ ten: 'tongSoNgayPhep', nhan: 'Số ngày phép mỗi người', kieu: 'number', batBuoc: true, rongHet: true }]}
-          giaTriBanDau={{ tongSoNgayPhep: '12' }}
+          truong={[
+            {
+              ten: 'tongSoNgayPhep',
+              nhan: 'Số ngày phép mỗi người (tùy chọn)',
+              kieu: 'number',
+              rongHet: true,
+              goiY: 'Để trống: tính theo Bộ luật Lao động',
+              ghiChu:
+                'Để trống: 12 ngày + 1 ngày cho mỗi 5 năm thâm niên; người vào làm trong năm tính theo tỷ lệ số tháng làm việc. Nhập số để áp chung cho mọi người.',
+            },
+          ]}
+          giaTriBanDau={{ tongSoNgayPhep: '' }}
           nhanNutGui="Cấp quỹ"
           onGui={async (giaTri) => {
-            const kq = await goiApi.post('/quyPhep/capNam', { nam, tongSoNgayPhep: Number(giaTri.tongSoNgayPhep) });
+            const tong = String(giaTri.tongSoNgayPhep ?? '').trim();
+            const kq = await goiApi.post('/quyPhep/capNam', { nam, ...(tong === '' ? {} : { tongSoNgayPhep: Number(tong) }) });
             setDangCap(false);
             baoThanhCong(kq.message);
             tai();
@@ -219,6 +236,7 @@ function chuyenGiaTriLoai(giaTri) {
 
 function BangLoaiNghiPhep({ laHR }) {
   const [dsLoai, setDsLoai] = useState([]);
+  const [dangTai, setDangTai] = useState(true);
   const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangThem, setDangThem] = useState(false);
   const [dangSua, setDangSua] = useState(null);
@@ -230,7 +248,8 @@ function BangLoaiNghiPhep({ laHR }) {
         setDsLoai(kq.data);
         baoLoi('');
       })
-      .catch((e) => baoLoi(e.message));
+      .catch((e) => baoLoi(e.message))
+      .finally(() => setDangTai(false));
   }, [baoLoi]);
   useEffect(tai, [tai]);
 
@@ -275,6 +294,7 @@ function BangLoaiNghiPhep({ laHR }) {
       <BangDuLieu
         cot={cot}
         duLieu={dsLoai}
+        dangTai={dangTai}
         onHanhDong={laHR ? (d) => (baoLoi(''), setDangSua(d)) : undefined}
         thongBaoRong="Chưa có loại nghỉ phép"
       />

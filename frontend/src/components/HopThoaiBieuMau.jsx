@@ -4,7 +4,8 @@ import NutBam from './NutBam';
 import OChonNhanVien from './OChonNhanVien';
 
 // Hộp thoại biểu mẫu theo cấu hình trường.
-// truong: [{ ten, nhan, kieu?: 'text'|'date'|'number'|'select'|'textarea'|'nhanVien', luaChon?: [{giaTri, nhan}],
+// truong: [{ ten, nhan, kieu?: 'text'|'date'|'number'|'select'|'textarea'|'nhanVien',
+//            luaChon?: [{giaTri, nhan}] hoặc hàm (giaTriForm) => [...] khi lựa chọn phụ thuộc trường khác,
 //            locNhanVien? (kieu 'nhanVien', xem OChonNhanVien), batBuoc?, rongHet?, goiY?, ghiChu? }]
 // loiNgoai: lỗi của trang phát sinh khi hộp thoại đang mở (để không bị lớp phủ che).
 // onGui(giaTri) trả Promise; lỗi API hiển thị trong hộp thoại, thành công thì onDong do nơi gọi quyết định.
@@ -25,7 +26,18 @@ function HopThoaiBieuMau({ tieuDe, truong, giaTriBanDau = {}, nhanNutGui = 'Lưu
     }
   };
 
-  const doi = (ten) => (e) => setGiaTri((cu) => ({ ...cu, [ten]: e.target.value }));
+  const layLuaChon = (luaChon, gt) => (typeof luaChon === 'function' ? luaChon(gt) : luaChon);
+  // Đổi một trường có thể làm lựa chọn đang chọn của select phụ thuộc không còn hợp lệ -> xóa lựa chọn đó
+  const doi = (ten) => (e) =>
+    setGiaTri((cu) => {
+      const moi = { ...cu, [ten]: e.target.value };
+      for (const t of truong) {
+        if (t.kieu === 'select' && typeof t.luaChon === 'function' && moi[t.ten] !== '') {
+          if (!t.luaChon(moi).some((lc) => String(lc.giaTri) === String(moi[t.ten]))) moi[t.ten] = '';
+        }
+      }
+      return moi;
+    });
 
   return (
     <HopThoai
@@ -55,7 +67,7 @@ function HopThoaiBieuMau({ tieuDe, truong, giaTriBanDau = {}, nhanNutGui = 'Lưu
             {kieu === 'select' && (
               <select value={giaTri[ten]} onChange={doi(ten)} required={batBuoc}>
                 <option value="">-- Chọn --</option>
-                {luaChon.map((lc) => (
+                {layLuaChon(luaChon, giaTri).map((lc) => (
                   <option key={lc.giaTri} value={lc.giaTri}>
                     {lc.nhan}
                   </option>
