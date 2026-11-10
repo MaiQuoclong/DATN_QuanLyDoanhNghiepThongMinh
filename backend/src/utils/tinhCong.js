@@ -1,3 +1,4 @@
+const { laCuoiTuan, laNgayNghiChung } = require('./ngayLe');
 const { THAM_SO_CHAM_CONG } = require('../config/thamSoNghiepVu');
 
 // Đổi 'HH:MM[:SS]' sang số phút trong ngày
@@ -12,20 +13,15 @@ function chongLap(batDau1, ketThuc1, batDau2, ketThuc2) {
 
 const lamTronGio = (phut) => Math.round((phut / 60) * 100) / 100;
 
-function laCuoiTuan(ngay) {
-  const thu = new Date(`${ngay}T00:00:00Z`).getUTCDay();
-  return thu === 0 || thu === 6;
-}
-
 // Tính chỉ số một ngày công từ giờ vào/ra:
 // - Ngày thường: giờ thực tế = phần giao với ca 08:00-17:00 trừ nghỉ trưa; OT = phần sau giờ ra ca (đủ ngưỡng);
 //   đi muộn khi vào sau giờ vào ca + ngưỡng; về sớm khi ra trước giờ ra ca.
-// - Thứ 7, Chủ nhật: toàn bộ thời gian (trừ nghỉ trưa) là làm thêm, không xét đi muộn/về sớm.
+// - Thứ 7, Chủ nhật, ngày lễ: toàn bộ thời gian (trừ nghỉ trưa) là làm thêm, không xét đi muộn/về sớm.
 // Chưa check-out (gioRa null) thì chưa có giờ công.
 function tinhChiSoCong(ngay, gioVao, gioRa) {
   const ts = THAM_SO_CHAM_CONG;
   const vao = doiPhut(gioVao);
-  const cuoiTuan = laCuoiTuan(ngay);
+  const cuoiTuan = laNgayNghiChung(ngay); // T7, CN hoặc ngày lễ
   const ketQua = {
     soGioLamThucTe: 0,
     soGioLamThemOT: 0,

@@ -15,6 +15,7 @@ const {
   tinhBaoHiem,
   demSoThangKy,
   tinhThuongKpi,
+  tinhGioLamThemQuyDoi,
 } = require('../utils/tinhLuong');
 
 // Quyền theo docs/phan-quyen.md mục 7
@@ -95,7 +96,7 @@ async function sinhPhieu(bangId, thang, ketNoi) {
         luongCoBan: nv.luongCoBan,
         mucPhuCap: nv.mucPhuCap,
         soNgayCongThucTe,
-        tongGioLamThem: banGhi.reduce((s, c) => s + Number(c.soGioLamThemOT), 0),
+        gioLamThemQuyDoi: tinhGioLamThemQuyDoi(banGhi),
         thuongPhat: (thuongPhat.get(nv.nhanVienId) ?? 0) + (thuongKpi.get(nv.nhanVienId) ?? 0),
       },
       ngayCongChuan,

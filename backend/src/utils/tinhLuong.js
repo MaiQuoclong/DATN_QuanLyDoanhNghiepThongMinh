@@ -1,10 +1,23 @@
 const { THAM_SO_LUONG, THAM_SO_KPI } = require('../config/thamSoNghiepVu');
 const { layNgayLamViec } = require('./tinhNgayNghi');
+const { laCuoiTuan, laNgayLe } = require('./ngayLe');
+
+// Hệ số làm thêm theo loại ngày của bản ghi chấm công (Điều 98)
+function heSoLamThemCuaNgay(ngay) {
+  if (laNgayLe(ngay)) return THAM_SO_LUONG.heSoLamThemNgayLe;
+  if (laCuoiTuan(ngay)) return THAM_SO_LUONG.heSoLamThemCuoiTuan;
+  return THAM_SO_LUONG.heSoLamThem;
+}
+
+// Giờ làm thêm quy đổi = Σ giờ OT × hệ số của ngày; banGhi: [{ ngayChamCong, soGioLamThemOT }]
+function tinhGioLamThemQuyDoi(banGhi) {
+  return banGhi.reduce((tong, b) => tong + Number(b.soGioLamThemOT) * heSoLamThemCuaNgay(b.ngayChamCong), 0);
+}
 const { khoangNgayCuaThang } = require('./ngayThang');
 
 const lamTronDong = (so) => Math.round(so);
 
-// Số ngày công chuẩn của tháng = số ngày thứ 2 - thứ 6 (chưa trừ ngày lễ, cùng quy ước module chấm công)
+// Số ngày công chuẩn của tháng = số ngày thứ 2 - thứ 6 trừ ngày lễ (cùng quy ước module chấm công)
 function demNgayCongChuan(thang) {
   const { tuNgay, denNgay } = khoangNgayCuaThang(thang);
   return layNgayLamViec(tuNgay, denNgay).length;
@@ -12,7 +25,8 @@ function demNgayCongChuan(thang) {
 
 // Ngày công thực tế: duyệt từng ngày làm việc trong tháng
 //  - có đơn nghỉ cả ngày DA_DUYET: loại có lương tính 1 công, không lương 0
-//  - có đơn nghỉ nửa ngày: phần nghỉ 0.5 (có lương mới tính) + 0.5 nếu có bản ghi chấm công
+//  - có đơn nghỉ nửa ngày: mỗi đơn 0.5 (có lương mới tính) + buổi còn lại 0.5 nếu có bản ghi chấm công
+//    (2 đơn nửa ngày sáng + chiều thì không còn buổi làm)
 //  - còn lại: có bản ghi chấm công tính 1 công
 // cacNgayChamCong: Set 'YYYY-MM-DD'; cacDonNghi: [{ ngayBatDau, ngayKetThuc, soNgayNghi, coLuong }]
 function tinhNgayCong(thang, cacNgayChamCong, cacDonNghi) {
@@ -20,11 +34,16 @@ function tinhNgayCong(thang, cacNgayChamCong, cacDonNghi) {
   const ngayChuan = layNgayLamViec(tuNgay, denNgay);
   let cong = 0;
   for (const ngay of ngayChuan) {
-    const don = cacDonNghi.find((d) => d.ngayBatDau <= ngay && ngay <= d.ngayKetThuc);
+    const cacDon = cacDonNghi.filter((d) => d.ngayBatDau <= ngay && ngay <= d.ngayKetThuc);
     const coChamCong = cacNgayChamCong.has(ngay);
-    if (!don) cong += coChamCong ? 1 : 0;
-    else if (Number(don.soNgayNghi) < 1) cong += (don.coLuong ? 0.5 : 0) + (coChamCong ? 0.5 : 0);
-    else cong += don.coLuong ? 1 : 0;
+    const caNgay = cacDon.find((d) => Number(d.soNgayNghi) >= 1);
+    if (caNgay) cong += caNgay.coLuong ? 1 : 0;
+    else {
+      // 0, 1 hoặc 2 đơn nửa ngày: mỗi đơn có lương 0.5; buổi còn lại (nếu còn) có chấm công thì 0.5
+      const nuaNgayCoLuong = cacDon.filter((d) => d.coLuong).length * 0.5;
+      const buoiConLai = 1 - cacDon.length * 0.5;
+      cong += nuaNgayCoLuong + (coChamCong ? (cacDon.length === 0 ? 1 : buoiConLai) : 0);
+    }
   }
   return Math.min(cong, ngayChuan.length);
 }
@@ -95,13 +114,14 @@ function apThuongPhat(phieu, thuongPhat, ngayCongChuan) {
   return ketQua;
 }
 
-// Sinh phiếu nháp từ hợp đồng + công + OT + thưởng/phạt
-function lapPhieu({ luongCoBan, mucPhuCap, soNgayCongThucTe, tongGioLamThem, thuongPhat }, ngayCongChuan) {
+// Sinh phiếu nháp từ hợp đồng + công + OT + thưởng/phạt.
+// gioLamThemQuyDoi (đã nhân hệ số theo loại ngày, xem tinhGioLamThemQuyDoi); không truyền thì tongGioLamThem × 150%
+function lapPhieu({ luongCoBan, mucPhuCap, soNgayCongThucTe, tongGioLamThem = 0, gioLamThemQuyDoi, thuongPhat }, ngayCongChuan) {
   const donGiaGio = ngayCongChuan ? luongCoBan / ngayCongChuan / THAM_SO_LUONG.soGioCongMotNgay : 0;
   const phieu = {
     soNgayCongThucTe,
     luongCoBan,
-    luongLamThemOT: lamTronDong(tongGioLamThem * donGiaGio * THAM_SO_LUONG.heSoLamThem),
+    luongLamThemOT: lamTronDong((gioLamThemQuyDoi ?? tongGioLamThem * THAM_SO_LUONG.heSoLamThem) * donGiaGio),
     thuongKPI: 0,
     tongPhuCap: tinhPhuCap(mucPhuCap, soNgayCongThucTe, ngayCongChuan),
     khauTruBaoHiem: tinhBaoHiem(luongCoBan, soNgayCongThucTe, ngayCongChuan),
@@ -134,4 +154,6 @@ module.exports = {
   tinhThueChoPhieu,
   lapPhieu,
   apThuongPhat,
+  heSoLamThemCuaNgay,
+  tinhGioLamThemQuyDoi,
 };
