@@ -9,8 +9,16 @@ const { pool } = require('../src/config/ketNoiCsdl');
 const MAT_KHAU = 'MatKhau@123';
 const URL = '/api/v1/nhanVien';
 const COT_HO_SO = [
-  'hoVaTen', 'gioiTinh', 'ngaySinh', 'soDienThoai', 'diaChi', 'soTaiKhoanNganHang', 'tenNganHang',
-  'chucDanhPhongBanId', 'ngayVaoLam', 'trangThaiLamViec',
+  'hoVaTen',
+  'gioiTinh',
+  'ngaySinh',
+  'soDienThoai',
+  'diaChi',
+  'soTaiKhoanNganHang',
+  'tenNganHang',
+  'chucDanhPhongBanId',
+  'ngayVaoLam',
+  'trangThaiLamViec',
 ];
 
 const token = {};
@@ -52,15 +60,15 @@ async function taoNhanVien(ghiDe) {
 async function demNhatKy(hanhDong, nguoiDungId) {
   const [dong] = await pool.execute(
     'SELECT COUNT(*) AS n FROM nhatkyhethong WHERE id > ? AND hanhDong = ? AND (? IS NULL OR nguoiDungId = ?)',
-    [mocNhatKy, hanhDong, nguoiDungId ?? null, nguoiDungId ?? null]
+    [mocNhatKy, hanhDong, nguoiDungId ?? null, nguoiDungId ?? null],
   );
   return Number(dong[0].n);
 }
 async function layNhatKy(hanhDong) {
-  const [dong] = await pool.execute(
-    'SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id',
-    [mocNhatKy, hanhDong]
-  );
+  const [dong] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id', [
+    mocNhatKy,
+    hanhDong,
+  ]);
   return dong;
 }
 async function trangThaiTaiKhoan(nguoiDungId) {
@@ -79,7 +87,7 @@ async function demBang(bang) {
 // Mã nhân viên kế tiếp thứ k (k = 1 là mã sẽ sinh tiếp theo) dựa trên MAX(maNhanVien) dạng NVxxxx
 async function maKeTiep(k = 1) {
   const [d] = await pool.query(
-    "SELECT COALESCE(MAX(CAST(SUBSTRING(maNhanVien, 3) AS UNSIGNED)), 0) AS so FROM nhanvien WHERE maNhanVien REGEXP '^NV[0-9]+$'"
+    "SELECT COALESCE(MAX(CAST(SUBSTRING(maNhanVien, 3) AS UNSIGNED)), 0) AS so FROM nhanvien WHERE maNhanVien REGEXP '^NV[0-9]+$'",
   );
   return `NV${String(Number(d[0].so) + k).padStart(4, '0')}`;
 }
@@ -104,7 +112,11 @@ beforeAll(async () => {
   const [ndvt] = await pool.query('SELECT nguoiDungId, vaiTroId FROM nguoidungvaitro');
   const [vt] = await pool.query('SELECT id, maVaiTro FROM vaitro');
   anhChup = {
-    nv, nd, cdpb, ndvt, vt,
+    nv,
+    nd,
+    cdpb,
+    ndvt,
+    vt,
     maxNhanVien: Math.max(...nv.map((d) => d.id)),
     maxNguoiDung: Math.max(...nd.map((d) => d.id)),
   };
@@ -130,10 +142,10 @@ afterEach(async () => {
     await pool.execute('UPDATE vaitro SET maVaiTro = ? WHERE id = ?', [v.maVaiTro, v.id]);
   }
   for (const d of anhChup.nv) {
-    await pool.execute(
-      `UPDATE nhanvien SET ${COT_HO_SO.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`,
-      [...COT_HO_SO.map((c) => d[c]), d.id]
-    );
+    await pool.execute(`UPDATE nhanvien SET ${COT_HO_SO.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`, [
+      ...COT_HO_SO.map((c) => d[c]),
+      d.id,
+    ]);
   }
   for (const d of anhChup.nd) {
     await pool.execute('UPDATE nguoidung SET trangThai = ? WHERE id = ?', [d.trangThai, d.id]);
@@ -225,13 +237,14 @@ describe('GET /api/v1/nhanVien - lọc, tìm kiếm, phân trang', () => {
     expect(res.body.data.phanTrang.kichThuoc).toBe(100);
   });
 
-  test.each([
-    '?trang=0', '?trang=abc', '?kichThuoc=-1', '?kichThuoc=1.5', '?phongBanId=x', '?trangThaiLamViec=PENDING',
-  ])('tham số sai %s trả 400', async (query) => {
-    const res = await goi('get', query, token.hr);
-    expect(res.status).toBe(400);
-    expect(res.body).toEqual({ success: false, code: 400, message: expect.any(String), data: null });
-  });
+  test.each(['?trang=0', '?trang=abc', '?kichThuoc=-1', '?kichThuoc=1.5', '?phongBanId=x', '?trangThaiLamViec=PENDING'])(
+    'tham số sai %s trả 400',
+    async (query) => {
+      const res = await goi('get', query, token.hr);
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({ success: false, code: 400, message: expect.any(String), data: null });
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -240,8 +253,12 @@ describe('GET /api/v1/nhanVien/:id và /toi - chi tiết và phạm vi', () => {
     const res = await goi('get', '/5', token[ten]);
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({
-      id: 5, maNhanVien: 'NV0005', soTaiKhoanNganHang: '0011000000005', tenNganHang: 'MB Bank',
-      tenDangNhap: 'nhanvien', trangThaiTaiKhoan: 'DANG_HOAT_DONG',
+      id: 5,
+      maNhanVien: 'NV0005',
+      soTaiKhoanNganHang: '0011000000005',
+      tenNganHang: 'MB Bank',
+      tenDangNhap: 'nhanvien',
+      trangThaiTaiKhoan: 'DANG_HOAT_DONG',
     });
     expect(res.body.data).not.toHaveProperty('matKhauMaHoa');
   });
@@ -277,7 +294,10 @@ describe('GET /api/v1/nhanVien/:id và /toi - chi tiết và phạm vi', () => {
     expect(res.status).toBe(403);
   });
 
-  test.each([['nhanvien', 5], ['admin', 1]])('%s xem hồ sơ của chính mình (id %i) thành công', async (ten, id) => {
+  test.each([
+    ['nhanvien', 5],
+    ['admin', 1],
+  ])('%s xem hồ sơ của chính mình (id %i) thành công', async (ten, id) => {
     const res = await goi('get', `/${id}`, token[ten]);
     expect(res.status).toBe(200);
     expect(res.body.data.id).toBe(id);
@@ -295,7 +315,12 @@ describe('GET /api/v1/nhanVien/:id và /toi - chi tiết và phạm vi', () => {
   });
 
   test.each([
-    ['admin', 1], ['giamdoc', 2], ['quanly', 3], ['hr', 4], ['nhanvien', 5], ['nhanvien2', 6],
+    ['admin', 1],
+    ['giamdoc', 2],
+    ['quanly', 3],
+    ['hr', 4],
+    ['nhanvien', 5],
+    ['nhanvien2', 6],
   ])('GET /toi của %s trả đúng hồ sơ id %i', async (ten, id) => {
     const res = await goi('get', '/toi', token[ten]);
     expect(res.status).toBe(200);
@@ -311,12 +336,17 @@ describe('GET /api/v1/nhanVien/:id và /toi - chi tiết và phạm vi', () => {
   async function vaiTroTrongDb(nguoiDungId) {
     const [d] = await pool.execute(
       'SELECT v.maVaiTro FROM nguoidungvaitro nv JOIN vaitro v ON v.id = nv.vaiTroId WHERE nv.nguoiDungId = ?',
-      [nguoiDungId]
+      [nguoiDungId],
     );
     return d.map((x) => x.maVaiTro).sort();
   }
 
-  test.each([['hr', 5], ['hr', 3], ['giamdoc', 1], ['giamdoc', 4]])('%s xem hồ sơ id %i có vaiTroTaiKhoan khớp CSDL', async (ten, id) => {
+  test.each([
+    ['hr', 5],
+    ['hr', 3],
+    ['giamdoc', 1],
+    ['giamdoc', 4],
+  ])('%s xem hồ sơ id %i có vaiTroTaiKhoan khớp CSDL', async (ten, id) => {
     const res = await goi('get', `/${id}`, token[ten]);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data.vaiTroTaiKhoan)).toBe(true);
@@ -324,21 +354,26 @@ describe('GET /api/v1/nhanVien/:id và /toi - chi tiết và phạm vi', () => {
   });
 
   test('vaiTroTaiKhoan phản ánh vai trò mới sau khi Admin phân quyền', async () => {
-    const gan = await request(app).put('/api/v1/nguoiDung/6/vaiTro').set('Authorization', `Bearer ${token.admin}`)
+    const gan = await request(app)
+      .put('/api/v1/nguoiDung/6/vaiTro')
+      .set('Authorization', `Bearer ${token.admin}`)
       .send({ vaiTro: ['nhanVien', 'HR'] });
     expect(gan.status).toBe(200);
     const res = await goi('get', '/6', token.hr);
     expect([...res.body.data.vaiTroTaiKhoan].sort()).toEqual(['HR', 'nhanVien']);
   });
 
-  test.each([['quanly', 6], ['quanly', 5], ['nhanvien', 5], ['nhanvien2', 6], ['quanly', 3]])(
-    '%s xem hồ sơ id %i không có trường vaiTroTaiKhoan',
-    async (ten, id) => {
-      const res = await goi('get', `/${id}`, token[ten]);
-      expect(res.status).toBe(200);
-      expect(res.body.data).not.toHaveProperty('vaiTroTaiKhoan');
-    }
-  );
+  test.each([
+    ['quanly', 6],
+    ['quanly', 5],
+    ['nhanvien', 5],
+    ['nhanvien2', 6],
+    ['quanly', 3],
+  ])('%s xem hồ sơ id %i không có trường vaiTroTaiKhoan', async (ten, id) => {
+    const res = await goi('get', `/${id}`, token[ten]);
+    expect(res.status).toBe(200);
+    expect(res.body.data).not.toHaveProperty('vaiTroTaiKhoan');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -351,17 +386,21 @@ describe('POST /api/v1/nhanVien - thêm nhân viên', () => {
     expect(res.body).toMatchObject({ success: true, code: 201, message: expect.any(String) });
     const { nhanVien, taiKhoan } = res.body.data;
     expect(nhanVien).toMatchObject({
-      maNhanVien: maMong, hoVaTen: body.hoVaTen, chucDanhPhongBanId: 5, phongBanId: 4,
-      trangThaiLamViec: 'THU_VIEC', tenDangNhap: body.tenDangNhap, trangThaiTaiKhoan: 'DANG_HOAT_DONG',
+      maNhanVien: maMong,
+      hoVaTen: body.hoVaTen,
+      chucDanhPhongBanId: 5,
+      phongBanId: 4,
+      trangThaiLamViec: 'THU_VIEC',
+      tenDangNhap: body.tenDangNhap,
+      trangThaiTaiKhoan: 'DANG_HOAT_DONG',
     });
     expect(taiKhoan.tenDangNhap).toBe(body.tenDangNhap);
     expect(taiKhoan.matKhauTam).toMatch(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{10}$/);
     expect(JSON.stringify(res.body)).not.toMatch(/matKhauMaHoa|\$2[aby]\$/);
 
-    const [vt] = await pool.execute(
-      'SELECT v.maVaiTro FROM nguoidungvaitro n JOIN vaitro v ON v.id = n.vaiTroId WHERE n.nguoiDungId = ?',
-      [nhanVien.nguoiDungId]
-    );
+    const [vt] = await pool.execute('SELECT v.maVaiTro FROM nguoidungvaitro n JOIN vaitro v ON v.id = n.vaiTroId WHERE n.nguoiDungId = ?', [
+      nhanVien.nguoiDungId,
+    ]);
     expect(vt.map((d) => d.maVaiTro)).toEqual(['nhanVien']);
 
     const nhatKy = await layNhatKy('THEM_NHAN_VIEN');
@@ -376,7 +415,9 @@ describe('POST /api/v1/nhanVien - thêm nhân viên', () => {
     const res = await themNhanVien({ ...body, tenDangNhap: body.tenDangNhap.toUpperCase(), email: body.email.toUpperCase() });
     expect(res.status).toBe(201);
     expect(res.body.data.nhanVien).toMatchObject({
-      tenDangNhap: body.tenDangNhap, email: body.email, trangThaiLamViec: 'CHINH_THUC',
+      tenDangNhap: body.tenDangNhap,
+      email: body.email,
+      trangThaiLamViec: 'CHINH_THUC',
     });
   });
 
@@ -492,6 +533,21 @@ describe('PATCH /api/v1/nhanVien/:id - HR sửa hồ sơ', () => {
     expect(nk[0].chiTiet).toContain('NV0005');
   });
 
+  test('ngày vào làm sau ngày bắt đầu hợp đồng sớm nhất trả 409, bằng ngày đó thì được', async () => {
+    const [[{ somNhat, sauMotNgay }]] = await pool.execute(
+      `SELECT DATE_FORMAT(MIN(ngayBatDau), '%Y-%m-%d') AS somNhat,
+              DATE_FORMAT(DATE_ADD(MIN(ngayBatDau), INTERVAL 1 DAY), '%Y-%m-%d') AS sauMotNgay
+         FROM hopdonglaodong WHERE nhanVienId = 5`,
+    );
+    const [[truoc]] = await pool.execute("SELECT DATE_FORMAT(ngayVaoLam, '%Y-%m-%d') AS ngay FROM nhanvien WHERE id = 5");
+    const res = await goi('patch', '/5', token.hr).send({ ngayVaoLam: sauMotNgay });
+    expect(res.status).toBe(409);
+    const [[sau]] = await pool.execute("SELECT DATE_FORMAT(ngayVaoLam, '%Y-%m-%d') AS ngay FROM nhanvien WHERE id = 5");
+    expect(sau.ngay).toBe(truoc.ngay);
+    expect(await layNhatKy('SUA_NHAN_VIEN')).toHaveLength(0);
+    expect((await goi('patch', '/5', token.hr).send({ ngayVaoLam: somNhat })).status).toBe(200);
+  });
+
   test('nhật ký che số tài khoản ngân hàng cũ và mới (chỉ giữ 4 số cuối)', async () => {
     const res = await goi('patch', '/5', token.hr).send({ soTaiKhoanNganHang: '9988776655' });
     expect(res.status).toBe(200);
@@ -537,13 +593,26 @@ describe('PATCH /api/v1/nhanVien/:id - HR sửa hồ sơ', () => {
 describe('PATCH /api/v1/nhanVien/toi - tự sửa hồ sơ', () => {
   test('nhanVien chỉ đổi được SĐT, địa chỉ, ngân hàng; trường khác bị bỏ qua', async () => {
     const res = await goi('patch', '/toi', token.nhanvien).send({
-      soDienThoai: '0912345678', diaChi: '', tenNganHang: 'VPBank', soTaiKhoanNganHang: '1234567890',
-      hoVaTen: 'Ten Bi Doi', trangThaiLamViec: 'DA_NGHI_VIEC', chucDanhPhongBanId: 3, ngayVaoLam: '2020-01-01',
+      soDienThoai: '0912345678',
+      diaChi: '',
+      tenNganHang: 'VPBank',
+      soTaiKhoanNganHang: '1234567890',
+      hoVaTen: 'Ten Bi Doi',
+      trangThaiLamViec: 'DA_NGHI_VIEC',
+      chucDanhPhongBanId: 3,
+      ngayVaoLam: '2020-01-01',
     });
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({
-      id: 5, soDienThoai: '0912345678', diaChi: null, tenNganHang: 'VPBank', soTaiKhoanNganHang: '1234567890',
-      hoVaTen: 'Hoàng Văn Nam', trangThaiLamViec: 'CHINH_THUC', chucDanhPhongBanId: 5, ngayVaoLam: '2024-06-03',
+      id: 5,
+      soDienThoai: '0912345678',
+      diaChi: null,
+      tenNganHang: 'VPBank',
+      soTaiKhoanNganHang: '1234567890',
+      hoVaTen: 'Hoàng Văn Nam',
+      trangThaiLamViec: 'CHINH_THUC',
+      chucDanhPhongBanId: 5,
+      ngayVaoLam: '2024-06-03',
     });
     const nk = await layNhatKy('CAP_NHAT_HO_SO_CA_NHAN');
     expect(nk).toHaveLength(1);
@@ -563,14 +632,12 @@ describe('PATCH /api/v1/nhanVien/toi - tự sửa hồ sơ', () => {
     expect(nk[0].chiTiet).not.toContain('diaChi');
   });
 
-  test('gửi lại đúng giá trị cũ: nhật ký ghi "không có trường nào thay đổi"', async () => {
+  test('gửi lại đúng giá trị cũ: 200, không UPDATE và không ghi nhật ký rỗng', async () => {
     const [[cu]] = await pool.execute('SELECT soDienThoai, tenNganHang FROM nhanvien WHERE id = 5');
     const res = await goi('patch', '/toi', token.nhanvien).send({ soDienThoai: cu.soDienThoai, tenNganHang: cu.tenNganHang });
     expect(res.status).toBe(200);
     const nk = await layNhatKy('CAP_NHAT_HO_SO_CA_NHAN');
-    expect(nk).toHaveLength(1);
-    expect(nk[0].chiTiet).toContain('không có trường nào thay đổi');
-    expect(nk[0].chiTiet).not.toContain('soDienThoai');
+    expect(nk).toHaveLength(0);
   });
 
   test('chỉ gửi trường không cho phép trả 400', async () => {
@@ -645,7 +712,7 @@ describe('POST /api/v1/nhanVien/:id/doiTrangThai', () => {
   test('quay lại làm việc không mở khóa nếu lần khóa gần nhất do Admin khóa vì lý do khác', async () => {
     expect((await doi(6, { trangThaiLamViec: 'DA_NGHI_VIEC' })).status).toBe(200);
     await pool.execute(
-      "INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet) VALUES (6, 'KHOA_TAI_KHOAN', '127.0.0.1', 'test')"
+      "INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet) VALUES (6, 'KHOA_TAI_KHOAN', '127.0.0.1', 'test')",
     );
     expect((await doi(6, { trangThaiLamViec: 'THU_VIEC' })).status).toBe(200);
     expect(await trangThaiTaiKhoan(6)).toBe('KHOA');
@@ -671,7 +738,10 @@ describe('POST /api/v1/nhanVien/:id/doiTrangThai', () => {
     expect(await trangThaiTaiKhoan(1)).toBe('DANG_HOAT_DONG');
   });
 
-  test.each([['giamDoc', 2], ['HR', 4]])('HR cho người có vai trò %s nghỉ việc trả 403', async (_vt, vaiTroId) => {
+  test.each([
+    ['giamDoc', 2],
+    ['HR', 4],
+  ])('HR cho người có vai trò %s nghỉ việc trả 403', async (_vt, vaiTroId) => {
     const { nhanVien } = await taoNhanVien();
     await pool.execute('INSERT INTO nguoidungvaitro (nguoiDungId, vaiTroId) VALUES (?, ?)', [nhanVien.nguoiDungId, vaiTroId]);
     const res = await doi(nhanVien.id, { trangThaiLamViec: 'DA_NGHI_VIEC' });
@@ -752,7 +822,9 @@ describe('Nhật ký che dữ liệu cá nhân (SĐT, địa chỉ, ngân hàng)
     return dong[0];
   }
   function kiemTraChe(chiTiet, cu, moi) {
-    expect(chiTiet).toContain(`soDienThoai: ${cu.soDienThoai ? `****${cu.soDienThoai.slice(-4)}` : 'trống'} -> ****${moi.soDienThoai.slice(-4)}`);
+    expect(chiTiet).toContain(
+      `soDienThoai: ${cu.soDienThoai ? `****${cu.soDienThoai.slice(-4)}` : 'trống'} -> ****${moi.soDienThoai.slice(-4)}`,
+    );
     expect(chiTiet).toContain('diaChi: đã thay đổi');
     expect(chiTiet).toContain('tenNganHang: đã thay đổi');
     for (const giaTri of [cu.soDienThoai, cu.diaChi, cu.tenNganHang, moi.soDienThoai, moi.diaChi, moi.tenNganHang]) {
@@ -814,9 +886,35 @@ describe('POST /api/v1/nhanVien/:id/dieuChuyen', () => {
     expect(dong[0].chucDanhPhongBanId).toBe(5);
   });
 
-  test('nhân viên đã nghỉ việc không điều chuyển được (409)', async () => {
+  test('tái tuyển: vị trí cũ đã ngừng → điều chuyển người đã nghỉ việc rồi cho quay lại', async () => {
     await pool.execute("UPDATE nhanvien SET trangThaiLamViec = 'DA_NGHI_VIEC' WHERE id = 6");
-    expect((await chuyen(6, { chucDanhPhongBanId: 2 })).status).toBe(409);
+    const [[{ chucDanhPhongBanId: viTriCu }]] = await pool.execute('SELECT chucDanhPhongBanId FROM nhanvien WHERE id = 6');
+    await pool.execute("UPDATE chucdanhphongban SET trangThai = 'NGUNG_AP_DUNG' WHERE id = ?", [viTriCu]);
+    try {
+      expect((await goi('post', '/6/doiTrangThai', token.hr).send({ trangThaiLamViec: 'CHINH_THUC' })).status).toBe(409);
+      expect((await chuyen(6, { chucDanhPhongBanId: 2 })).status).toBe(200);
+      const res = await goi('post', '/6/doiTrangThai', token.hr).send({ trangThaiLamViec: 'CHINH_THUC' });
+      expect(res.status).toBe(200);
+      const [[nv]] = await pool.execute('SELECT chucDanhPhongBanId, trangThaiLamViec FROM nhanvien WHERE id = 6');
+      expect(nv).toEqual({ chucDanhPhongBanId: 2, trangThaiLamViec: 'CHINH_THUC' });
+    } finally {
+      await pool.execute("UPDATE chucdanhphongban SET trangThai = 'DANG_AP_DUNG' WHERE id = ?", [viTriCu]);
+    }
+  });
+
+  test('người đã nghỉ việc điều chuyển sang vị trí đủ định biên hoặc đã ngừng vẫn 409, không đổi dữ liệu', async () => {
+    await pool.execute("UPDATE nhanvien SET trangThaiLamViec = 'DA_NGHI_VIEC' WHERE id = 6");
+    const [[{ chucDanhPhongBanId: viTriCu }]] = await pool.execute('SELECT chucDanhPhongBanId FROM nhanvien WHERE id = 6');
+    expect((await chuyen(6, { chucDanhPhongBanId: 3 })).status).toBe(409);
+    await pool.execute("UPDATE chucdanhphongban SET trangThai = 'NGUNG_AP_DUNG' WHERE id = 2");
+    try {
+      expect((await chuyen(6, { chucDanhPhongBanId: 2 })).status).toBe(409);
+    } finally {
+      await pool.execute("UPDATE chucdanhphongban SET trangThai = 'DANG_AP_DUNG' WHERE id = 2");
+    }
+    const [[nv]] = await pool.execute('SELECT chucDanhPhongBanId, trangThaiLamViec FROM nhanvien WHERE id = 6');
+    expect(nv).toEqual({ chucDanhPhongBanId: viTriCu, trangThaiLamViec: 'DA_NGHI_VIEC' });
+    expect(await layNhatKy('DIEU_CHUYEN_NHAN_VIEN')).toHaveLength(0);
   });
 
   test('điều chuyển về đúng vị trí hiện tại trả 400', async () => {
@@ -897,7 +995,10 @@ describe('Nhiều người cùng vai trò', () => {
     expect(res.body.data).not.toHaveProperty('soTaiKhoanNganHang');
   });
 
-  test.each([['hr2', 4, 7], ['hr', 7, 4]])('%s sửa được hồ sơ của HR khác (id %i) và ghi nhật ký', async (ten, id, nguoiDungId) => {
+  test.each([
+    ['hr2', 4, 7],
+    ['hr', 7, 4],
+  ])('%s sửa được hồ sơ của HR khác (id %i) và ghi nhật ký', async (ten, id, nguoiDungId) => {
     const res = await goi('patch', `/${id}`, token[ten]).send({ diaChi: 'Quảng Nam' });
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ success: true, code: 200 });
@@ -935,7 +1036,7 @@ describe('Chạy song song', () => {
     const [a, b] = await Promise.all([themNhanVien(duLieuMoi()), themNhanVien(duLieuMoi())]);
     expect([a.status, b.status].sort()).toEqual([201, 409]);
     const [dem] = await pool.execute(
-      "SELECT COUNT(*) AS n FROM nhanvien WHERE chucDanhPhongBanId = 5 AND trangThaiLamViec <> 'DA_NGHI_VIEC'"
+      "SELECT COUNT(*) AS n FROM nhanvien WHERE chucDanhPhongBanId = 5 AND trangThaiLamViec <> 'DA_NGHI_VIEC'",
     );
     expect(Number(dem[0].n)).toBe(3);
     const [nd] = await pool.execute('SELECT COUNT(*) AS n FROM nguoidung');
@@ -953,7 +1054,7 @@ describe('Chạy song song', () => {
   test('4 request thêm cùng lúc vào vị trí còn đúng 1 chỗ, lặp 3 vòng: mỗi vòng đúng 1 thành công, không 500', async () => {
     const demDangLam = async () => {
       const [d] = await pool.execute(
-        "SELECT COUNT(*) AS n FROM nhanvien WHERE chucDanhPhongBanId = 5 AND trangThaiLamViec <> 'DA_NGHI_VIEC'"
+        "SELECT COUNT(*) AS n FROM nhanvien WHERE chucDanhPhongBanId = 5 AND trangThaiLamViec <> 'DA_NGHI_VIEC'",
       );
       return Number(d[0].n);
     };

@@ -3,6 +3,7 @@ const { chayTransaction } = require('../config/ketNoiCsdl');
 const nhanVienRepository = require('../repositories/nhanVienRepository');
 const nguoiDungRepository = require('../repositories/nguoiDungRepository');
 const phongBanRepository = require('../repositories/phongBanRepository');
+const hopDongRepository = require('../repositories/hopDongRepository');
 const { themNhatKy, layHanhDongGanNhat } = require('../repositories/nhatKyRepository');
 const { taoMatKhauTam, bamMatKhau } = require('../utils/matKhauTam');
 const { TRANG_THAI_LAM_VIEC } = require('../utils/trangThai');
@@ -25,9 +26,7 @@ const HANH_DONG_KHOA_MO = ['KHOA_TAI_KHOAN', 'MO_KHOA_TAI_KHOAN', 'KHOA_TAI_KHOA
 const COT_NGAN_HANG = ['soTaiKhoanNganHang', 'tenNganHang'];
 const COT_TAI_KHOAN = ['nguoiDungId', 'tenDangNhap', 'email', 'trangThaiTaiKhoan'];
 const COT_KHONG_DUOC_RONG = ['hoVaTen', 'gioiTinh', 'ngaySinh', 'ngayVaoLam'];
-const COT_HO_SO_HR = [
-  'hoVaTen', 'gioiTinh', 'ngaySinh', 'soDienThoai', 'diaChi', 'soTaiKhoanNganHang', 'tenNganHang', 'ngayVaoLam',
-];
+const COT_HO_SO_HR = ['hoVaTen', 'gioiTinh', 'ngaySinh', 'soDienThoai', 'diaChi', 'soTaiKhoanNganHang', 'tenNganHang', 'ngayVaoLam'];
 const COT_HO_SO_CA_NHAN = ['soDienThoai', 'diaChi', 'soTaiKhoanNganHang', 'tenNganHang'];
 
 function xemToanCongTy(vaiTro) {
@@ -83,16 +82,19 @@ function kiemTraNgayHoSo(ngaySinh, ngayVaoLam) {
 // Nhật ký thay đổi: dữ liệu cá nhân nhạy cảm che bớt (số tài khoản, SĐT giữ 4 số cuối; địa chỉ, ngân hàng chỉ ghi tên cột)
 const COT_CHE_SO = ['soTaiKhoanNganHang', 'soDienThoai'];
 const COT_CHI_GHI_TEN = ['diaChi', 'tenNganHang'];
+const KHONG_DOI = 'không có trường nào thay đổi';
 function moTaThayDoi(hoSoCu, truong) {
   const che = (giaTri) => (giaTri ? `****${String(giaTri).slice(-4)}` : 'trống');
   // Bỏ trường gửi lên nhưng giữ nguyên giá trị cũ để nhật ký không ghi sai "đã thay đổi"
   const cotDoi = Object.keys(truong).filter((cot) => String(hoSoCu[cot] ?? '') !== String(truong[cot] ?? ''));
-  if (cotDoi.length === 0) return 'không có trường nào thay đổi';
-  return cotDoi.map((cot) => {
-    if (COT_CHE_SO.includes(cot)) return `${cot}: ${che(hoSoCu[cot])} -> ${che(truong[cot])}`;
-    if (COT_CHI_GHI_TEN.includes(cot)) return `${cot}: đã thay đổi`;
-    return `${cot}: ${hoSoCu[cot] ?? 'trống'} -> ${truong[cot] ?? 'trống'}`;
-  }).join('; ');
+  if (cotDoi.length === 0) return KHONG_DOI;
+  return cotDoi
+    .map((cot) => {
+      if (COT_CHE_SO.includes(cot)) return `${cot}: ${che(hoSoCu[cot])} -> ${che(truong[cot])}`;
+      if (COT_CHI_GHI_TEN.includes(cot)) return `${cot}: đã thay đổi`;
+      return `${cot}: ${hoSoCu[cot] ?? 'trống'} -> ${truong[cot] ?? 'trống'}`;
+    })
+    .join('; ');
 }
 
 // Vị trí phải đang áp dụng, phòng ban/chức danh đang hoạt động và còn định biên
@@ -101,8 +103,7 @@ async function kiemTraViTriTrong(chucDanhPhongBanId, boQuaNhanVienId, ketNoi) {
   await phongBanRepository.khoaCacPhongBan([await phongBanRepository.layPhongBanCuaViTri(chucDanhPhongBanId)], ketNoi);
   const viTri = await phongBanRepository.khoaViTri(chucDanhPhongBanId, ketNoi);
   if (!viTri) throw new LoiUngDung(404, 'Không tìm thấy vị trí (chức danh trong phòng ban)');
-  if (viTri.trangThai !== 'DANG_AP_DUNG' || viTri.trangThaiPhongBan !== 'DANG_HOAT_DONG'
-      || viTri.trangThaiChucDanh !== 'DANG_HOAT_DONG') {
+  if (viTri.trangThai !== 'DANG_AP_DUNG' || viTri.trangThaiPhongBan !== 'DANG_HOAT_DONG' || viTri.trangThaiChucDanh !== 'DANG_HOAT_DONG') {
     throw new LoiUngDung(409, 'Vị trí, phòng ban hoặc chức danh đã ngừng hoạt động');
   }
   const daCo = await nhanVienRepository.demTheoViTri(chucDanhPhongBanId, boQuaNhanVienId, ketNoi);
@@ -155,7 +156,10 @@ async function chanNeuLaTruongBoPhan(nhanVienId, phongBanGiuLaiId, ketNoi) {
   const phongLamTruong = await phongBanRepository.layPhongBanLamTruong(nhanVienId, ketNoi);
   const phongBiBoTrong = phongLamTruong.filter((p) => p.id !== phongBanGiuLaiId);
   if (phongBiBoTrong.length) {
-    throw new LoiUngDung(409, `Nhân viên đang là trưởng bộ phận ${phongBiBoTrong.map((p) => p.tenPhongBan).join(', ')}, cần bổ nhiệm người thay thế trước`);
+    throw new LoiUngDung(
+      409,
+      `Nhân viên đang là trưởng bộ phận ${phongBiBoTrong.map((p) => p.tenPhongBan).join(', ')}, cần bổ nhiệm người thay thế trước`,
+    );
   }
 }
 
@@ -224,11 +228,17 @@ async function themNhanVien(nguoiDung, body, diaChiIP) {
     }
     const soMa = (await nhanVienRepository.laySoMaLonNhat(ketNoi)) + 1;
     hoSo.maNhanVien = `NV${String(soMa).padStart(4, '0')}`;
-    const idMoi = await nhanVienRepository.them({
-      soDienThoai: null, diaChi: null, soTaiKhoanNganHang: null, tenNganHang: null,
-      ...hoSo,
-      nguoiDungId: nguoiDungMoiId,
-    }, ketNoi);
+    const idMoi = await nhanVienRepository.them(
+      {
+        soDienThoai: null,
+        diaChi: null,
+        soTaiKhoanNganHang: null,
+        tenNganHang: null,
+        ...hoSo,
+        nguoiDungId: nguoiDungMoiId,
+      },
+      ketNoi,
+    );
 
     await themNhatKy(nguoiDungMoiId, 'RESET_MAT_KHAU_TAM', diaChiIP, `Mật khẩu tạm khi tạo tài khoản ${hoSo.maNhanVien}`, ketNoi);
     await themNhatKy(nguoiDung.nguoiDungId, 'THEM_NHAN_VIEN', diaChiIP, `${hoSo.maNhanVien} - ${hoSo.hoVaTen} (${tenDangNhap})`, ketNoi);
@@ -247,9 +257,12 @@ async function capNhatCoNhatKy(nguoiDung, id, truong, hanhDong, diaChiIP, kiemTr
   if (Object.keys(truong).length === 0) throw new LoiUngDung(400, 'Không có thông tin nào để cập nhật');
   await chayTransaction(async (ketNoi) => {
     const hoSo = await khoaVaLayHoSo(id, ketNoi);
-    if (kiemTraThem) kiemTraThem(hoSo);
+    if (kiemTraThem) await kiemTraThem(hoSo, ketNoi);
+    // Bấm lưu mà không đổi gì: không UPDATE, không ghi nhật ký rỗng
+    const moTa = moTaThayDoi(hoSo, truong);
+    if (moTa === KHONG_DOI) return;
     await nhanVienRepository.capNhat(id, truong, ketNoi);
-    await themNhatKy(nguoiDung.nguoiDungId, hanhDong, diaChiIP, `${hoSo.maNhanVien}: ${moTaThayDoi(hoSo, truong)}`, ketNoi);
+    await themNhatKy(nguoiDung.nguoiDungId, hanhDong, diaChiIP, `${hoSo.maNhanVien}: ${moTa}`, ketNoi);
   });
   return layHoSoHoacLoi(id);
 }
@@ -265,9 +278,16 @@ async function capNhatHoSoCuaToi(nguoiDung, body, diaChiIP) {
 async function capNhatHoSo(nguoiDung, id, body, diaChiIP) {
   chanTuSua(nguoiDung, id);
   const truong = chonTruong(body, COT_HO_SO_HR);
-  return capNhatCoNhatKy(nguoiDung, id, truong, 'SUA_NHAN_VIEN', diaChiIP, (hoSo) => {
+  return capNhatCoNhatKy(nguoiDung, id, truong, 'SUA_NHAN_VIEN', diaChiIP, async (hoSo, ketNoi) => {
     if (truong.ngaySinh || truong.ngayVaoLam) {
       kiemTraNgayHoSo(truong.ngaySinh ?? hoSo.ngaySinh, truong.ngayVaoLam ?? hoSo.ngayVaoLam);
+    }
+    // Hợp đồng không được bắt đầu trước ngày vào làm (đã khóa dòng nhân viên nên không có hợp đồng mới chen vào)
+    if (truong.ngayVaoLam) {
+      const ngayHopDongSomNhat = await hopDongRepository.layNgayBatDauSomNhat(id, ketNoi);
+      if (ngayHopDongSomNhat && ngayHopDongSomNhat < truong.ngayVaoLam) {
+        throw new LoiUngDung(409, `Ngày vào làm không được sau ngày bắt đầu hợp đồng sớm nhất (${ngayHopDongSomNhat})`);
+      }
     }
   });
 }
@@ -329,9 +349,8 @@ async function dieuChuyen(nguoiDung, id, { chucDanhPhongBanId, lyDo }, diaChiIP)
     // Nếu sau này cho đổi phòng của vị trí thì phải đọc lại có khóa.
     const phongBanDichId = await phongBanRepository.layPhongBanCuaViTri(viTriMoiId);
     const hoSo = await khoaPhongBanRoiHoSo(id, phongBanDichId && { id: viTriMoiId, phongBanId: phongBanDichId }, ketNoi);
-    if (hoSo.trangThaiLamViec === 'DA_NGHI_VIEC') {
-      throw new LoiUngDung(409, 'Không thể điều chuyển nhân viên đã nghỉ việc');
-    }
+    // Người đã nghỉ việc vẫn được điều chuyển: để tái tuyển khi vị trí cũ đã đủ định biên hoặc đã ngừng
+    // (kiemTraViTriTrong vẫn kiểm tra vị trí đích đang áp dụng và còn chỗ)
     if (hoSo.chucDanhPhongBanId === viTriMoiId) {
       throw new LoiUngDung(400, 'Nhân viên đang ở vị trí này');
     }

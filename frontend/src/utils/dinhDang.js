@@ -47,7 +47,47 @@ export function thanhLuaChon(bang) {
 
 // Bỏ trường rỗng trước khi gửi query
 export function locThamSo(thamSo) {
-  return Object.fromEntries(
-    Object.entries(thamSo).filter(([, giaTri]) => giaTri !== '' && giaTri !== undefined && giaTri !== null)
-  );
+  return Object.fromEntries(Object.entries(thamSo).filter(([, giaTri]) => giaTri !== '' && giaTri !== undefined && giaTri !== null));
+}
+
+// 'HH:MM:SS' -> 'HH:MM'
+export function dinhDangGio(giaTri) {
+  return giaTri ? String(giaTri).slice(0, 5) : '—';
+}
+
+// Tháng hiện tại 'YYYY-MM' theo giờ máy người dùng
+export function thangHienTai() {
+  return new Date().toLocaleDateString('sv-SE').slice(0, 7);
+}
+
+const THU_TRONG_TUAN = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+export function layThu(ngay) {
+  return THU_TRONG_TUAN[new Date(`${String(ngay).slice(0, 10)}T00:00:00Z`).getUTCDay()];
+}
+
+// Số ngày làm việc (T2-T6) trong khoảng, khớp backend utils/tinhNgayNghi.js (chỉ để xem trước, backend tính lại)
+export function demNgayLamViec(tuNgay, denNgay) {
+  if (!tuNgay || !denNgay || denNgay < tuNgay) return 0;
+  let dem = 0;
+  const ngay = new Date(`${tuNgay}T00:00:00Z`);
+  const cuoi = new Date(`${denNgay}T00:00:00Z`);
+  while (ngay <= cuoi) {
+    if (![0, 6].includes(ngay.getUTCDay())) dem += 1;
+    ngay.setUTCDate(ngay.getUTCDate() + 1);
+  }
+  return dem;
+}
+
+export const NHAN_TRANG_THAI_DON = {
+  CHO_DUYET: 'Chờ duyệt',
+  DA_DUYET: 'Đã duyệt',
+  TU_CHOI: 'Từ chối',
+  DA_HUY: 'Đã hủy',
+};
+
+// Người duyệt dự kiến do backend tính theo chuỗi duyệt
+export function moTaNguoiDuyetDuKien(nguoiDuyet) {
+  if (!nguoiDuyet) return '—';
+  if (nguoiDuyet.loai === 'GIAM_DOC') return nguoiDuyet.lyDo === 'DON_DAI_NGAY' ? 'Ban Giám đốc (đơn dài ngày)' : 'Ban Giám đốc';
+  return `${nguoiDuyet.hoVaTen} (${nguoiDuyet.maNhanVien})`;
 }

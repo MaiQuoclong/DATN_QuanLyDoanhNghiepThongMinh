@@ -25,7 +25,7 @@ Thêm bảng mở rộng chỉ khi người dùng đồng ý; sau đó dump lạ
 - Chốt lương: tạo `bangtonghopluong` + toàn bộ `phieuluongnhanvien`.
 - Sửa hợp đồng: cập nhật `hopdonglaodong` + ghi `lichsuhopdong`.
 - Duyệt điều chỉnh chấm công: cập nhật `yeucaudieuchinhchamcong` + `banghichamcong`.
-- HR lập quyết định từ đề xuất: INSERT `quyetdinhkhenthuongkyluat` + UPDATE `dexuatkhenthuongkyluat` (`trangThai = 'DA_DUYET'`, `quyetDinhId`, `nguoiXuLyId`).
+- Giám đốc ký đề xuất (`CHO_KY`): INSERT `quyetdinhkhenthuongkyluat` + UPDATE `dexuatkhenthuongkyluat` (`trangThai = 'DA_DUYET'`, `quyetDinhId`, `nguoiXuLyId`) + cộng/trừ vào phiếu lương nháp của tháng ban hành.
 
 ## Text-to-SQL
 - AI service kết nối bằng tài khoản MySQL riêng chỉ có quyền `SELECT` (`GRANT SELECT ON quanlydoanhnghiepthongminh.* TO 'aiReadonly'@'localhost'`). Lọc từ khóa chỉ là lớp phụ; chỉ một câu lệnh; luôn thêm `LIMIT`. Không cho truy vấn `nguoidung.matKhauMaHoa`.

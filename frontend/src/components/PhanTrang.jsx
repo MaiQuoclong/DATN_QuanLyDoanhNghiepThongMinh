@@ -10,11 +10,15 @@ function PhanTrang({ phanTrang, onDoiTrang }) {
   const den = Math.min(trang * kichThuoc, tongSo);
   return (
     <div className="phanTrang">
-      <span>{tu}–{den} / {tongSo}</span>
+      <span>
+        {tu}–{den} / {tongSo}
+      </span>
       <button type="button" disabled={trang <= 1} onClick={() => onDoiTrang(trang - 1)} aria-label="Trang trước">
         <ChevronLeft size={16} />
       </button>
-      <span>{trang}/{soTrang}</span>
+      <span>
+        {trang}/{soTrang}
+      </span>
       <button type="button" disabled={trang >= soTrang} onClick={() => onDoiTrang(trang + 1)} aria-label="Trang sau">
         <ChevronRight size={16} />
       </button>

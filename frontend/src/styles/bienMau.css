@@ -2,24 +2,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --mauChinh: #1f5f57;          /* Teal đậm - nút chính */
+  --mauChinh: #1f5f57; /* Teal đậm - nút chính */
   --mauChinhDam: #174a44;
   --mauChinhNhat: #e6f0ee;
-  --mauNhan: #f5c518;           /* Vàng - điểm nhấn */
-  --mauThanhTren: #1f2329;      /* Thanh trên cùng */
+  --mauNhan: #f5c518; /* Vàng - điểm nhấn */
+  --mauThanhTren: #1f2329; /* Thanh trên cùng */
   --mauNen: #f4f5f7;
   --mauThe: #ffffff;
   --mauVien: #e8eaed;
   --mauChu: #1f2329;
   --mauChuPhu: #6b7280;
 
-  --mauThanhCong: #16a34a;      /* Hoạt động / Đã duyệt */
+  --mauThanhCong: #16a34a; /* Hoạt động / Đã duyệt */
   --mauThanhCongNhat: #dcfce7;
-  --mauCanhBao: #ea8a0c;        /* Chờ duyệt / Cảnh báo */
+  --mauCanhBao: #ea8a0c; /* Chờ duyệt / Cảnh báo */
   --mauCanhBaoNhat: #fef3c7;
-  --mauLoi: #dc2626;            /* Từ chối / Vi phạm */
+  --mauLoi: #dc2626; /* Từ chối / Vi phạm */
   --mauLoiNhat: #fee2e2;
-  --mauTrungTinh: #9ca3af;      /* Bản nháp / Đã hủy */
+  --mauTrungTinh: #9ca3af; /* Bản nháp / Đã hủy */
   --mauTrungTinhNhat: #f3f4f6;
 
   --caoThanhTren: 52px;

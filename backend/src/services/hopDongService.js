@@ -56,8 +56,11 @@ function kiemTraThoiHan(loaiHopDong, ngayBatDau, ngayKetThuc) {
   if (loaiHopDong === 'THU_VIEC' && ngayKetThuc > congNgay(ngayBatDau, SO_NGAY_THU_VIEC_TOI_DA - 1)) {
     throw new LoiUngDung(400, `Thời gian thử việc tối đa ${SO_NGAY_THU_VIEC_TOI_DA} ngày`);
   }
-  if (loaiHopDong === 'XAC_DINH_THOI_HAN' && ngayKetThuc > congThang(ngayBatDau, SO_THANG_XAC_DINH_TOI_DA)) {
-    throw new LoiUngDung(400, `Hợp đồng xác định thời hạn tối đa ${SO_THANG_XAC_DINH_TOI_DA} tháng, quá hạn này phải ký hợp đồng không xác định thời hạn`);
+  if (loaiHopDong === 'XAC_DINH_THOI_HAN' && ngayKetThuc > congNgay(congThang(ngayBatDau, SO_THANG_XAC_DINH_TOI_DA), -1)) {
+    throw new LoiUngDung(
+      400,
+      `Hợp đồng xác định thời hạn tối đa ${SO_THANG_XAC_DINH_TOI_DA} tháng, quá hạn này phải ký hợp đồng không xác định thời hạn`,
+    );
   }
   return ngayKetThuc;
 }
@@ -89,17 +92,25 @@ async function khoaVaLayHopDong(nguoiDung, id, ketNoi) {
 
 // Ghi lichsuhopdong + nhatkyhethong trong cùng transaction với thay đổi hợp đồng
 async function ghiDauVet(nguoiDung, { hopDongCu, hopDongMoi, hanhDongLichSu, hanhDongNhatKy, lyDo, chiTiet }, diaChiIP, ketNoi) {
-  await hopDongRepository.themLichSu({
-    hopDongLaoDongId: hopDongMoi.id,
-    hanhDong: hanhDongLichSu,
-    // Lịch sử ghi trạng thái thực lưu trong bảng (HIEU_LUC/DA_CHAM_DUT), không ghi HET_HAN suy ra
-    cu: hopDongCu && { ...hopDongCu, trangThai: hopDongCu.trangThaiLuu ?? hopDongCu.trangThai },
-    moi: hopDongMoi,
-    lyDo,
-    nguoiThucHienId: nguoiDung.nhanVienId,
-  }, ketNoi);
-  await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, hanhDongNhatKy, diaChiIP,
-    `${hopDongMoi.maHopDong} (${hopDongMoi.maNhanVien}): ${chiTiet}${lyDo ? `. Lý do: ${lyDo}` : ''}`, ketNoi);
+  await hopDongRepository.themLichSu(
+    {
+      hopDongLaoDongId: hopDongMoi.id,
+      hanhDong: hanhDongLichSu,
+      // Lịch sử ghi trạng thái thực lưu trong bảng (HIEU_LUC/DA_CHAM_DUT), không ghi HET_HAN suy ra
+      cu: hopDongCu && { ...hopDongCu, trangThai: hopDongCu.trangThaiLuu ?? hopDongCu.trangThai },
+      moi: hopDongMoi,
+      lyDo,
+      nguoiThucHienId: nguoiDung.nhanVienId,
+    },
+    ketNoi,
+  );
+  await nhatKyRepository.themNhatKy(
+    nguoiDung.nguoiDungId,
+    hanhDongNhatKy,
+    diaChiIP,
+    `${hopDongMoi.maHopDong} (${hopDongMoi.maNhanVien}): ${chiTiet}${lyDo ? `. Lý do: ${lyDo}` : ''}`,
+    ketNoi,
+  );
 }
 
 async function layDanhSach(boLoc) {
@@ -152,38 +163,45 @@ async function taoHopDong(nguoiDung, body, diaChiIP) {
     throw new LoiUngDung(400, `Ngày bắt đầu không được sau hôm nay quá ${SO_NGAY_BAT_DAU_TRUOC_TOI_DA} ngày`);
   }
 
-  const id = await taoVoiThuLaiKhiTrungMa(() => chayTransaction(async (ketNoi) => {
-    if (!(await nhanVienRepository.khoaNhanVien(nhanVienId, ketNoi))) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
-    const nhanVien = await nhanVienRepository.layTheoId(nhanVienId, ketNoi);
-    if (nhanVien.trangThaiLamViec === 'DA_NGHI_VIEC') {
-      throw new LoiUngDung(409, 'Không thể lập hợp đồng cho nhân viên đã nghỉ việc');
-    }
-    if (ngayBatDau < nhanVien.ngayVaoLam) throw new LoiUngDung(400, 'Ngày bắt đầu hợp đồng không được trước ngày vào làm');
-    await chanChongLan(nhanVienId, ngayBatDau, ngayKetThuc, null, ketNoi);
+  const id = await taoVoiThuLaiKhiTrungMa(() =>
+    chayTransaction(async (ketNoi) => {
+      if (!(await nhanVienRepository.khoaNhanVien(nhanVienId, ketNoi))) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
+      const nhanVien = await nhanVienRepository.layTheoId(nhanVienId, ketNoi);
+      if (nhanVien.trangThaiLamViec === 'DA_NGHI_VIEC') {
+        throw new LoiUngDung(409, 'Không thể lập hợp đồng cho nhân viên đã nghỉ việc');
+      }
+      if (ngayBatDau < nhanVien.ngayVaoLam) throw new LoiUngDung(400, 'Ngày bắt đầu hợp đồng không được trước ngày vào làm');
+      await chanChongLan(nhanVienId, ngayBatDau, ngayKetThuc, null, ketNoi);
 
-    const nam = ngayBatDau.slice(0, 4);
-    const soMa = (await hopDongRepository.laySoMaLonNhat(nam, ketNoi)) + 1;
-    const hopDong = {
-      maHopDong: `HD${nam}-${String(soMa).padStart(4, '0')}`,
-      nhanVienId,
-      loaiHopDong,
-      ngayBatDau,
-      ngayKetThuc,
-      luongCoBan: Number(body.luongCoBan),
-      mucPhuCap: Number(body.mucPhuCap ?? 0),
-      duongDanFileHopDong: body.duongDanFileHopDong?.trim() || null,
-    };
-    const idMoi = await hopDongRepository.them(hopDong, ketNoi);
-    await ghiDauVet(nguoiDung, {
-      hopDongCu: null,
-      hopDongMoi: { ...hopDong, id: idMoi, trangThai: 'HIEU_LUC', maNhanVien: nhanVien.maNhanVien },
-      hanhDongLichSu: 'TAO_MOI',
-      hanhDongNhatKy: 'THEM_HOP_DONG',
-      lyDo: body.lyDo?.trim() || null,
-      chiTiet: `${loaiHopDong} ${ngayBatDau} -> ${ngayKetThuc ?? 'không thời hạn'}`,
-    }, diaChiIP, ketNoi);
-    return idMoi;
-  }));
+      const nam = ngayBatDau.slice(0, 4);
+      const soMa = (await hopDongRepository.laySoMaLonNhat(nam, ketNoi)) + 1;
+      const hopDong = {
+        maHopDong: `HD${nam}-${String(soMa).padStart(4, '0')}`,
+        nhanVienId,
+        loaiHopDong,
+        ngayBatDau,
+        ngayKetThuc,
+        luongCoBan: Number(body.luongCoBan),
+        mucPhuCap: Number(body.mucPhuCap ?? 0),
+        duongDanFileHopDong: body.duongDanFileHopDong?.trim() || null,
+      };
+      const idMoi = await hopDongRepository.them(hopDong, ketNoi);
+      await ghiDauVet(
+        nguoiDung,
+        {
+          hopDongCu: null,
+          hopDongMoi: { ...hopDong, id: idMoi, trangThai: 'HIEU_LUC', maNhanVien: nhanVien.maNhanVien },
+          hanhDongLichSu: 'TAO_MOI',
+          hanhDongNhatKy: 'THEM_HOP_DONG',
+          lyDo: body.lyDo?.trim() || null,
+          chiTiet: `${loaiHopDong} ${ngayBatDau} -> ${ngayKetThuc ?? 'không thời hạn'}`,
+        },
+        diaChiIP,
+        ketNoi,
+      );
+      return idMoi;
+    }),
+  );
   return layChiTiet(nguoiDung, id);
 }
 
@@ -203,14 +221,19 @@ async function giaHanHopDong(nguoiDung, id, { ngayKetThucMoi, lyDo }, diaChiIP) 
     await chanChongLan(hopDong.nhanVienId, hopDong.ngayBatDau, ngayKetThucMoi, id, ketNoi);
 
     await hopDongRepository.capNhat(id, { ngayKetThuc: ngayKetThucMoi }, ketNoi);
-    await ghiDauVet(nguoiDung, {
-      hopDongCu: hopDong,
-      hopDongMoi: { ...hopDong, ngayKetThuc: ngayKetThucMoi, trangThai: 'HIEU_LUC' },
-      hanhDongLichSu: 'GIA_HAN',
-      hanhDongNhatKy: 'GIA_HAN_HOP_DONG',
-      lyDo: lyDo?.trim() || null,
-      chiTiet: `ngày kết thúc ${hopDong.ngayKetThuc} -> ${ngayKetThucMoi}`,
-    }, diaChiIP, ketNoi);
+    await ghiDauVet(
+      nguoiDung,
+      {
+        hopDongCu: hopDong,
+        hopDongMoi: { ...hopDong, ngayKetThuc: ngayKetThucMoi, trangThai: 'HIEU_LUC' },
+        hanhDongLichSu: 'GIA_HAN',
+        hanhDongNhatKy: 'GIA_HAN_HOP_DONG',
+        lyDo: lyDo?.trim() || null,
+        chiTiet: `ngày kết thúc ${hopDong.ngayKetThuc} -> ${ngayKetThucMoi}`,
+      },
+      diaChiIP,
+      ketNoi,
+    );
   });
   return layChiTiet(nguoiDung, id);
 }
@@ -228,7 +251,8 @@ async function dieuChinhHopDong(nguoiDung, id, body, diaChiIP) {
       const giaTri = Number(body[cot]);
       if (giaTri !== Number(hopDong[cot])) {
         truong[cot] = giaTri;
-        moTa.push(`${cot}: ${Number(hopDong[cot])} -> ${giaTri}`);
+        // Không ghi số tiền vào nhật ký (Admin xem được nhật ký nhưng không được xem lương); giá trị cũ/mới đã có ở lichsuhopdong
+        moTa.push(`${cot}: đã thay đổi`);
       }
     }
     if (body.duongDanFileHopDong !== undefined) {
@@ -241,14 +265,19 @@ async function dieuChinhHopDong(nguoiDung, id, body, diaChiIP) {
     if (moTa.length === 0) throw new LoiUngDung(400, 'Không có thông tin nào thay đổi');
 
     await hopDongRepository.capNhat(id, truong, ketNoi);
-    await ghiDauVet(nguoiDung, {
-      hopDongCu: hopDong,
-      hopDongMoi: { ...hopDong, ...truong },
-      hanhDongLichSu: 'DIEU_CHINH',
-      hanhDongNhatKy: 'DIEU_CHINH_HOP_DONG',
-      lyDo: body.lyDo.trim(),
-      chiTiet: moTa.join('; '),
-    }, diaChiIP, ketNoi);
+    await ghiDauVet(
+      nguoiDung,
+      {
+        hopDongCu: hopDong,
+        hopDongMoi: { ...hopDong, ...truong },
+        hanhDongLichSu: 'DIEU_CHINH',
+        hanhDongNhatKy: 'DIEU_CHINH_HOP_DONG',
+        lyDo: body.lyDo.trim(),
+        chiTiet: moTa.join('; '),
+      },
+      diaChiIP,
+      ketNoi,
+    );
   });
   return layChiTiet(nguoiDung, id);
 }
@@ -264,14 +293,19 @@ async function chamDutHopDong(nguoiDung, id, { ngayChamDut, lyDo }, diaChiIP) {
     }
 
     await hopDongRepository.capNhat(id, { ngayKetThuc: ngayChamDut, trangThai: 'DA_CHAM_DUT' }, ketNoi);
-    await ghiDauVet(nguoiDung, {
-      hopDongCu: hopDong,
-      hopDongMoi: { ...hopDong, ngayKetThuc: ngayChamDut, trangThai: 'DA_CHAM_DUT' },
-      hanhDongLichSu: 'CHAM_DUT',
-      hanhDongNhatKy: 'CHAM_DUT_HOP_DONG',
-      lyDo: lyDo.trim(),
-      chiTiet: `chấm dứt từ ${ngayChamDut}`,
-    }, diaChiIP, ketNoi);
+    await ghiDauVet(
+      nguoiDung,
+      {
+        hopDongCu: hopDong,
+        hopDongMoi: { ...hopDong, ngayKetThuc: ngayChamDut, trangThai: 'DA_CHAM_DUT' },
+        hanhDongLichSu: 'CHAM_DUT',
+        hanhDongNhatKy: 'CHAM_DUT_HOP_DONG',
+        lyDo: lyDo.trim(),
+        chiTiet: `chấm dứt từ ${ngayChamDut}`,
+      },
+      diaChiIP,
+      ketNoi,
+    );
   });
   return layChiTiet(nguoiDung, id);
 }

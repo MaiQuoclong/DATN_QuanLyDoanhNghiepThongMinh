@@ -11,8 +11,16 @@ const BANG_NOI = `FROM nhanvien nv
 
 // Các cột service được phép cập nhật (tên cột lấy từ code, không lấy từ request)
 const COT_CAP_NHAT = [
-  'hoVaTen', 'gioiTinh', 'ngaySinh', 'soDienThoai', 'diaChi',
-  'soTaiKhoanNganHang', 'tenNganHang', 'ngayVaoLam', 'trangThaiLamViec', 'chucDanhPhongBanId',
+  'hoVaTen',
+  'gioiTinh',
+  'ngaySinh',
+  'soDienThoai',
+  'diaChi',
+  'soTaiKhoanNganHang',
+  'tenNganHang',
+  'ngayVaoLam',
+  'trangThaiLamViec',
+  'chucDanhPhongBanId',
 ];
 
 // boLoc.phamViPhongBanIds: null = toàn công ty, mảng = chỉ các phòng ban đó (quanLy)
@@ -40,10 +48,11 @@ async function layDanhSach({ tuKhoa, phongBanId, trangThaiLamViec, phamViPhongBa
   const where = dieuKien.length ? `WHERE ${dieuKien.join(' AND ')}` : '';
 
   const [[dem]] = await pool.query(`SELECT COUNT(*) AS tongSo ${BANG_NOI} ${where}`, thamSo);
-  const [items] = await pool.query(
-    `SELECT ${COT_DANH_SACH} ${BANG_NOI} ${where} ORDER BY nv.maNhanVien LIMIT ? OFFSET ?`,
-    [...thamSo, soLuong, viTri]
-  );
+  const [items] = await pool.query(`SELECT ${COT_DANH_SACH} ${BANG_NOI} ${where} ORDER BY nv.maNhanVien LIMIT ? OFFSET ?`, [
+    ...thamSo,
+    soLuong,
+    viTri,
+  ]);
   return { items, tongSo: Number(dem.tongSo) };
 }
 
@@ -56,7 +65,7 @@ async function layTheoId(id, ketNoi = pool) {
        ${BANG_NOI}
        LEFT JOIN nguoidung nd ON nd.id = nv.nguoiDungId
       WHERE nv.id = ?`,
-    [id]
+    [id],
   );
   return dong[0] ?? null;
 }
@@ -67,7 +76,7 @@ async function laySoMaLonNhat(ketNoi) {
     `SELECT MAX(CAST(SUBSTRING(maNhanVien, 3) AS UNSIGNED)) AS soLonNhat
        FROM nhanvien
       WHERE maNhanVien REGEXP '^NV[0-9]+$'
-      FOR UPDATE`
+      FOR UPDATE`,
   );
   return Number(dong[0].soLonNhat ?? 0);
 }
@@ -80,7 +89,7 @@ async function demTheoViTri(chucDanhPhongBanId, boQuaNhanVienId, ketNoi) {
     `SELECT id FROM nhanvien
       WHERE chucDanhPhongBanId = ? AND trangThaiLamViec <> 'DA_NGHI_VIEC' AND id <> ?
       FOR UPDATE`,
-    [chucDanhPhongBanId, boQuaNhanVienId ?? 0]
+    [chucDanhPhongBanId, boQuaNhanVienId ?? 0],
   );
   return dong.length;
 }
@@ -97,9 +106,19 @@ async function them(nv, ketNoi) {
                            soTaiKhoanNganHang, tenNganHang, chucDanhPhongBanId, ngayVaoLam, trangThaiLamViec)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      nv.maNhanVien, nv.nguoiDungId, nv.hoVaTen, nv.gioiTinh, nv.ngaySinh, nv.soDienThoai, nv.diaChi,
-      nv.soTaiKhoanNganHang, nv.tenNganHang, nv.chucDanhPhongBanId, nv.ngayVaoLam, nv.trangThaiLamViec,
-    ]
+      nv.maNhanVien,
+      nv.nguoiDungId,
+      nv.hoVaTen,
+      nv.gioiTinh,
+      nv.ngaySinh,
+      nv.soDienThoai,
+      nv.diaChi,
+      nv.soTaiKhoanNganHang,
+      nv.tenNganHang,
+      nv.chucDanhPhongBanId,
+      nv.ngayVaoLam,
+      nv.trangThaiLamViec,
+    ],
   );
   return ketQua.insertId;
 }
@@ -107,10 +126,10 @@ async function them(nv, ketNoi) {
 async function capNhat(id, truong, ketNoi = pool) {
   const cot = Object.keys(truong).filter((ten) => COT_CAP_NHAT.includes(ten));
   if (cot.length === 0) return;
-  await ketNoi.execute(
-    `UPDATE nhanvien SET ${cot.map((ten) => `${ten} = ?`).join(', ')} WHERE id = ?`,
-    [...cot.map((ten) => truong[ten]), id]
-  );
+  await ketNoi.execute(`UPDATE nhanvien SET ${cot.map((ten) => `${ten} = ?`).join(', ')} WHERE id = ?`, [
+    ...cot.map((ten) => truong[ten]),
+    id,
+  ]);
 }
 
 module.exports = { layDanhSach, layTheoId, laySoMaLonNhat, demTheoViTri, khoaNhanVien, them, capNhat };

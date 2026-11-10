@@ -1,14 +1,4 @@
-import {
-  LayoutGrid,
-  Users,
-  Clock,
-  CalendarDays,
-  Wallet,
-  Target,
-  Award,
-  ShieldCheck,
-  Bot,
-} from 'lucide-react';
+import { LayoutGrid, Users, Clock, CalendarDays, Wallet, Target, Award, ShieldCheck, Bot } from 'lucide-react';
 
 const TAT_CA = ['Admin', 'giamDoc', 'quanLy', 'HR', 'nhanVien'];
 const QUAN_LY_NHAN_SU = ['giamDoc', 'quanLy', 'HR'];
@@ -51,6 +41,8 @@ const danhSachMenu = [
       { duongDan: '', ten: 'Đơn của tôi' },
       { duongDan: 'duyetDon', ten: 'Duyệt đơn', vaiTro: ['giamDoc', 'quanLy'] },
       { duongDan: 'lichNghi', ten: 'Lịch nghỉ', vaiTro: QUAN_LY_NHAN_SU },
+      // HR quản lý loại nghỉ, cấp quỹ; giamDoc xem toàn bộ, quanLy xem phòng mình
+      { duongDan: 'quyPhep', ten: 'Quỹ phép', vaiTro: QUAN_LY_NHAN_SU },
     ],
   },
   {
@@ -63,7 +55,20 @@ const danhSachMenu = [
       { duongDan: 'bangLuong', ten: 'Bảng lương', vaiTro: ['giamDoc', 'HR'] },
     ],
   },
-  { duongDan: '/kpi', ten: 'KPI', bieuTuong: Target, vaiTro: TAT_CA },
+  {
+    duongDan: '/kpi',
+    ten: 'KPI',
+    bieuTuong: Target,
+    vaiTro: TAT_CA,
+    tab: [
+      { duongDan: '', ten: 'Phiếu của tôi' },
+      // HR, quanLy PM tạo phiếu; giamDoc, quanLy nghiệm thu; giamDoc/HR xem toàn bộ
+      { duongDan: 'danhGia', ten: 'Đánh giá', vaiTro: QUAN_LY_NHAN_SU },
+      { duongDan: 'chiTieu', ten: 'Chỉ tiêu', vaiTro: QUAN_LY_NHAN_SU },
+      { duongDan: 'kyDanhGia', ten: 'Kỳ đánh giá', vaiTro: QUAN_LY_NHAN_SU },
+      { duongDan: 'baoCao', ten: 'Báo cáo', vaiTro: QUAN_LY_NHAN_SU },
+    ],
+  },
   {
     duongDan: '/khenThuongKyLuat',
     ten: 'Khen thưởng - Kỷ luật',

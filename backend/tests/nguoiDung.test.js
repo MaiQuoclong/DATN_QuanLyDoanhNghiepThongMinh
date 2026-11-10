@@ -10,7 +10,6 @@ const nguoiDungRepository = require('../src/repositories/nguoiDungRepository');
 jest.setTimeout(30000);
 
 const MAT_KHAU = 'MatKhau@123';
-const ID = { admin: 1, giamdoc: 2, quanly: 3, hr: 4, nhanvien: 5, nhanvien2: 6 };
 const NGUON_HOP_LE = 'http://localhost:5173';
 const NGUON_LA = 'http://evil.example.com';
 const choMs = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -36,10 +35,11 @@ const goi = (phuongThuc, duongDan, token) => {
   return token ? req.set('Authorization', `Bearer ${token}`) : req;
 };
 async function demNhatKy(nguoiDungId, hanhDong) {
-  const [dong] = await pool.execute(
-    'SELECT COUNT(*) AS n FROM nhatkyhethong WHERE id > ? AND nguoiDungId = ? AND hanhDong = ?',
-    [idNhatKyMoc, nguoiDungId, hanhDong]
-  );
+  const [dong] = await pool.execute('SELECT COUNT(*) AS n FROM nhatkyhethong WHERE id > ? AND nguoiDungId = ? AND hanhDong = ?', [
+    idNhatKyMoc,
+    nguoiDungId,
+    hanhDong,
+  ]);
   return Number(dong[0].n);
 }
 async function layTrangThai(nguoiDungId) {
@@ -50,10 +50,10 @@ async function layVaiTro(nguoiDungId) {
   return (await nguoiDungRepository.layDanhSachVaiTro(nguoiDungId)).sort();
 }
 async function ganVaiTroDb(nguoiDungId, maVaiTro) {
-  await pool.execute(
-    'INSERT IGNORE INTO nguoidungvaitro (nguoiDungId, vaiTroId) SELECT ?, id FROM vaitro WHERE maVaiTro = ?',
-    [nguoiDungId, maVaiTro]
-  );
+  await pool.execute('INSERT IGNORE INTO nguoidungvaitro (nguoiDungId, vaiTroId) SELECT ?, id FROM vaitro WHERE maVaiTro = ?', [
+    nguoiDungId,
+    maVaiTro,
+  ]);
 }
 // Đếm từ CSDL để không phụ thuộc số lượng bản ghi seed
 async function demSql(sql, thamSo = []) {
@@ -83,13 +83,14 @@ afterEach(async () => {
   await pool.query('ALTER TABLE nguoidung AUTO_INCREMENT = 1');
   for (const nd of banSaoNguoiDung) {
     await pool.execute('UPDATE nguoidung SET matKhauMaHoa = ?, trangThai = ?, lanDangNhapCuoi = ? WHERE id = ?', [
-      nd.matKhauMaHoa, nd.trangThai, nd.lanDangNhapCuoi, nd.id,
+      nd.matKhauMaHoa,
+      nd.trangThai,
+      nd.lanDangNhapCuoi,
+      nd.id,
     ]);
   }
   await pool.query('DELETE FROM nguoidungvaitro');
-  await pool.query('INSERT INTO nguoidungvaitro (nguoiDungId, vaiTroId) VALUES ?', [
-    banSaoVaiTro.map((d) => [d.nguoiDungId, d.vaiTroId]),
-  ]);
+  await pool.query('INSERT INTO nguoidungvaitro (nguoiDungId, vaiTroId) VALUES ?', [banSaoVaiTro.map((d) => [d.nguoiDungId, d.vaiTroId])]);
   for (const nv of banSaoNhanVien) {
     await pool.execute('UPDATE nhanvien SET trangThaiLamViec = ? WHERE id = ?', [nv.trangThaiLamViec, nv.id]);
   }
@@ -132,7 +133,7 @@ describe('GET /api/v1/nguoiDung', () => {
     expect(khoa.body.data.phanTrang.tongSo).toBe(1);
     const hr = await goi('get', '/nguoiDung?vaiTro=HR', token);
     const [dsHr] = await pool.execute(
-      "SELECT nv.nguoiDungId AS id FROM nguoidungvaitro nv JOIN vaitro v ON v.id = nv.vaiTroId WHERE v.maVaiTro = 'HR'"
+      "SELECT nv.nguoiDungId AS id FROM nguoidungvaitro nv JOIN vaitro v ON v.id = nv.vaiTroId WHERE v.maVaiTro = 'HR'",
     );
     const idHr = dsHr.map((d) => d.id).sort((a, b) => a - b);
     expect(idHr).toEqual(expect.arrayContaining([4, 7]));
@@ -140,7 +141,7 @@ describe('GET /api/v1/nguoiDung', () => {
     const ketHop = await goi('get', '/nguoiDung?vaiTro=nhanVien&trangThai=DANG_HOAT_DONG', token);
     const soKetHop = await demSql(
       `SELECT COUNT(DISTINCT n.id) AS n FROM nguoidung n JOIN nguoidungvaitro nv ON nv.nguoiDungId = n.id
-       JOIN vaitro v ON v.id = nv.vaiTroId WHERE v.maVaiTro = 'nhanVien' AND n.trangThai = 'DANG_HOAT_DONG'`
+       JOIN vaitro v ON v.id = nv.vaiTroId WHERE v.maVaiTro = 'nhanVien' AND n.trangThai = 'DANG_HOAT_DONG'`,
     );
     expect(ketHop.body.data.phanTrang.tongSo).toBe(soKetHop);
   });
@@ -155,18 +156,14 @@ describe('GET /api/v1/nguoiDung', () => {
     expect(lon.body.data.phanTrang.kichThuoc).toBe(100);
   });
 
-  test.each([
-    ['trangThai=XYZ'],
-    ['vaiTro=Boss'],
-    ['trang=0'],
-    ['trang=-1'],
-    ['kichThuoc=abc'],
-    ['trang=1.5'],
-  ])('tham số sai %s trả 400', async (q) => {
-    const res = await goi('get', `/nguoiDung?${q}`, await layToken('admin'));
-    expect(res.status).toBe(400);
-    expect(res.body).toEqual({ success: false, code: 400, message: expect.any(String), data: null });
-  });
+  test.each([['trangThai=XYZ'], ['vaiTro=Boss'], ['trang=0'], ['trang=-1'], ['kichThuoc=abc'], ['trang=1.5']])(
+    'tham số sai %s trả 400',
+    async (q) => {
+      const res = await goi('get', `/nguoiDung?${q}`, await layToken('admin'));
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({ success: false, code: 400, message: expect.any(String), data: null });
+    },
+  );
 
   test('chưa đăng nhập trả 401', async () => {
     const res = await goi('get', '/nguoiDung');
@@ -228,7 +225,10 @@ describe('POST /api/v1/nguoiDung/:id/datLaiMatKhau', () => {
     expect(toi.body).toMatchObject({ success: false, code: 401, data: null });
   });
 
-  test.each([['quanly', 3], ['nhanvien', 5]])('HR reset được tài khoản %s', async (ten, id) => {
+  test.each([
+    ['quanly', 3],
+    ['nhanvien', 5],
+  ])('HR reset được tài khoản %s', async (ten, id) => {
     const res = await goi('post', `/nguoiDung/${id}/datLaiMatKhau`, await layToken('hr'));
     expect(res.status).toBe(200);
     expect(res.body.data.tenDangNhap).toBe(ten);
@@ -236,7 +236,10 @@ describe('POST /api/v1/nguoiDung/:id/datLaiMatKhau', () => {
     expect(await demNhatKy(4, 'CAP_MAT_KHAU_TAM')).toBe(1);
   });
 
-  test.each([['admin', 1], ['giamdoc', 2]])('HR reset tài khoản %s bị 403, mật khẩu không đổi', async (ten, id) => {
+  test.each([
+    ['admin', 1],
+    ['giamdoc', 2],
+  ])('HR reset tài khoản %s bị 403, mật khẩu không đổi', async (ten, id) => {
     const res = await goi('post', `/nguoiDung/${id}/datLaiMatKhau`, await layToken('hr'));
     expect(res.status).toBe(403);
     expect(res.body).toMatchObject({ success: false, code: 403, data: null });
@@ -251,7 +254,10 @@ describe('POST /api/v1/nguoiDung/:id/datLaiMatKhau', () => {
     expect(await demNhatKy(6, 'RESET_MAT_KHAU_TAM')).toBe(0);
   });
 
-  test.each([['admin', 1], ['hr', 4]])('%s tự reset mình bị 403', async (ten, id) => {
+  test.each([
+    ['admin', 1],
+    ['hr', 4],
+  ])('%s tự reset mình bị 403', async (ten, id) => {
     const res = await goi('post', `/nguoiDung/${id}/datLaiMatKhau`, await layToken(ten));
     expect(res.status).toBe(403);
     expect(await demNhatKy(id, 'RESET_MAT_KHAU_TAM')).toBe(0);
@@ -394,7 +400,7 @@ describe('POST /api/v1/nguoiDung/:id/khoa và /moKhoa', () => {
           expect(await layTrangThai(6)).toBe('KHOA');
         }
       }
-    }
+    },
   );
 });
 
@@ -406,9 +412,7 @@ describe('PUT /api/v1/nguoiDung/:id/vaiTro', () => {
     expect(res.body.data.vaiTro.sort()).toEqual(['nhanVien', 'quanLy']);
     expect(await layVaiTro(6)).toEqual(['nhanVien', 'quanLy']);
     expect(await demNhatKy(1, 'PHAN_QUYEN')).toBe(1);
-    const [[nk]] = await pool.execute(
-      "SELECT chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = 'PHAN_QUYEN'", [idNhatKyMoc]
-    );
+    const [[nk]] = await pool.execute("SELECT chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = 'PHAN_QUYEN'", [idNhatKyMoc]);
     expect(nk.chiTiet).toMatch(/nhanvien2/);
   });
 
@@ -420,7 +424,7 @@ describe('PUT /api/v1/nguoiDung/:id/vaiTro', () => {
 
   test('tài khoản không có hồ sơ: mảng rỗng trả 400, không xóa vai trò', async () => {
     const [kq] = await pool.execute(
-      "INSERT INTO nguoidung (tenDangNhap, email, matKhauMaHoa) VALUES ('qaTam', 'qatam@smarthrm.local', 'x')"
+      "INSERT INTO nguoidung (tenDangNhap, email, matKhauMaHoa) VALUES ('qaTam', 'qatam@smarthrm.local', 'x')",
     );
     await ganVaiTroDb(kq.insertId, 'giamDoc');
     const token = await layToken('admin');
@@ -432,19 +436,15 @@ describe('PUT /api/v1/nguoiDung/:id/vaiTro', () => {
     expect(await layVaiTro(kq.insertId)).toEqual(['HR']); // không có hồ sơ -> không thêm nhanVien
   });
 
-  test.each([
-    [{ vaiTro: 'HR' }],
-    [{ vaiTro: ['Boss'] }],
-    [{ vaiTro: ['HR', 'admin'] }],
-    [{ vaiTro: [1] }],
-    [{}],
-    [{ vaiTro: null }],
-  ])('dữ liệu sai %j trả 400, vai trò không đổi', async (body) => {
-    const res = await goi('put', '/nguoiDung/6/vaiTro', await layToken('admin')).send(body);
-    expect(res.status).toBe(400);
-    expect(res.body).toMatchObject({ success: false, code: 400, data: null });
-    expect(await layVaiTro(6)).toEqual(['nhanVien']);
-  });
+  test.each([[{ vaiTro: 'HR' }], [{ vaiTro: ['Boss'] }], [{ vaiTro: ['HR', 'admin'] }], [{ vaiTro: [1] }], [{}], [{ vaiTro: null }]])(
+    'dữ liệu sai %j trả 400, vai trò không đổi',
+    async (body) => {
+      const res = await goi('put', '/nguoiDung/6/vaiTro', await layToken('admin')).send(body);
+      expect(res.status).toBe(400);
+      expect(res.body).toMatchObject({ success: false, code: 400, data: null });
+      expect(await layVaiTro(6)).toEqual(['nhanVien']);
+    },
+  );
 
   test('Admin tự gỡ vai trò Admin của mình bị 403', async () => {
     const res = await goi('put', '/nguoiDung/1/vaiTro', await layToken('admin')).send({ vaiTro: ['HR'] });
@@ -452,10 +452,25 @@ describe('PUT /api/v1/nguoiDung/:id/vaiTro', () => {
     expect(await layVaiTro(1)).toEqual(['Admin', 'nhanVien']);
   });
 
-  test('Admin tự đổi vai trò nhưng vẫn giữ Admin thì được', async () => {
+  test('Admin tự cấp thêm vai trò cho mình bị 403, giữ nguyên vai trò thì được', async () => {
     const res = await goi('put', '/nguoiDung/1/vaiTro', await layToken('admin')).send({ vaiTro: ['Admin', 'HR'] });
-    expect(res.status).toBe(200);
-    expect(await layVaiTro(1)).toEqual(['Admin', 'HR', 'nhanVien']);
+    expect(res.status).toBe(403);
+    expect(await layVaiTro(1)).toEqual(['Admin', 'nhanVien']);
+    const res2 = await goi('put', '/nguoiDung/1/vaiTro', await layToken('admin')).send({ vaiTro: ['Admin'] });
+    expect(res2.status).toBe(200);
+    expect(await layVaiTro(1)).toEqual(['Admin', 'nhanVien']);
+  });
+
+  test('Admin tự bớt vai trò không phải Admin (HR) của mình thì được', async () => {
+    await pool.execute("INSERT INTO nguoidungvaitro (nguoiDungId, vaiTroId) SELECT 1, id FROM vaitro WHERE maVaiTro = 'HR'");
+    try {
+      expect(await layVaiTro(1)).toEqual(['Admin', 'HR', 'nhanVien']);
+      const res = await goi('put', '/nguoiDung/1/vaiTro', await layToken('admin')).send({ vaiTro: ['Admin'] });
+      expect(res.status).toBe(200);
+      expect(await layVaiTro(1)).toEqual(['Admin', 'nhanVien']);
+    } finally {
+      await pool.execute("DELETE FROM nguoidungvaitro WHERE nguoiDungId = 1 AND vaiTroId = (SELECT id FROM vaitro WHERE maVaiTro = 'HR')");
+    }
   });
 
   test('gỡ Admin cuối cùng trả 409 và rollback (giả lập bộ đếm Admin = 1)', async () => {
@@ -524,7 +539,7 @@ describe('GET /api/v1/nhatKyHeThong', () => {
 
   test('lọc theo nguoiDungId, hanhDong, tuNgay/denNgay', async () => {
     await pool.execute(
-      "INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, thoiGianTao) VALUES (6, 'QA_KIEM_THU', '127.0.0.1', '2020-05-10 08:00:00')"
+      "INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, thoiGianTao) VALUES (6, 'QA_KIEM_THU', '127.0.0.1', '2020-05-10 08:00:00')",
     );
     const token = await layToken('admin');
     const theoNguoi = await goi('get', '/nhatKyHeThong?nguoiDungId=6&hanhDong=QA_KIEM_THU', token);
@@ -540,17 +555,14 @@ describe('GET /api/v1/nhatKyHeThong', () => {
     expect(nguoiKhac.body.data.phanTrang.tongSo).toBe(0);
   });
 
-  test.each([
-    ['tuNgay=2026-13-01'],
-    ['denNgay=abc'],
-    ['tuNgay=2026-02-30'],
-    ['nguoiDungId=abc'],
-    ['trang=0'],
-  ])('tham số sai %s trả 400', async (q) => {
-    const res = await goi('get', `/nhatKyHeThong?${q}`, await layToken('admin'));
-    expect(res.status).toBe(400);
-    expect(res.body).toMatchObject({ success: false, code: 400, data: null });
-  });
+  test.each([['tuNgay=2026-13-01'], ['denNgay=abc'], ['tuNgay=2026-02-30'], ['nguoiDungId=abc'], ['trang=0']])(
+    'tham số sai %s trả 400',
+    async (q) => {
+      const res = await goi('get', `/nhatKyHeThong?${q}`, await layToken('admin'));
+      expect(res.status).toBe(400);
+      expect(res.body).toMatchObject({ success: false, code: 400, data: null });
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -569,7 +581,9 @@ describe('Xác thực bằng cookie httpOnly và X-Tra-Token', () => {
   });
 
   test('X-Tra-Token khác "1" cũng không trả token', async () => {
-    const res = await request(app).post('/api/v1/xacThuc/dangNhap').set('X-Tra-Token', 'true')
+    const res = await request(app)
+      .post('/api/v1/xacThuc/dangNhap')
+      .set('X-Tra-Token', 'true')
       .send({ tenDangNhap: 'nhanvien', matKhau: MAT_KHAU });
     expect(res.status).toBe(200);
     expect(res.body.data.token).toBeUndefined();
@@ -626,7 +640,9 @@ describe('Xác thực bằng cookie httpOnly và X-Tra-Token', () => {
 
 describe('Chặn Origin lạ cho request ghi', () => {
   test('POST đăng nhập với Origin lạ trả 403 chuẩn, không ghi nhật ký đăng nhập', async () => {
-    const res = await request(app).post('/api/v1/xacThuc/dangNhap').set('Origin', NGUON_LA)
+    const res = await request(app)
+      .post('/api/v1/xacThuc/dangNhap')
+      .set('Origin', NGUON_LA)
       .send({ tenDangNhap: 'nhanvien', matKhau: MAT_KHAU });
     expect(res.status).toBe(403);
     expect(res.body).toEqual({ success: false, code: 403, message: expect.any(String), data: null });
@@ -635,14 +651,18 @@ describe('Chặn Origin lạ cho request ghi', () => {
   });
 
   test.each(['http://localhost:5174', 'http://localhost', 'null'])('Origin gần giống %s cũng bị 403', async (nguon) => {
-    const res = await request(app).post('/api/v1/xacThuc/dangNhap').set('Origin', nguon)
+    const res = await request(app)
+      .post('/api/v1/xacThuc/dangNhap')
+      .set('Origin', nguon)
       .send({ tenDangNhap: 'nhanvien', matKhau: MAT_KHAU });
     expect(res.status).toBe(403);
   });
 
   test('PUT và PATCH với Origin lạ bị 403 dù token Admin hợp lệ, dữ liệu không đổi', async () => {
     const token = await layToken('admin');
-    const put = await goi('put', '/nguoiDung/6/vaiTro', token).set('Origin', NGUON_LA).send({ vaiTro: ['HR'] });
+    const put = await goi('put', '/nguoiDung/6/vaiTro', token)
+      .set('Origin', NGUON_LA)
+      .send({ vaiTro: ['HR'] });
     expect(put.status).toBe(403);
     expect(await layVaiTro(6)).toEqual(['nhanVien']);
     const patch = await goi('patch', '/nhanVien/toi', token).set('Origin', NGUON_LA).send({ diaChi: 'Hà Nội' });
@@ -653,7 +673,9 @@ describe('Chặn Origin lạ cho request ghi', () => {
   });
 
   test('Origin hợp lệ http://localhost:5173 hoặc không có Origin hoạt động bình thường', async () => {
-    const coNguon = await request(app).post('/api/v1/xacThuc/dangNhap').set('Origin', NGUON_HOP_LE)
+    const coNguon = await request(app)
+      .post('/api/v1/xacThuc/dangNhap')
+      .set('Origin', NGUON_HOP_LE)
       .send({ tenDangNhap: 'nhanvien', matKhau: MAT_KHAU });
     expect(coNguon.status).toBe(200);
     expect(coNguon.headers['access-control-allow-origin']).toBe(NGUON_HOP_LE);

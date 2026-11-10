@@ -58,7 +58,15 @@ function TrangDoiMatKhau() {
         </label>
         <label className="truongNhap">
           <span>Mật khẩu mới</span>
-          <input name="matKhauMoi" type="password" value={form.matKhauMoi} onChange={capNhat} autoComplete="new-password" minLength={8} required />
+          <input
+            name="matKhauMoi"
+            type="password"
+            value={form.matKhauMoi}
+            onChange={capNhat}
+            autoComplete="new-password"
+            minLength={8}
+            required
+          />
           <small>Tối thiểu 8 ký tự, gồm cả chữ và số.</small>
         </label>
         <label className="truongNhap">
@@ -68,9 +76,13 @@ function TrangDoiMatKhau() {
 
         <div className="hangNut">
           {batBuoc ? (
-            <NutBam type="button" bienThe="ma" onClick={dangXuat}>Đăng xuất</NutBam>
+            <NutBam type="button" bienThe="ma" onClick={dangXuat}>
+              Đăng xuất
+            </NutBam>
           ) : (
-            <NutBam type="button" bienThe="phu" onClick={() => dieuHuong(-1)}>Hủy</NutBam>
+            <NutBam type="button" bienThe="phu" onClick={() => dieuHuong(window.history.state?.idx > 0 ? -1 : '/')}>
+              Hủy
+            </NutBam>
           )}
           <NutBam type="submit" bieuTuong={KeyRound} disabled={dangGui}>
             {dangGui ? 'Đang lưu...' : 'Đổi mật khẩu'}

@@ -28,10 +28,8 @@ goiApi.interceptors.response.use(
     if (trangThai === 403 && body?.message === THONG_BAO_CAN_DOI_MAT_KHAU) {
       window.dispatchEvent(new Event(SU_KIEN_CAN_DOI_MAT_KHAU));
     }
-    return Promise.reject(
-      body ?? { success: false, code: 0, message: 'Không kết nối được máy chủ', data: null }
-    );
-  }
+    return Promise.reject(body ?? { success: false, code: 0, message: 'Không kết nối được máy chủ', data: null });
+  },
 );
 
 export default goiApi;

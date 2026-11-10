@@ -19,6 +19,15 @@ function layNgay(giaTri, nhan) {
   return giaTri;
 }
 
+// Tháng dạng YYYY-MM (01-12)
+function layThang(giaTri, macDinh, nhan = 'Tháng') {
+  if (giaTri === undefined || giaTri === '') return macDinh;
+  if (typeof giaTri !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(giaTri)) {
+    throw new LoiUngDung(400, `${nhan} phải có dạng YYYY-MM`);
+  }
+  return giaTri;
+}
+
 function layGiaTriTrongDanhSach(giaTri, danhSach, nhan) {
   if (giaTri === undefined || giaTri === '') return undefined;
   if (!danhSach.includes(giaTri)) throw new LoiUngDung(400, `${nhan} không hợp lệ`);
@@ -36,4 +45,4 @@ function layPhanTrang(query) {
   return { trang, kichThuoc, viTri: (trang - 1) * kichThuoc, soLuong: kichThuoc };
 }
 
-module.exports = { laySoNguyenDuong, layNgay, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang };
+module.exports = { laySoNguyenDuong, layNgay, layThang, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang };

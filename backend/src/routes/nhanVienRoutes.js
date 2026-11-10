@@ -23,8 +23,11 @@ const LUAT_LIEN_HE = {
 
 const LUAT_HO_SO = {
   hoVaTen: {
-    nhan: 'Họ và tên', toiThieu: 2, toiDa: 100,
-    mauKiemTra: /^[\p{L}][\p{L}\s.'-]*$/u, thongBaoMau: 'Họ và tên chỉ gồm chữ cái và khoảng trắng',
+    nhan: 'Họ và tên',
+    toiThieu: 2,
+    toiDa: 100,
+    mauKiemTra: /^[\p{L}][\p{L}\s.'-]*$/u,
+    thongBaoMau: 'Họ và tên chỉ gồm chữ cái và khoảng trắng',
   },
   gioiTinh: { nhan: 'Giới tính', cacGiaTri: GIOI_TINH },
   ngaySinh: { nhan: 'Ngày sinh', kieu: 'ngay' },
@@ -35,15 +38,13 @@ const LUAT_HO_SO = {
 // Bắt buộc với luật tạo mới
 function batBuoc(luat, cacTruong) {
   const ketQua = { ...luat };
-  cacTruong.forEach((truong) => { ketQua[truong] = { ...ketQua[truong], batBuoc: true }; });
+  cacTruong.forEach((truong) => {
+    ketQua[truong] = { ...ketQua[truong], batBuoc: true };
+  });
   return ketQua;
 }
 
-router.get(
-  '/',
-  phanQuyen(['HR', 'giamDoc', 'quanLy']),
-  batLoiBatDongBo(nhanVienController.layDanhSachNhanVien)
-);
+router.get('/', phanQuyen(['HR', 'giamDoc', 'quanLy']), batLoiBatDongBo(nhanVienController.layDanhSachNhanVien));
 
 router.post(
   '/',
@@ -53,37 +54,34 @@ router.post(
     chucDanhPhongBanId: { nhan: 'Vị trí (chức danh phòng ban)', batBuoc: true, kieu: 'soNguyenDuong' },
     trangThaiLamViec: { nhan: 'Trạng thái làm việc', cacGiaTri: ['THU_VIEC', 'CHINH_THUC'] },
     tenDangNhap: {
-      nhan: 'Tên đăng nhập', batBuoc: true, toiThieu: 3, toiDa: 50,
-      mauKiemTra: /^[A-Za-z0-9._]+$/, thongBaoMau: 'Tên đăng nhập chỉ gồm chữ không dấu, số, dấu chấm, gạch dưới',
+      nhan: 'Tên đăng nhập',
+      batBuoc: true,
+      toiThieu: 3,
+      toiDa: 50,
+      mauKiemTra: /^[A-Za-z0-9._]+$/,
+      thongBaoMau: 'Tên đăng nhập chỉ gồm chữ không dấu, số, dấu chấm, gạch dưới',
     },
     email: {
-      nhan: 'Email', batBuoc: true, toiDa: 100,
-      mauKiemTra: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, thongBaoMau: 'Email không hợp lệ',
+      nhan: 'Email',
+      batBuoc: true,
+      toiDa: 100,
+      mauKiemTra: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      thongBaoMau: 'Email không hợp lệ',
     },
   }),
-  batLoiBatDongBo(nhanVienController.themNhanVien)
+  batLoiBatDongBo(nhanVienController.themNhanVien),
 );
 
 const MOI_VAI_TRO = ['Admin', 'giamDoc', 'quanLy', 'HR', 'nhanVien'];
 
 // /toi đặt trước /:id
 router.get('/toi', phanQuyen(MOI_VAI_TRO), batLoiBatDongBo(nhanVienController.layHoSoCuaToi));
-router.patch(
-  '/toi',
-  phanQuyen(MOI_VAI_TRO),
-  kiemTraDuLieu(LUAT_LIEN_HE),
-  batLoiBatDongBo(nhanVienController.capNhatHoSoCuaToi)
-);
+router.patch('/toi', phanQuyen(MOI_VAI_TRO), kiemTraDuLieu(LUAT_LIEN_HE), batLoiBatDongBo(nhanVienController.capNhatHoSoCuaToi));
 
 // Admin, nhanVien chỉ xem được hồ sơ của mình: service kiểm tra phạm vi
 router.get('/:id', phanQuyen(MOI_VAI_TRO), batLoiBatDongBo(nhanVienController.layChiTietNhanVien));
 
-router.patch(
-  '/:id',
-  phanQuyen(['HR']),
-  kiemTraDuLieu(LUAT_HO_SO),
-  batLoiBatDongBo(nhanVienController.capNhatNhanVien)
-);
+router.patch('/:id', phanQuyen(['HR']), kiemTraDuLieu(LUAT_HO_SO), batLoiBatDongBo(nhanVienController.capNhatNhanVien));
 
 router.post(
   '/:id/doiTrangThai',
@@ -92,7 +90,7 @@ router.post(
     trangThaiLamViec: { nhan: 'Trạng thái làm việc', batBuoc: true, cacGiaTri: TRANG_THAI_LAM_VIEC },
     lyDo: { nhan: 'Lý do', toiDa: 200 },
   }),
-  batLoiBatDongBo(nhanVienController.doiTrangThaiNhanVien)
+  batLoiBatDongBo(nhanVienController.doiTrangThaiNhanVien),
 );
 
 router.post(
@@ -102,7 +100,7 @@ router.post(
     chucDanhPhongBanId: { nhan: 'Vị trí mới', batBuoc: true, kieu: 'soNguyenDuong' },
     lyDo: { nhan: 'Lý do', toiDa: 200 },
   }),
-  batLoiBatDongBo(nhanVienController.dieuChuyenNhanVien)
+  batLoiBatDongBo(nhanVienController.dieuChuyenNhanVien),
 );
 
 module.exports = router;

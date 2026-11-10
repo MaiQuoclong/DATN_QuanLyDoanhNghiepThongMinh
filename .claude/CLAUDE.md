@@ -28,6 +28,7 @@ Mỗi service có `.env.example` (commit) và `.env` (không commit).
 
 ## Quy tắc bắt buộc
 - KHÔNG thay đổi cấu trúc, tên bảng, tên cột, kiểu dữ liệu trong `database/schema.sql`.
+- Hạn chế tối đa đụng vào CSDL gốc. Nếu thật sự phải thay đổi bất kỳ thứ gì liên quan `database/schema.sql` (thêm/sửa bảng, cột, kiểu, index, ràng buộc), phải **dừng lại, giải thích lý do + phương án thay thế ở tầng code, và chờ người dùng đồng ý** trước khi sửa.
 - Giá trị trạng thái dùng đúng như schema (`CHO_DUYET`, `BAN_NHAP`, ...), không dùng `PENDING`.
 - Text-to-SQL chỉ `SELECT`, chạy bằng tài khoản DB chỉ đọc.
 - Trước khi sửa `settings.json` hoặc file cấu hình môi trường: giải thích thay đổi + lý do và chờ người dùng đồng ý.
@@ -36,6 +37,11 @@ Mỗi service có `.env.example` (commit) và `.env` (không commit).
   - Dựng lại môi trường bằng một lệnh `npm run khoiTaoCsdl` (trong `backend/`: tạo database → `schema.sql` → `seed.sql`), không thao tác tay.
   - Xong mỗi module phải bổ sung `database/seed.sql` đủ dữ liệu mẫu để demo trên web cho cả 5 vai trò.
   - Test phải pass trên DB vừa dựng lại: mỗi test tự tạo và tự dọn dữ liệu, không phụ thuộc thứ tự chạy hay dữ liệu sót lại.
+
+## Chất lượng mã
+- Định dạng/lint theo `.prettierrc` và `eslint.config.js` (backend, frontend); trước khi báo xong phải chạy `npm run lint` sạch ở backend và frontend (không tắt rule bằng `eslint-disable` nếu không có lý do ghi rõ).
+- CI (`.github/workflows/ci.yml`) phải xanh trước khi merge PR; CI đỏ thì sửa trước, không merge.
+- Khi hướng dẫn tạo PR, điền mô tả theo `.github/pull_request_template.md`.
 
 ## Bảo mật
 - JWT + RBAC 5 vai trò: `Admin`, `giamDoc`, `quanLy`, `HR`, `nhanVien` (giữ đúng giá trị lưu trong bảng `vaitro`).
@@ -52,6 +58,7 @@ Mỗi service có `.env.example` (commit) và `.env` (không commit).
 1. Làm theo lát cắt dọc từng tính năng: DB → API → UI, trên nhánh `feature/ten-chuc-nang` (gạch ngang) tách từ `develop`, commit nhỏ theo Conventional Commits.
 2. Thứ tự: Auth/RBAC → Hồ sơ nhân sự & Hợp đồng → Chấm công/Phép → Lương → KPI/Khen thưởng → AI Agent.
 3. Xong **mỗi chức năng** trong một module (không đợi hết module): gọi `reviewer` rà toàn project → sửa hết lỗi → gọi `qa-tester` chạy test toàn project (tự cập nhật `docs/progress.md`) → sửa lỗi nếu có. Chỉ khi lượt này sạch mới làm chức năng tiếp theo của cùng module.
+   - Xong **trọn một module**: gọi `reviewer` + `qa-tester` toàn project thêm 1 lượt → sửa hết lỗi nghiêm trọng/trung bình; lỗi nhẹ có thể để sau thì ghi vào "Hạn chế đã biết" trong `docs/progress.md` (file:dòng, kịch bản, cách sửa) → đưa hướng dẫn commit/push/PR.
 4. Mỗi lần sửa code: tóm tắt file đã đổi và xác nhận không lệch schema.
 
 ## Quản lý context

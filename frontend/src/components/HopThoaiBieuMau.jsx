@@ -6,8 +6,9 @@ import OChonNhanVien from './OChonNhanVien';
 // Hộp thoại biểu mẫu theo cấu hình trường.
 // truong: [{ ten, nhan, kieu?: 'text'|'date'|'number'|'select'|'textarea'|'nhanVien', luaChon?: [{giaTri, nhan}],
 //            locNhanVien? (kieu 'nhanVien', xem OChonNhanVien), batBuoc?, rongHet?, goiY?, ghiChu? }]
+// loiNgoai: lỗi của trang phát sinh khi hộp thoại đang mở (để không bị lớp phủ che).
 // onGui(giaTri) trả Promise; lỗi API hiển thị trong hộp thoại, thành công thì onDong do nơi gọi quyết định.
-function HopThoaiBieuMau({ tieuDe, truong, giaTriBanDau = {}, nhanNutGui = 'Lưu', bienTheNut = 'chinh', moTa, onGui, onDong }) {
+function HopThoaiBieuMau({ tieuDe, truong, giaTriBanDau = {}, nhanNutGui = 'Lưu', bienTheNut = 'chinh', moTa, loiNgoai, onGui, onDong }) {
   const [giaTri, setGiaTri] = useState(() => Object.fromEntries(truong.map((t) => [t.ten, giaTriBanDau[t.ten] ?? ''])));
   const [loi, setLoi] = useState('');
   const [dangGui, setDangGui] = useState(false);
@@ -30,26 +31,35 @@ function HopThoaiBieuMau({ tieuDe, truong, giaTriBanDau = {}, nhanNutGui = 'Lưu
     <HopThoai
       tieuDe={tieuDe}
       onDong={onDong}
-      chanTrang={(
+      chanTrang={
         <>
-          <NutBam bienThe="phu" type="button" onClick={onDong}>Hủy</NutBam>
+          <NutBam bienThe="phu" type="button" onClick={onDong}>
+            Hủy
+          </NutBam>
           <NutBam bienThe={bienTheNut} type="submit" form="hopThoaiBieuMau" disabled={dangGui}>
             {dangGui ? 'Đang xử lý...' : nhanNutGui}
           </NutBam>
         </>
-      )}
+      }
     >
       {moTa && <div className="thongBao canhBao">{moTa}</div>}
+      {/* Hiện cả lỗi gửi form và lỗi ngoài (nếu khác nhau) để lỗi mới không bị lỗi cũ che */}
       {loi && <div className="thongBao loi">{loi}</div>}
+      {loiNgoai && loiNgoai !== loi && <div className="thongBao loi">{loiNgoai}</div>}
       <form id="hopThoaiBieuMau" className="bieuMau" onSubmit={gui}>
         {truong.map(({ ten, nhan, kieu = 'text', luaChon = [], locNhanVien, batBuoc, rongHet, goiY, ghiChu }) => (
           <label key={ten} className={`truongForm ${rongHet || ['textarea', 'nhanVien'].includes(kieu) ? 'rongHet' : ''}`}>
-            {nhan}{batBuoc && ' *'}
+            {nhan}
+            {batBuoc && ' *'}
             {kieu === 'nhanVien' && <OChonNhanVien value={giaTri[ten]} onChange={doi(ten)} loc={locNhanVien} batBuoc={batBuoc} />}
             {kieu === 'select' && (
               <select value={giaTri[ten]} onChange={doi(ten)} required={batBuoc}>
                 <option value="">-- Chọn --</option>
-                {luaChon.map((lc) => <option key={lc.giaTri} value={lc.giaTri}>{lc.nhan}</option>)}
+                {luaChon.map((lc) => (
+                  <option key={lc.giaTri} value={lc.giaTri}>
+                    {lc.nhan}
+                  </option>
+                ))}
               </select>
             )}
             {kieu === 'textarea' && <textarea value={giaTri[ten]} onChange={doi(ten)} required={batBuoc} placeholder={goiY} />}

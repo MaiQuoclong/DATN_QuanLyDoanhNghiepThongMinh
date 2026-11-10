@@ -3,8 +3,9 @@ import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import './BangDuLieu.css';
 
 // Bảng dữ liệu chung: header sticky, bấm tiêu đề cột để sắp xếp.
+// dangTai: true thì hiện "Đang tải..." thay cho thông báo rỗng.
 // cot: [{ khoa, tieuDe, bieuTuong?, canPhai?, hienThi?: (dong) => node, sapXep?: false }]
-function BangDuLieu({ cot, duLieu, khoaDong = 'id', onHanhDong, thongBaoRong = 'Không có dữ liệu' }) {
+function BangDuLieu({ cot, duLieu, khoaDong = 'id', onHanhDong, thongBaoRong = 'Không có dữ liệu', dangTai = false }) {
   const [sapXep, setSapXep] = useState({ khoa: null, tang: true });
 
   const duLieuDaXep = useMemo(() => {
@@ -17,8 +18,7 @@ function BangDuLieu({ cot, duLieu, khoaDong = 'id', onHanhDong, thongBaoRong = '
     });
   }, [duLieu, sapXep]);
 
-  const doiSapXep = (khoa) =>
-    setSapXep((cu) => ({ khoa, tang: cu.khoa === khoa ? !cu.tang : true }));
+  const doiSapXep = (khoa) => setSapXep((cu) => ({ khoa, tang: cu.khoa === khoa ? !cu.tang : true }));
 
   return (
     <div className="bangBoc the">
@@ -27,12 +27,7 @@ function BangDuLieu({ cot, duLieu, khoaDong = 'id', onHanhDong, thongBaoRong = '
           <tr>
             {cot.map(({ khoa, tieuDe, bieuTuong: BieuTuong, canPhai, sapXep: choSapXep = true }) => (
               <th key={khoa} className={canPhai ? 'canPhai' : ''}>
-                <button
-                  type="button"
-                  className="tieuDeCot"
-                  disabled={!choSapXep}
-                  onClick={() => doiSapXep(khoa)}
-                >
+                <button type="button" className="tieuDeCot" disabled={!choSapXep} onClick={() => doiSapXep(khoa)}>
                   {BieuTuong && <BieuTuong size={14} />}
                   {tieuDe}
                   {choSapXep && <ArrowUpDown size={12} className="iconSapXep" />}
@@ -45,7 +40,9 @@ function BangDuLieu({ cot, duLieu, khoaDong = 'id', onHanhDong, thongBaoRong = '
         <tbody>
           {duLieuDaXep.length === 0 && (
             <tr>
-              <td colSpan={cot.length + 1} className="oRong">{thongBaoRong}</td>
+              <td colSpan={cot.length + 1} className="oRong">
+                {dangTai ? 'Đang tải...' : thongBaoRong}
+              </td>
             </tr>
           )}
           {duLieuDaXep.map((dong) => (

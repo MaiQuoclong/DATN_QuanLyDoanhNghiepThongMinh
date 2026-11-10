@@ -2,10 +2,12 @@ const { pool } = require('../config/ketNoiCsdl');
 
 // ketNoi: truyền connection khi cần ghi chung transaction với nghiệp vụ
 async function themNhatKy(nguoiDungId, hanhDong, diaChiIP, chiTiet = null, ketNoi = pool) {
-  await ketNoi.execute(
-    'INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet) VALUES (?, ?, ?, ?)',
-    [nguoiDungId, hanhDong, diaChiIP, chiTiet]
-  );
+  await ketNoi.execute('INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet) VALUES (?, ?, ?, ?)', [
+    nguoiDungId,
+    hanhDong,
+    diaChiIP ?? null,
+    chiTiet ?? null,
+  ]);
 }
 
 // Mốc mật khẩu của người dùng, tính trong SQL để tránh lệch múi giờ giữa Node và CSDL.
@@ -21,7 +23,7 @@ async function layMocMatKhau(nguoiDungId) {
        FROM nhatkyhethong
       WHERE nguoiDungId = ?
         AND hanhDong IN ('RESET_MAT_KHAU_TAM', 'DOI_MAT_KHAU', 'KHOA_TAI_KHOAN', 'KHOA_TAI_KHOAN_NGHI_VIEC')`,
-    [nguoiDungId]
+    [nguoiDungId],
   );
   return dong[0];
 }
@@ -32,7 +34,7 @@ async function layHanhDongGanNhat(nguoiDungId, cacHanhDong, ketNoi = pool) {
     `SELECT hanhDong FROM nhatkyhethong
       WHERE nguoiDungId = ? AND hanhDong IN (${cacHanhDong.map(() => '?').join(', ')})
       ORDER BY id DESC LIMIT 1`,
-    [nguoiDungId, ...cacHanhDong]
+    [nguoiDungId, ...cacHanhDong],
   );
   return dong[0]?.hanhDong ?? null;
 }
@@ -65,7 +67,7 @@ async function layDanhSachNhatKy({ nguoiDungId, hanhDong, tuNgay, denNgay, viTri
        LEFT JOIN nguoidung nd ON nd.id = nk.nguoiDungId
        ${where}
       ORDER BY nk.id DESC LIMIT ? OFFSET ?`,
-    [...thamSo, soLuong, viTri]
+    [...thamSo, soLuong, viTri],
   );
   return { items, tongSo: Number(dem.tongSo) };
 }

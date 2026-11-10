@@ -3,25 +3,35 @@ const { pool } = require('../config/ketNoiCsdl');
 // ===================== Phạm vi & kiểm tra dùng chung =====================
 
 // Phạm vi quanLy (docs/phan-quyen.md quy tắc 4): phòng ban mình làm trưởng + đệ quy các phòng ban con
-async function layPhongBanQuanLy(nhanVienId) {
-  const [dong] = await pool.execute(
+async function layPhongBanQuanLy(nhanVienId, ketNoi = pool) {
+  const [dong] = await ketNoi.execute(
     `WITH RECURSIVE cay AS (
         SELECT id FROM phongban WHERE truongBoPhanId = ?
         UNION
         SELECT pb.id FROM phongban pb JOIN cay ON pb.phongBanChaId = cay.id
      )
      SELECT id FROM cay`,
-    [nhanVienId]
+    [nhanVienId],
   );
   return dong.map((d) => d.id);
 }
 
+// Cây phòng ban kèm trưởng bộ phận và trạng thái làm việc của trưởng (tính chuỗi duyệt đơn nghỉ phép)
+async function layCayPhongBan(ketNoi = pool) {
+  const [dong] = await ketNoi.query(
+    `SELECT pb.id, pb.phongBanChaId, pb.trangThai, pb.truongBoPhanId, t.maNhanVien AS maTruong, t.hoVaTen AS tenTruong,
+            t.trangThaiLamViec AS trangThaiTruong,
+            EXISTS (SELECT 1 FROM nguoidungvaitro ndvt JOIN vaitro vt ON vt.id = ndvt.vaiTroId
+                     WHERE ndvt.nguoiDungId = t.nguoiDungId AND vt.maVaiTro = 'quanLy') AS truongCoQuanLy
+       FROM phongban pb
+       LEFT JOIN nhanvien t ON t.id = pb.truongBoPhanId`,
+  );
+  return dong.map((d) => ({ ...d, truongCoQuanLy: Boolean(d.truongCoQuanLy) }));
+}
+
 // Gọi trong transaction: FOR UPDATE chặn việc bổ nhiệm đúng lúc HR đang cho nghỉ/điều chuyển người đó
 async function layPhongBanLamTruong(nhanVienId, ketNoi) {
-  const [dong] = await ketNoi.execute(
-    'SELECT id, tenPhongBan FROM phongban WHERE truongBoPhanId = ? FOR UPDATE',
-    [nhanVienId]
-  );
+  const [dong] = await ketNoi.execute('SELECT id, tenPhongBan FROM phongban WHERE truongBoPhanId = ? FOR UPDATE', [nhanVienId]);
   return dong;
 }
 
@@ -59,7 +69,7 @@ async function khoaViTri(chucDanhPhongBanId, ketNoi) {
        JOIN phongban pb ON pb.id = cdpb.phongBanId
        JOIN chucdanh cd ON cd.id = cdpb.chucDanhId
       WHERE cdpb.id = ?`,
-    [chucDanhPhongBanId]
+    [chucDanhPhongBanId],
   );
   return dong[0] ?? null;
 }
@@ -84,7 +94,7 @@ async function layDanhSachPhongBan({ trangThai }) {
        LEFT JOIN nhanvien nv ON nv.id = pb.truongBoPhanId
       WHERE (? IS NULL OR pb.trangThai = ?)
       ORDER BY pb.maPhongBan`,
-    [trangThai ?? null, trangThai ?? null]
+    [trangThai ?? null, trangThai ?? null],
   );
   return dong.map(chuanHoaPhongBan);
 }
@@ -95,7 +105,7 @@ async function layPhongBanTheoId(id) {
        FROM phongban pb
        LEFT JOIN nhanvien nv ON nv.id = pb.truongBoPhanId
       WHERE pb.id = ?`,
-    [id]
+    [id],
   );
   return dong[0] ? chuanHoaPhongBan(dong[0]) : null;
 }
@@ -115,7 +125,7 @@ async function layDanhSachViTri({ id, phongBanId, trangThai }) {
         AND (? IS NULL OR cdpb.phongBanId = ?)
         AND (? IS NULL OR cdpb.trangThai = ?)
       ORDER BY pb.maPhongBan, cd.maChucDanh`,
-    [id ?? null, id ?? null, phongBanId ?? null, phongBanId ?? null, trangThai ?? null, trangThai ?? null]
+    [id ?? null, id ?? null, phongBanId ?? null, phongBanId ?? null, trangThai ?? null, trangThai ?? null],
   );
   return dong.map((d) => ({ ...d, soDangGiu: Number(d.soDangGiu), conTrong: Math.max(d.dinhBien - Number(d.soDangGiu), 0) }));
 }
@@ -125,7 +135,7 @@ async function layDanhSachChucDanh({ id, trangThai }) {
     `SELECT id, maChucDanh, tenChucDanh, capBac, trangThai FROM chucdanh
       WHERE (? IS NULL OR id = ?) AND (? IS NULL OR trangThai = ?)
       ORDER BY maChucDanh`,
-    [id ?? null, id ?? null, trangThai ?? null, trangThai ?? null]
+    [id ?? null, id ?? null, trangThai ?? null, trangThai ?? null],
   );
   return dong;
 }
@@ -142,7 +152,7 @@ async function layTongQuanSo(phongBanId) {
        FROM cay
        JOIN chucdanhphongban cdpb ON cdpb.phongBanId = cay.id
        JOIN nhanvien nv ON nv.chucDanhPhongBanId = cdpb.id AND nv.trangThaiLamViec <> 'DA_NGHI_VIEC'`,
-    [phongBanId]
+    [phongBanId],
   );
   return Number(dong[0].tong);
 }
@@ -153,16 +163,16 @@ async function layTongQuanSo(phongBanId) {
 async function capNhatTheoCot(bang, cotChoPhep, id, truong, ketNoi) {
   const cot = Object.keys(truong).filter((ten) => cotChoPhep.includes(ten));
   if (cot.length === 0) return;
-  await ketNoi.execute(
-    `UPDATE ${bang} SET ${cot.map((ten) => `${ten} = ?`).join(', ')} WHERE id = ?`,
-    [...cot.map((ten) => truong[ten]), id]
-  );
+  await ketNoi.execute(`UPDATE ${bang} SET ${cot.map((ten) => `${ten} = ?`).join(', ')} WHERE id = ?`, [
+    ...cot.map((ten) => truong[ten]),
+    id,
+  ]);
 }
 
 async function khoaPhongBan(id, ketNoi) {
   const [dong] = await ketNoi.execute(
     'SELECT id, maPhongBan, tenPhongBan, phongBanChaId, truongBoPhanId, trangThai FROM phongban WHERE id = ? FOR UPDATE',
-    [id]
+    [id],
   );
   return dong[0] ?? null;
 }
@@ -176,16 +186,13 @@ async function layPhongBanConChau(id, ketNoi) {
         SELECT pb.id FROM phongban pb JOIN cay ON pb.phongBanChaId = cay.id
      )
      SELECT id FROM cay`,
-    [id]
+    [id],
   );
   return dong.map((d) => d.id);
 }
 
 async function demPhongBanConHoatDong(id, ketNoi) {
-  const [dong] = await ketNoi.execute(
-    "SELECT id FROM phongban WHERE phongBanChaId = ? AND trangThai = 'DANG_HOAT_DONG' FOR UPDATE",
-    [id]
-  );
+  const [dong] = await ketNoi.execute("SELECT id FROM phongban WHERE phongBanChaId = ? AND trangThai = 'DANG_HOAT_DONG' FOR UPDATE", [id]);
   return dong.length;
 }
 
@@ -196,16 +203,17 @@ async function demNhanVienTrongPhong(phongBanId, ketNoi) {
        JOIN chucdanhphongban cdpb ON cdpb.id = nv.chucDanhPhongBanId
       WHERE cdpb.phongBanId = ? AND nv.trangThaiLamViec <> 'DA_NGHI_VIEC'
       FOR UPDATE`,
-    [phongBanId]
+    [phongBanId],
   );
   return dong.length;
 }
 
 async function themPhongBan({ maPhongBan, tenPhongBan, phongBanChaId }, ketNoi) {
-  const [ketQua] = await ketNoi.execute(
-    'INSERT INTO phongban (maPhongBan, tenPhongBan, phongBanChaId) VALUES (?, ?, ?)',
-    [maPhongBan, tenPhongBan, phongBanChaId]
-  );
+  const [ketQua] = await ketNoi.execute('INSERT INTO phongban (maPhongBan, tenPhongBan, phongBanChaId) VALUES (?, ?, ?)', [
+    maPhongBan,
+    tenPhongBan,
+    phongBanChaId,
+  ]);
   return ketQua.insertId;
 }
 
@@ -214,26 +222,23 @@ function capNhatPhongBan(id, truong, ketNoi) {
 }
 
 async function khoaChucDanh(id, ketNoi) {
-  const [dong] = await ketNoi.execute(
-    'SELECT id, maChucDanh, tenChucDanh, capBac, trangThai FROM chucdanh WHERE id = ? FOR UPDATE',
-    [id]
-  );
+  const [dong] = await ketNoi.execute('SELECT id, maChucDanh, tenChucDanh, capBac, trangThai FROM chucdanh WHERE id = ? FOR UPDATE', [id]);
   return dong[0] ?? null;
 }
 
 async function demViTriApDungCuaChucDanh(chucDanhId, ketNoi) {
-  const [dong] = await ketNoi.execute(
-    "SELECT id FROM chucdanhphongban WHERE chucDanhId = ? AND trangThai = 'DANG_AP_DUNG' FOR UPDATE",
-    [chucDanhId]
-  );
+  const [dong] = await ketNoi.execute("SELECT id FROM chucdanhphongban WHERE chucDanhId = ? AND trangThai = 'DANG_AP_DUNG' FOR UPDATE", [
+    chucDanhId,
+  ]);
   return dong.length;
 }
 
 async function themChucDanh({ maChucDanh, tenChucDanh, capBac }, ketNoi) {
-  const [ketQua] = await ketNoi.execute(
-    'INSERT INTO chucdanh (maChucDanh, tenChucDanh, capBac) VALUES (?, ?, ?)',
-    [maChucDanh, tenChucDanh, capBac]
-  );
+  const [ketQua] = await ketNoi.execute('INSERT INTO chucdanh (maChucDanh, tenChucDanh, capBac) VALUES (?, ?, ?)', [
+    maChucDanh,
+    tenChucDanh,
+    capBac,
+  ]);
   return ketQua.insertId;
 }
 
@@ -242,10 +247,12 @@ function capNhatChucDanh(id, truong, ketNoi) {
 }
 
 async function themViTri({ phongBanId, chucDanhId, dinhBien, ghiChu }, ketNoi) {
-  const [ketQua] = await ketNoi.execute(
-    'INSERT INTO chucdanhphongban (phongBanId, chucDanhId, dinhBien, ghiChu) VALUES (?, ?, ?, ?)',
-    [phongBanId, chucDanhId, dinhBien, ghiChu]
-  );
+  const [ketQua] = await ketNoi.execute('INSERT INTO chucdanhphongban (phongBanId, chucDanhId, dinhBien, ghiChu) VALUES (?, ?, ?, ?)', [
+    phongBanId,
+    chucDanhId,
+    dinhBien,
+    ghiChu,
+  ]);
   return ketQua.insertId;
 }
 
@@ -254,6 +261,7 @@ function capNhatViTri(id, truong, ketNoi) {
 }
 
 module.exports = {
+  layCayPhongBan,
   layPhongBanQuanLy,
   layPhongBanLamTruong,
   khoaCacPhongBan,

@@ -1,8 +1,6 @@
 const nguoiDungService = require('../services/nguoiDungService');
 const { thanhCong } = require('../utils/phanHoi');
-const {
-  laySoNguyenDuong, layNgay, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang,
-} = require('../utils/thamSoTruyVan');
+const { laySoNguyenDuong, layNgay, layGiaTriTrongDanhSach, layTuKhoa, layPhanTrang } = require('../utils/thamSoTruyVan');
 
 function layId(req) {
   return laySoNguyenDuong(req.params.id, undefined, 'Mã tài khoản');

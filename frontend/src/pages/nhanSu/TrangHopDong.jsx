@@ -25,7 +25,15 @@ const BO_LOC = [
 const SO_NGAY_CANH_BAO = 30;
 
 const COT_CO_NHAN_VIEN = [
-  { khoa: 'hoVaTen', tieuDe: 'Nhân viên', hienThi: (d) => <>{d.hoVaTen} <span className="chuPhu">{d.maNhanVien}</span></> },
+  {
+    khoa: 'hoVaTen',
+    tieuDe: 'Nhân viên',
+    hienThi: (d) => (
+      <>
+        {d.hoVaTen} <span className="chuPhu">{d.maNhanVien}</span>
+      </>
+    ),
+  },
   ...COT_HOP_DONG,
 ];
 
@@ -43,7 +51,10 @@ function HopDongToanCongTy({ laHR }) {
   const tai = useCallback(() => {
     goiApi
       .get('/hopDong', { params: locThamSo({ tuKhoa, ...loc, trang, kichThuoc: 20 }) })
-      .then((kq) => { setKetQua(kq.data); setLoi(''); })
+      .then((kq) => {
+        setKetQua(kq.data);
+        setLoi('');
+      })
       .catch((e) => setLoi(e.message));
     goiApi
       .get('/hopDong/sapHetHan', { params: { soNgay: SO_NGAY_CANH_BAO } })
@@ -66,7 +77,11 @@ function HopDongToanCongTy({ laHR }) {
           <h1 className="tieuDeTrang">Hợp đồng lao động</h1>
           <div className="chuPhu">Tổng {ketQua?.phanTrang.tongSo ?? 0} hợp đồng</div>
         </div>
-        {laHR && <NutBam bieuTuong={Plus} onClick={() => setDangLap(true)}>Lập hợp đồng</NutBam>}
+        {laHR && (
+          <NutBam bieuTuong={Plus} onClick={() => setDangLap(true)}>
+            Lập hợp đồng
+          </NutBam>
+        )}
       </div>
 
       <div className="luoiThe" style={{ marginBottom: 16 }}>
@@ -86,11 +101,15 @@ function HopDongToanCongTy({ laHR }) {
 
       {sapHetHan.length > 0 && (
         <div className="the theNoiDung">
-          <div className="dauThe"><h3>Cảnh báo hợp đồng</h3></div>
+          <div className="dauThe">
+            <h3>Cảnh báo hợp đồng</h3>
+          </div>
           {sapHetHan.map((hd) => (
             <div key={hd.id} className="thongBao canhBao" style={{ marginBottom: 6 }}>
-              <button type="button" className="lienKet" onClick={() => setDangXem(hd.id)}>{hd.maHopDong}</button>
-              {' '}— {hd.hoVaTen} ({hd.maNhanVien}), kết thúc {dinhDangNgay(hd.ngayKetThuc)}
+              <button type="button" className="lienKet" onClick={() => setDangXem(hd.id)}>
+                {hd.maHopDong}
+              </button>{' '}
+              — {hd.hoVaTen} ({hd.maNhanVien}), kết thúc {dinhDangNgay(hd.ngayKetThuc)}
               {hd.soNgayConLai < 0 ? ` · đã quá hạn ${-hd.soNgayConLai} ngày` : ` · còn ${hd.soNgayConLai} ngày`}
             </div>
           ))}
@@ -99,22 +118,37 @@ function HopDongToanCongTy({ laHR }) {
 
       <ThanhLoc
         tuKhoa={tuKhoa}
-        onDoiTuKhoa={(v) => { setTuKhoa(v); setTrang(1); }}
+        onDoiTuKhoa={(v) => {
+          setTuKhoa(v);
+          setTrang(1);
+        }}
         goiYTim="Mã hợp đồng, mã hoặc tên nhân viên..."
         boLoc={BO_LOC}
         giaTriLoc={loc}
-        onDoiLoc={(khoa, v) => { setLoc((cu) => ({ ...cu, [khoa]: v })); setTrang(1); }}
+        onDoiLoc={(khoa, v) => {
+          setLoc((cu) => ({ ...cu, [khoa]: v }));
+          setTrang(1);
+        }}
         phanPhai={<span />}
       />
       {loi && <div className="thongBao loi">{loi}</div>}
-      <BangDuLieu cot={COT_CO_NHAN_VIEN} duLieu={ketQua?.items ?? []} onHanhDong={(d) => setDangXem(d.id)} thongBaoRong="Không có hợp đồng phù hợp" />
+      <BangDuLieu
+        cot={COT_CO_NHAN_VIEN}
+        duLieu={ketQua?.items ?? []}
+        onHanhDong={(d) => setDangXem(d.id)}
+        thongBaoRong="Không có hợp đồng phù hợp"
+      />
       <PhanTrang phanTrang={ketQua?.phanTrang} onDoiTrang={setTrang} />
 
       {dangXem && <HopThoaiChiTietHopDong hopDongId={dangXem} onDong={() => setDangXem(null)} onThayDoi={tai} />}
       {dangLap && (
         <HopThoaiLapHopDong
           onDong={() => setDangLap(false)}
-          onDaTao={(hd) => { setDangLap(false); tai(); setDangXem(hd.id); }}
+          onDaTao={(hd) => {
+            setDangLap(false);
+            tai();
+            setDangXem(hd.id);
+          }}
         />
       )}
     </>
@@ -128,7 +162,10 @@ function HopDongCuaToi() {
   const [dangXem, setDangXem] = useState(null);
 
   useEffect(() => {
-    goiApi.get('/hopDong/cuaToi').then((kq) => setDanhSach(kq.data)).catch((e) => setLoi(e.message));
+    goiApi
+      .get('/hopDong/cuaToi')
+      .then((kq) => setDanhSach(kq.data))
+      .catch((e) => setLoi(e.message));
   }, []);
 
   return (
@@ -155,8 +192,12 @@ function TrangHopDong() {
     <div>
       {xemToanCongTy && (
         <div className="tabGachChan">
-          <button type="button" className={tab === 'congTy' ? 'dangChon' : ''} onClick={() => setTab('congTy')}>Toàn công ty</button>
-          <button type="button" className={tab === 'cuaToi' ? 'dangChon' : ''} onClick={() => setTab('cuaToi')}>Của tôi</button>
+          <button type="button" className={tab === 'congTy' ? 'dangChon' : ''} onClick={() => setTab('congTy')}>
+            Toàn công ty
+          </button>
+          <button type="button" className={tab === 'cuaToi' ? 'dangChon' : ''} onClick={() => setTab('cuaToi')}>
+            Của tôi
+          </button>
         </div>
       )}
       {tab === 'congTy' ? <HopDongToanCongTy laHR={nguoiDung.vaiTro.includes('HR')} /> : <HopDongCuaToi />}

@@ -42,7 +42,9 @@ function TabHopDong({ nhanVien, laHR, chiCuaToi }) {
       <div className="dauThe">
         <h3>Hợp đồng lao động</h3>
         {laHR && nhanVien.trangThaiLamViec !== 'DA_NGHI_VIEC' && (
-          <NutBam bienThe="phu" bieuTuong={FilePlus} onClick={() => setDangLap(true)}>Lập hợp đồng</NutBam>
+          <NutBam bienThe="phu" bieuTuong={FilePlus} onClick={() => setDangLap(true)}>
+            Lập hợp đồng
+          </NutBam>
         )}
       </div>
       {loi && <div className="thongBao loi">{loi}</div>}
@@ -52,15 +54,24 @@ function TabHopDong({ nhanVien, laHR, chiCuaToi }) {
         <HopThoaiLapHopDong
           nhanVien={nhanVien}
           onDong={() => setDangLap(false)}
-          onDaTao={(hd) => { setDangLap(false); tai(); setDangXem(hd.id); }}
+          onDaTao={(hd) => {
+            setDangLap(false);
+            tai();
+            setDangXem(hd.id);
+          }}
         />
       )}
     </div>
   );
 }
 
+// key={id}: chuyển sang nhân viên khác thì dựng lại toàn bộ state (hồ sơ, tab, lỗi) thay vì reset tay trong effect
 function TrangChiTietNhanVien() {
   const { id } = useParams();
+  return <ChiTietNhanVien key={id} id={id} />;
+}
+
+function ChiTietNhanVien({ id }) {
   const dieuHuong = useNavigate();
   const { nguoiDung } = useXacThuc();
   const [hoSo, setHoSo] = useState(null);
@@ -71,25 +82,28 @@ function TrangChiTietNhanVien() {
   const [matKhauTam, setMatKhauTam] = useState(null);
 
   useEffect(() => {
-    setHoSo(null);
-    goiApi.get(`/nhanVien/${id}`).then((kq) => setHoSo(kq.data)).catch((e) => setLoi(e.message));
+    goiApi
+      .get(`/nhanVien/${id}`)
+      .then((kq) => setHoSo(kq.data))
+      .catch((e) => setLoi(e.message));
   }, [id]);
 
   const laMinh = hoSo && hoSo.id === nguoiDung.nhanVienId;
   // HR không tự sửa hồ sơ/hợp đồng của chính mình (docs/phan-quyen.md quy tắc 1)
   const laHR = nguoiDung.vaiTro.includes('HR') && !laMinh;
   // HR chỉ cấp mật khẩu tạm cho tài khoản không có vai trò cấp cao (Admin dùng trang Tài khoản)
-  const duocCapMatKhauTam = nguoiDung.vaiTro.includes('Admin')
-    || !(hoSo?.vaiTroTaiKhoan ?? []).some((vt) => VAI_TRO_CAP_CAO.includes(vt));
+  const duocCapMatKhauTam = nguoiDung.vaiTro.includes('Admin') || !(hoSo?.vaiTroTaiKhoan ?? []).some((vt) => VAI_TRO_CAP_CAO.includes(vt));
   const xemHopDongToanCongTy = nguoiDung.vaiTro.some((vt) => ['HR', 'giamDoc'].includes(vt));
   const xemHopDong = laMinh || xemHopDongToanCongTy;
 
-  const capNhat = (duongDan, phuongThuc = 'post') => async (giaTri) => {
-    const kq = await goiApi[phuongThuc](`/nhanVien/${id}${duongDan}`, giaTri);
-    // API thao tác không trả vaiTroTaiKhoan -> giữ lại giá trị đã tải
-    setHoSo((cu) => ({ ...cu, ...kq.data }));
-    setThaoTac(null);
-  };
+  const capNhat =
+    (duongDan, phuongThuc = 'post') =>
+    async (giaTri) => {
+      const kq = await goiApi[phuongThuc](`/nhanVien/${id}${duongDan}`, giaTri);
+      // API thao tác không trả vaiTroTaiKhoan -> giữ lại giá trị đã tải
+      setHoSo((cu) => ({ ...cu, ...kq.data }));
+      setThaoTac(null);
+    };
 
   const moDieuChuyen = async () => {
     try {
@@ -115,18 +129,26 @@ function TrangChiTietNhanVien() {
 
   return (
     <div>
-      <NutBam bienThe="ma" bieuTuong={ArrowLeft} onClick={() => dieuHuong('/nhanSu/danhSach')}>Danh sách nhân viên</NutBam>
+      <NutBam bienThe="ma" bieuTuong={ArrowLeft} onClick={() => dieuHuong('/nhanSu/danhSach')}>
+        Danh sách nhân viên
+      </NutBam>
       <div className="dauTrangNghiepVu" style={{ marginTop: 8 }}>
         <DauHoSo hoSo={hoSo} />
         {laHR && (
           <div className="hangNutPhai">
-            <NutBam bienThe="phu" bieuTuong={Pencil} onClick={() => setThaoTac('sua')}>Sửa</NutBam>
-            <NutBam bienThe="phu" bieuTuong={RefreshCw} onClick={() => setThaoTac('trangThai')}>Đổi trạng thái</NutBam>
-            {hoSo.trangThaiLamViec !== 'DA_NGHI_VIEC' && (
-              <NutBam bienThe="phu" bieuTuong={Shuffle} onClick={moDieuChuyen}>Điều chuyển</NutBam>
-            )}
+            <NutBam bienThe="phu" bieuTuong={Pencil} onClick={() => setThaoTac('sua')}>
+              Sửa
+            </NutBam>
+            <NutBam bienThe="phu" bieuTuong={RefreshCw} onClick={() => setThaoTac('trangThai')}>
+              Đổi trạng thái
+            </NutBam>
+            <NutBam bienThe="phu" bieuTuong={Shuffle} onClick={moDieuChuyen}>
+              Điều chuyển
+            </NutBam>
             {hoSo.nguoiDungId && hoSo.trangThaiTaiKhoan !== 'KHOA' && duocCapMatKhauTam && (
-              <NutBam bienThe="phu" bieuTuong={KeyRound} onClick={() => setThaoTac('matKhau')}>Cấp mật khẩu tạm</NutBam>
+              <NutBam bienThe="phu" bieuTuong={KeyRound} onClick={() => setThaoTac('matKhau')}>
+                Cấp mật khẩu tạm
+              </NutBam>
             )}
           </div>
         )}
@@ -134,9 +156,13 @@ function TrangChiTietNhanVien() {
       {loi && <div className="thongBao loi">{loi}</div>}
 
       <div className="tabGachChan">
-        <button type="button" className={tab === 'thongTin' ? 'dangChon' : ''} onClick={() => setTab('thongTin')}>Thông tin cá nhân</button>
+        <button type="button" className={tab === 'thongTin' ? 'dangChon' : ''} onClick={() => setTab('thongTin')}>
+          Thông tin cá nhân
+        </button>
         {xemHopDong && (
-          <button type="button" className={tab === 'hopDong' ? 'dangChon' : ''} onClick={() => setTab('hopDong')}>Hợp đồng</button>
+          <button type="button" className={tab === 'hopDong' ? 'dangChon' : ''} onClick={() => setTab('hopDong')}>
+            Hợp đồng
+          </button>
         )}
       </div>
 
@@ -164,7 +190,10 @@ function TrangChiTietNhanVien() {
           onGui={(giaTri) => {
             // Chỉ gửi trường thay đổi để nhật ký SUA_NHAN_VIEN ghi đúng phần đã sửa
             const thayDoi = Object.fromEntries(Object.entries(giaTri).filter(([k, v]) => v !== (hoSo[k] ?? '')));
-            if (Object.keys(thayDoi).length === 0) { setThaoTac(null); return Promise.resolve(); }
+            if (Object.keys(thayDoi).length === 0) {
+              setThaoTac(null);
+              return Promise.resolve();
+            }
             return capNhat('', 'patch')(thayDoi);
           }}
           onDong={() => setThaoTac(null)}
@@ -176,7 +205,11 @@ function TrangChiTietNhanVien() {
           moTa="Chuyển sang Đã nghỉ việc sẽ khóa tài khoản đăng nhập; quay lại làm việc sẽ mở khóa nếu tài khoản bị khóa do nghỉ việc."
           truong={[
             {
-              ten: 'trangThaiLamViec', nhan: 'Trạng thái mới', kieu: 'select', batBuoc: true, rongHet: true,
+              ten: 'trangThaiLamViec',
+              nhan: 'Trạng thái mới',
+              kieu: 'select',
+              batBuoc: true,
+              rongHet: true,
               luaChon: CHUYEN_TRANG_THAI[hoSo.trangThaiLamViec].map((tt) => ({ giaTri: tt, nhan: NHAN_TRANG_THAI_LAM_VIEC[tt] })),
             },
             { ten: 'lyDo', nhan: 'Lý do', kieu: 'textarea' },
@@ -200,15 +233,29 @@ function TrangChiTietNhanVien() {
       {thaoTac === 'matKhau' && (
         <HopThoai
           tieuDe="Cấp mật khẩu tạm"
-          onDong={() => { setThaoTac(null); setMatKhauTam(null); }}
-          chanTrang={matKhauTam
-            ? <NutBam onClick={() => { setThaoTac(null); setMatKhauTam(null); }}>Xong</NutBam>
-            : (
+          onDong={() => {
+            setThaoTac(null);
+            setMatKhauTam(null);
+          }}
+          chanTrang={
+            matKhauTam ? (
+              <NutBam
+                onClick={() => {
+                  setThaoTac(null);
+                  setMatKhauTam(null);
+                }}
+              >
+                Xong
+              </NutBam>
+            ) : (
               <>
-                <NutBam bienThe="phu" onClick={() => setThaoTac(null)}>Hủy</NutBam>
+                <NutBam bienThe="phu" onClick={() => setThaoTac(null)}>
+                  Hủy
+                </NutBam>
                 <NutBam onClick={capMatKhauTam}>Cấp mật khẩu</NutBam>
               </>
-            )}
+            )
+          }
         >
           {matKhauTam ? (
             <>
@@ -216,7 +263,9 @@ function TrangChiTietNhanVien() {
               <div className="matKhauTam">{matKhauTam}</div>
             </>
           ) : (
-            <p>Mật khẩu hiện tại của <strong>{hoSo.tenDangNhap}</strong> sẽ mất hiệu lực, mọi phiên đăng nhập bị đăng xuất.</p>
+            <p>
+              Mật khẩu hiện tại của <strong>{hoSo.tenDangNhap}</strong> sẽ mất hiệu lực, mọi phiên đăng nhập bị đăng xuất.
+            </p>
           )}
         </HopThoai>
       )}

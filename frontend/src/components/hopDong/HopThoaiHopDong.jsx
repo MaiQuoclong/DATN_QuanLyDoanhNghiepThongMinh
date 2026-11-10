@@ -8,7 +8,12 @@ import ChipTrangThai from '../ChipTrangThai';
 import BangDuLieu from '../BangDuLieu';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import {
-  dinhDangNgay, dinhDangThoiGian, dinhDangTien, NHAN_LOAI_HOP_DONG, NHAN_HANH_DONG_HOP_DONG, thanhLuaChon,
+  dinhDangNgay,
+  dinhDangThoiGian,
+  dinhDangTien,
+  NHAN_LOAI_HOP_DONG,
+  NHAN_HANH_DONG_HOP_DONG,
+  thanhLuaChon,
 } from '../../utils/dinhDang';
 
 const LUA_CHON_LOAI = thanhLuaChon(NHAN_LOAI_HOP_DONG);
@@ -22,8 +27,12 @@ function moTaThayDoi(ls) {
   const thayDoi = [];
   if (ls.luongCoBanCu !== ls.luongCoBanMoi) thayDoi.push(`Lương ${dinhDangTien(ls.luongCoBanCu)} → ${dinhDangTien(ls.luongCoBanMoi)}`);
   if (ls.mucPhuCapCu !== ls.mucPhuCapMoi) thayDoi.push(`Phụ cấp ${dinhDangTien(ls.mucPhuCapCu)} → ${dinhDangTien(ls.mucPhuCapMoi)}`);
-  if (ls.ngayKetThucCu !== ls.ngayKetThucMoi) thayDoi.push(`Kết thúc ${dinhDangNgay(ls.ngayKetThucCu)} → ${dinhDangNgay(ls.ngayKetThucMoi)}`);
-  if (ls.trangThaiCu !== ls.trangThaiMoi) thayDoi.push(`Trạng thái ${NHAN_TRANG_THAI[ls.trangThaiCu] ?? ls.trangThaiCu} → ${NHAN_TRANG_THAI[ls.trangThaiMoi] ?? ls.trangThaiMoi}`);
+  if (ls.ngayKetThucCu !== ls.ngayKetThucMoi)
+    thayDoi.push(`Kết thúc ${dinhDangNgay(ls.ngayKetThucCu)} → ${dinhDangNgay(ls.ngayKetThucMoi)}`);
+  if (ls.trangThaiCu !== ls.trangThaiMoi)
+    thayDoi.push(
+      `Trạng thái ${NHAN_TRANG_THAI[ls.trangThaiCu] ?? ls.trangThaiCu} → ${NHAN_TRANG_THAI[ls.trangThaiMoi] ?? ls.trangThaiMoi}`,
+    );
   return thayDoi.join('; ') || '—';
 }
 
@@ -44,7 +53,10 @@ export function HopThoaiChiTietHopDong({ hopDongId, onDong, onThayDoi }) {
   const [thaoTac, setThaoTac] = useState(null);
 
   const tai = useCallback(() => {
-    goiApi.get(`/hopDong/${hopDongId}`).then((kq) => setHopDong(kq.data)).catch((e) => setLoi(e.message));
+    goiApi
+      .get(`/hopDong/${hopDongId}`)
+      .then((kq) => setHopDong(kq.data))
+      .catch((e) => setLoi(e.message));
   }, [hopDongId]);
   useEffect(tai, [tai]);
 
@@ -65,29 +77,56 @@ export function HopThoaiChiTietHopDong({ hopDongId, onDong, onThayDoi }) {
           <>
             <div className="dauThe">
               <div>
-                <strong>{hopDong.hoVaTen}</strong> <span className="chuPhu">({hopDong.maNhanVien} · {hopDong.tenChucDanh} - {hopDong.tenPhongBan})</span>
+                <strong>{hopDong.hoVaTen}</strong>{' '}
+                <span className="chuPhu">
+                  ({hopDong.maNhanVien} · {hopDong.tenChucDanh} - {hopDong.tenPhongBan})
+                </span>
               </div>
               <ChipTrangThai trangThai={hopDong.trangThai} kieu="chip" />
             </div>
             <div className="luoiThongTin">
-              <div className="oThongTin"><span>Loại hợp đồng</span><strong>{NHAN_LOAI_HOP_DONG[hopDong.loaiHopDong]}</strong></div>
-              <div className="oThongTin"><span>Ngày bắt đầu</span><strong>{dinhDangNgay(hopDong.ngayBatDau)}</strong></div>
-              <div className="oThongTin"><span>Ngày kết thúc</span><strong>{hopDong.ngayKetThuc ? dinhDangNgay(hopDong.ngayKetThuc) : 'Không thời hạn'}</strong></div>
-              <div className="oThongTin"><span>Lương cơ bản</span><strong>{dinhDangTien(hopDong.luongCoBan)}</strong></div>
-              <div className="oThongTin"><span>Phụ cấp</span><strong>{dinhDangTien(hopDong.mucPhuCap)}</strong></div>
-              <div className="oThongTin"><span>File hợp đồng</span><strong>{hopDong.duongDanFileHopDong || '—'}</strong></div>
+              <div className="oThongTin">
+                <span>Loại hợp đồng</span>
+                <strong>{NHAN_LOAI_HOP_DONG[hopDong.loaiHopDong]}</strong>
+              </div>
+              <div className="oThongTin">
+                <span>Ngày bắt đầu</span>
+                <strong>{dinhDangNgay(hopDong.ngayBatDau)}</strong>
+              </div>
+              <div className="oThongTin">
+                <span>Ngày kết thúc</span>
+                <strong>{hopDong.ngayKetThuc ? dinhDangNgay(hopDong.ngayKetThuc) : 'Không thời hạn'}</strong>
+              </div>
+              <div className="oThongTin">
+                <span>Lương cơ bản</span>
+                <strong>{dinhDangTien(hopDong.luongCoBan)}</strong>
+              </div>
+              <div className="oThongTin">
+                <span>Phụ cấp</span>
+                <strong>{dinhDangTien(hopDong.mucPhuCap)}</strong>
+              </div>
+              <div className="oThongTin">
+                <span>File hợp đồng</span>
+                <strong>{hopDong.duongDanFileHopDong || '—'}</strong>
+              </div>
             </div>
 
             {laHR && (
               <div className="hangNutPhai" style={{ margin: '16px 0' }}>
                 {hopDong.loaiHopDong === 'XAC_DINH_THOI_HAN' && hopDong.trangThai === 'HIEU_LUC' && (
-                  <NutBam bienThe="phu" bieuTuong={CalendarPlus} onClick={() => setThaoTac('giaHan')}>Gia hạn</NutBam>
+                  <NutBam bienThe="phu" bieuTuong={CalendarPlus} onClick={() => setThaoTac('giaHan')}>
+                    Gia hạn
+                  </NutBam>
                 )}
                 {hopDong.trangThai === 'HIEU_LUC' && (
-                  <NutBam bienThe="phu" bieuTuong={SlidersHorizontal} onClick={() => setThaoTac('dieuChinh')}>Điều chỉnh</NutBam>
+                  <NutBam bienThe="phu" bieuTuong={SlidersHorizontal} onClick={() => setThaoTac('dieuChinh')}>
+                    Điều chỉnh
+                  </NutBam>
                 )}
                 {hopDong.trangThai !== 'DA_CHAM_DUT' && (
-                  <NutBam bienThe="phu" bieuTuong={Ban} onClick={() => setThaoTac('chamDut')}>Chấm dứt</NutBam>
+                  <NutBam bienThe="phu" bieuTuong={Ban} onClick={() => setThaoTac('chamDut')}>
+                    Chấm dứt
+                  </NutBam>
                 )}
               </div>
             )}
@@ -151,10 +190,17 @@ export function HopThoaiChiTietHopDong({ hopDongId, onDong, onThayDoi }) {
 export function HopThoaiLapHopDong({ nhanVien, onDong, onDaTao }) {
   const { nguoiDung } = useXacThuc();
   const truong = [
-    ...(nhanVien ? [] : [{
-      ten: 'nhanVienId', nhan: 'Nhân viên', kieu: 'nhanVien', batBuoc: true,
-      locNhanVien: { trangThai: ['THU_VIEC', 'CHINH_THUC', 'TAM_NGHI'], boQuaIds: [nguoiDung.nhanVienId] },
-    }]),
+    ...(nhanVien
+      ? []
+      : [
+          {
+            ten: 'nhanVienId',
+            nhan: 'Nhân viên',
+            kieu: 'nhanVien',
+            batBuoc: true,
+            locNhanVien: { trangThai: ['THU_VIEC', 'CHINH_THUC', 'TAM_NGHI'], boQuaIds: [nguoiDung.nhanVienId] },
+          },
+        ]),
     { ten: 'loaiHopDong', nhan: 'Loại hợp đồng', kieu: 'select', luaChon: LUA_CHON_LOAI, batBuoc: true },
     { ten: 'ngayBatDau', nhan: 'Ngày bắt đầu', kieu: 'date', batBuoc: true },
     { ten: 'ngayKetThuc', nhan: 'Ngày kết thúc', kieu: 'date', ghiChu: 'Bỏ trống với hợp đồng không xác định thời hạn' },

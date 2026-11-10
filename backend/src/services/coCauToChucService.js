@@ -8,7 +8,7 @@ const { TRANG_THAI_PHONG_BAN, TRANG_THAI_CHUC_DANH, TRANG_THAI_VI_TRI } = requir
 
 const DINH_BIEN_TOI_DA = 1000;
 // Định biên, chỗ trống, ghi chú là dữ liệu phục vụ tuyển dụng: chỉ HR, giamDoc xem
-const COT_CHI_HR = ['dinhBien', 'conTrong', 'ghiChu'];
+const COT_CHI_HR = ['dinhBien', 'conTrong', 'soDangGiu', 'ghiChu'];
 
 function xemDinhBien(vaiTro) {
   return vaiTro.includes('HR') || vaiTro.includes('giamDoc');
@@ -114,7 +114,8 @@ async function themPhongBan(nguoiDung, { maPhongBan, tenPhongBan, phongBanChaId 
 async function suaPhongBan(nguoiDung, id, body, diaChiIP) {
   const truong = {};
   if (body.tenPhongBan !== undefined) truong.tenPhongBan = String(body.tenPhongBan).trim();
-  if (body.phongBanChaId !== undefined) truong.phongBanChaId = body.phongBanChaId === null || body.phongBanChaId === '' ? null : Number(body.phongBanChaId);
+  if (body.phongBanChaId !== undefined)
+    truong.phongBanChaId = body.phongBanChaId === null || body.phongBanChaId === '' ? null : Number(body.phongBanChaId);
   if (Object.keys(truong).length === 0) throw new LoiUngDung(400, 'Không có thông tin nào để cập nhật');
   if (truong.tenPhongBan === '') throw new LoiUngDung(400, 'Tên phòng ban không được để trống');
 
@@ -130,7 +131,9 @@ async function suaPhongBan(nguoiDung, id, body, diaChiIP) {
       await kiemTraPhongBanCha(truong.phongBanChaId, ketNoi);
     }
     await phongBanRepository.capNhatPhongBan(id, truong, ketNoi);
-    const thayDoi = Object.keys(truong).map((cot) => `${cot}: ${phongBan[cot] ?? 'trống'} -> ${truong[cot] ?? 'trống'}`).join('; ');
+    const thayDoi = Object.keys(truong)
+      .map((cot) => `${cot}: ${phongBan[cot] ?? 'trống'} -> ${truong[cot] ?? 'trống'}`)
+      .join('; ');
     await themNhatKy(nguoiDung.nguoiDungId, 'SUA_PHONG_BAN', diaChiIP, `${phongBan.maPhongBan}: ${thayDoi}`, ketNoi);
   });
   return layChiTietPhongBan(nguoiDung.vaiTro, id);
@@ -152,8 +155,13 @@ async function doiTrangThaiPhongBan(nguoiDung, id, trangThai, diaChiIP) {
       if (phongBan.truongBoPhanId) {
         truong.truongBoPhanId = null;
         await thuHoiQuanLyNeuHetPhong(nguoiDung, phongBan.truongBoPhanId, id, diaChiIP, ketNoi);
-        await themNhatKy(nguoiDung.nguoiDungId, 'MIEN_NHIEM_TRUONG_BO_PHAN', diaChiIP,
-          `${phongBan.maPhongBan}: nhanVienId=${phongBan.truongBoPhanId} (tự động khi ngừng phòng ban)`, ketNoi);
+        await themNhatKy(
+          nguoiDung.nguoiDungId,
+          'MIEN_NHIEM_TRUONG_BO_PHAN',
+          diaChiIP,
+          `${phongBan.maPhongBan}: nhanVienId=${phongBan.truongBoPhanId} (tự động khi ngừng phòng ban)`,
+          ketNoi,
+        );
       }
     } else if (phongBan.phongBanChaId) {
       await kiemTraPhongBanCha(phongBan.phongBanChaId, ketNoi);
@@ -179,7 +187,13 @@ async function ganQuanLyNeuChuaCo(nguoiDung, nhanVien, diaChiIP, ketNoi) {
   const vaiTro = await nguoiDungRepository.layDanhSachVaiTro(nhanVien.nguoiDungId, ketNoi);
   if (vaiTro.includes('quanLy') || vaiTro.includes('giamDoc')) return;
   await nguoiDungRepository.ganVaiTro(nhanVien.nguoiDungId, 'quanLy', ketNoi);
-  await themNhatKy(nhanVien.nguoiDungId, 'TU_DONG_GAN_QUAN_LY', diaChiIP, `${nhanVien.maNhanVien}: bổ nhiệm bởi nguoiDungId=${nguoiDung.nguoiDungId}`, ketNoi);
+  await themNhatKy(
+    nhanVien.nguoiDungId,
+    'TU_DONG_GAN_QUAN_LY',
+    diaChiIP,
+    `${nhanVien.maNhanVien}: bổ nhiệm bởi nguoiDungId=${nguoiDung.nguoiDungId}`,
+    ketNoi,
+  );
 }
 
 async function thuHoiQuanLyNeuHetPhong(nguoiDung, nhanVienId, phongBanBoQuaId, diaChiIP, ketNoi) {
@@ -189,7 +203,13 @@ async function thuHoiQuanLyNeuHetPhong(nguoiDung, nhanVienId, phongBanBoQuaId, d
   if (!nhanVien?.nguoiDungId) return;
   if ((await layHanhDongGanNhat(nhanVien.nguoiDungId, HANH_DONG_VAI_TRO, ketNoi)) !== 'TU_DONG_GAN_QUAN_LY') return;
   if (await nguoiDungRepository.goVaiTro(nhanVien.nguoiDungId, 'quanLy', ketNoi)) {
-    await themNhatKy(nhanVien.nguoiDungId, 'TU_DONG_GO_QUAN_LY', diaChiIP, `${nhanVien.maNhanVien}: miễn nhiệm bởi nguoiDungId=${nguoiDung.nguoiDungId}`, ketNoi);
+    await themNhatKy(
+      nhanVien.nguoiDungId,
+      'TU_DONG_GO_QUAN_LY',
+      diaChiIP,
+      `${nhanVien.maNhanVien}: miễn nhiệm bởi nguoiDungId=${nguoiDung.nguoiDungId}`,
+      ketNoi,
+    );
   }
 }
 
@@ -233,7 +253,13 @@ async function mienNhiemTruongBoPhan(nguoiDung, phongBanId, diaChiIP) {
     if (nguoiDung.nhanVienId === phongBan.truongBoPhanId) throw new LoiUngDung(403, 'Không được tự miễn nhiệm chính mình');
     await thuHoiQuanLyNeuHetPhong(nguoiDung, phongBan.truongBoPhanId, phongBanId, diaChiIP, ketNoi);
     await phongBanRepository.capNhatPhongBan(phongBanId, { truongBoPhanId: null }, ketNoi);
-    await themNhatKy(nguoiDung.nguoiDungId, 'MIEN_NHIEM_TRUONG_BO_PHAN', diaChiIP, `${phongBan.maPhongBan}: nhanVienId=${phongBan.truongBoPhanId}`, ketNoi);
+    await themNhatKy(
+      nguoiDung.nguoiDungId,
+      'MIEN_NHIEM_TRUONG_BO_PHAN',
+      diaChiIP,
+      `${phongBan.maPhongBan}: nhanVienId=${phongBan.truongBoPhanId}`,
+      ketNoi,
+    );
   });
   return layChiTietPhongBan(nguoiDung.vaiTro, phongBanId);
 }
@@ -292,7 +318,9 @@ async function suaChucDanh(nguoiDung, id, body, diaChiIP) {
     if (Object.keys(truong).length === 0 && !doiTrangThai) throw new LoiUngDung(400, 'Chức danh đã ở trạng thái này');
     if (Object.keys(truong).length) {
       await phongBanRepository.capNhatChucDanh(id, truong, ketNoi);
-      const thayDoi = Object.keys(truong).map((cot) => `${cot}: ${chucDanh[cot]} -> ${truong[cot]}`).join('; ');
+      const thayDoi = Object.keys(truong)
+        .map((cot) => `${cot}: ${chucDanh[cot]} -> ${truong[cot]}`)
+        .join('; ');
       await themNhatKy(nguoiDung.nguoiDungId, 'SUA_CHUC_DANH', diaChiIP, `${chucDanh.maChucDanh}: ${thayDoi}`, ketNoi);
     }
     if (doiTrangThai) await apDungTrangThaiChucDanh(nguoiDung, chucDanh, trangThaiMoi, diaChiIP, ketNoi);
@@ -343,10 +371,22 @@ async function themViTri(nguoiDung, { phongBanId, chucDanhId, dinhBien, ghiChu }
       throw new LoiUngDung(409, 'Phòng ban hoặc chức danh đã ngừng hoạt động');
     }
     // Trùng (phongBanId, chucDanhId) bị khóa UNIQUE chặn -> middleware lỗi trả 409
-    const idMoi = await phongBanRepository.themViTri({
-      phongBanId: phongBan.id, chucDanhId: chucDanh.id, dinhBien: so, ghiChu: ghiChu?.trim() || null,
-    }, ketNoi);
-    await themNhatKy(nguoiDung.nguoiDungId, 'THEM_VI_TRI', diaChiIP, `${chucDanh.maChucDanh} - ${phongBan.maPhongBan}, định biên ${so}`, ketNoi);
+    const idMoi = await phongBanRepository.themViTri(
+      {
+        phongBanId: phongBan.id,
+        chucDanhId: chucDanh.id,
+        dinhBien: so,
+        ghiChu: ghiChu?.trim() || null,
+      },
+      ketNoi,
+    );
+    await themNhatKy(
+      nguoiDung.nguoiDungId,
+      'THEM_VI_TRI',
+      diaChiIP,
+      `${chucDanh.maChucDanh} - ${phongBan.maPhongBan}, định biên ${so}`,
+      ketNoi,
+    );
     return idMoi;
   });
   return layViTri(id);
@@ -388,7 +428,9 @@ async function suaViTri(nguoiDung, id, body, diaChiIP) {
         }
       }
       await phongBanRepository.capNhatViTri(id, truong, ketNoi);
-      const thayDoi = Object.keys(truong).map((cot) => `${cot}: ${viTri[cot] ?? 'trống'} -> ${truong[cot] ?? 'trống'}`).join('; ');
+      const thayDoi = Object.keys(truong)
+        .map((cot) => `${cot}: ${viTri[cot] ?? 'trống'} -> ${truong[cot] ?? 'trống'}`)
+        .join('; ');
       await themNhatKy(nguoiDung.nguoiDungId, 'SUA_VI_TRI', diaChiIP, `${viTri.tenChucDanh} - ${viTri.tenPhongBan}: ${thayDoi}`, ketNoi);
     }
     if (doiTrangThai) await apDungTrangThaiViTri(nguoiDung, viTri, trangThaiMoi, diaChiIP, ketNoi);

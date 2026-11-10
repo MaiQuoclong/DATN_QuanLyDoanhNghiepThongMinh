@@ -10,6 +10,7 @@ const BANG_TRANG_THAI = {
   DANG_MO: ['Đang mở', 'xanh'],
   DANG_AP_DUNG: ['Đang áp dụng', 'xanh'],
   CHO_DUYET: ['Chờ duyệt', 'cam'],
+  CHO_KY: ['Chờ ký', 'cam'],
   THU_VIEC: ['Thử việc', 'cam'],
   TU_CHOI: ['Từ chối', 'do'],
   KHOA: ['Bị khóa', 'do'],
@@ -20,6 +21,18 @@ const BANG_TRANG_THAI = {
   BAN_NHAP: ['Bản nháp', 'xam'],
   HET_HAN: ['Hết hạn', 'cam'],
   DA_CHAM_DUT: ['Đã chấm dứt', 'xam'],
+  DA_DIEU_CHINH: ['Đã điều chỉnh', 'xanh'],
+  DA_HUY: ['Đã hủy', 'xam'],
+  DA_DONG: ['Đã đóng', 'xam'],
+  // Xếp loại KPI (phieudanhgiakpi.xepLoaiChung)
+  XUAT_SAC: ['Xuất sắc', 'xanh'],
+  TOT: ['Tốt', 'xanh'],
+  KHA: ['Khá', 'cam'],
+  TRUNG_BINH: ['Trung bình', 'cam'],
+  YEU: ['Yếu', 'do'],
+  // Khen thưởng - kỷ luật (loaiQuyetDinh / loaiDeXuat)
+  KHEN_THUONG: ['Khen thưởng', 'xanh'],
+  KY_LUAT: ['Kỷ luật', 'do'],
 };
 
 // kieu: 'cham' (chấm tròn + chữ, dùng trong bảng) | 'chip' (nền nhạt, dùng ở header)

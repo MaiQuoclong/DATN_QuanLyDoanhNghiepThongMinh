@@ -127,6 +127,10 @@ async function capNhatVaiTro(nguoiDung, nguoiDungId, dsVaiTro, diaChiIP) {
     if (vaiTroMoi.size === 0) throw new LoiUngDung(400, 'Tài khoản phải có ít nhất một vai trò');
 
     const vaiTroCu = await nguoiDungRepository.layDanhSachVaiTro(nguoiDungId, ketNoi);
+    // Admin không tự cấp thêm vai trò cho mình (tránh tự mở quyền xem lương/hợp đồng), chỉ được giữ hoặc bớt
+    if (nguoiDung.nguoiDungId === nguoiDungId && [...vaiTroMoi].some((vt) => !vaiTroCu.includes(vt))) {
+      throw new LoiUngDung(403, 'Không được tự cấp thêm vai trò cho chính mình');
+    }
     if (vaiTroCu.includes('Admin') && !vaiTroMoi.has('Admin')) {
       if (nguoiDung.nguoiDungId === nguoiDungId) throw new LoiUngDung(403, 'Không thể tự gỡ vai trò Admin của mình');
       if (tk.trangThai === 'DANG_HOAT_DONG') await chanMatAdminCuoiCung(ketNoi);
@@ -136,7 +140,10 @@ async function capNhatVaiTro(nguoiDung, nguoiDungId, dsVaiTro, diaChiIP) {
     if (vaiTroCu.includes('quanLy') && !vaiTroMoi.has('quanLy') && tk.nhanVienId) {
       const phongLamTruong = await phongBanRepository.layPhongBanLamTruong(tk.nhanVienId, ketNoi);
       if (phongLamTruong.length) {
-        throw new LoiUngDung(409, `Tài khoản đang là trưởng bộ phận ${phongLamTruong.map((p) => p.tenPhongBan).join(', ')}, cần giamDoc miễn nhiệm trước khi gỡ quanLy`);
+        throw new LoiUngDung(
+          409,
+          `Tài khoản đang là trưởng bộ phận ${phongLamTruong.map((p) => p.tenPhongBan).join(', ')}, cần giamDoc miễn nhiệm trước khi gỡ quanLy`,
+        );
       }
     }
 
@@ -148,7 +155,8 @@ async function capNhatVaiTro(nguoiDung, nguoiDungId, dsVaiTro, diaChiIP) {
     await themNhatKy(nguoiDung.nguoiDungId, 'PHAN_QUYEN', diaChiIP, chiTiet, ketNoi);
     // Ghi theo người bị tác động: đánh dấu vai trò do Admin quyết định -> luồng miễn nhiệm không tự gỡ quanLy.
     // Chỉ ghi khi Admin thực sự thêm/gỡ quanLy, đổi vai trò khác không làm mất cơ chế tự gỡ khi miễn nhiệm.
-    if (vaiTroCu.includes('quanLy') !== vaiTroMoi.has('quanLy')) await themNhatKy(nguoiDungId, 'DUOC_PHAN_QUYEN', diaChiIP, `${ds.join(',')} bởi nguoiDungId=${nguoiDung.nguoiDungId}`, ketNoi);
+    if (vaiTroCu.includes('quanLy') !== vaiTroMoi.has('quanLy'))
+      await themNhatKy(nguoiDungId, 'DUOC_PHAN_QUYEN', diaChiIP, `${ds.join(',')} bởi nguoiDungId=${nguoiDung.nguoiDungId}`, ketNoi);
   });
   return layTaiKhoan(nguoiDungId);
 }
