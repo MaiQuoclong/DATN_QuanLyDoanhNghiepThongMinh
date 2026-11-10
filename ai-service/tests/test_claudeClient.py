@@ -90,6 +90,25 @@ def test_goiLlm_matKetNoi_nemLoiLlm(ganClient):
         goiLlm("x", [{"role": "user", "content": "y"}])
 
 
+def test_taoClient_tatThuLai_vaDungTimeout(monkeypatch):
+    # max_retries=0: tổng thời gian gọi LLM không vượt AI_TIMEOUT_MS phía backend
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-key")
+    monkeypatch.setenv("LLM_TIMEOUT_GIAY", "25")
+    thamSoTao = {}
+
+    def anthropicGia(**thamSo):
+        thamSoTao.update(thamSo)
+        return ClientGia(_phanHoi())
+
+    monkeypatch.setattr(claudeClient, "_client", None)
+    monkeypatch.setattr(claudeClient, "_cauHinhClient", None)
+    monkeypatch.setattr(claudeClient.anthropic, "Anthropic", anthropicGia)
+    assert goiLlm("x", [{"role": "user", "content": "y"}]) == "Xin chào"
+    assert thamSoTao["max_retries"] == 0
+    assert thamSoTao["timeout"] == 25.0
+    assert thamSoTao["api_key"] == "sk-ant-test-key"
+
+
 def test_chuaCoKhoa_nemLoiLlm(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
     with pytest.raises(LoiLlm, match="Chưa cấu hình"):

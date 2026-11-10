@@ -1,17 +1,17 @@
 from tests.conftest import KHOA_TEST
 
 
-def test_suKhoe_khongCanKhoa(client):
-    res = client.get("/suKhoe")
+def test_sucKhoe_khongCanKhoa(client):
+    res = client.get("/sucKhoe")
     assert res.status_code == 200
     assert res.json()["success"] is True
     assert res.json()["data"]["mayChu"] == "HOAT_DONG"
     assert res.json()["data"]["llm"] == "CHUA_CAU_HINH"
 
 
-def test_suKhoe_daCauHinhLlm(client, monkeypatch):
+def test_sucKhoe_daCauHinhLlm(client, monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
-    res = client.get("/suKhoe")
+    res = client.get("/sucKhoe")
     assert res.status_code == 200
     assert res.json()["data"]["llm"] == "DA_CAU_HINH"
 
