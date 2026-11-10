@@ -7,6 +7,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
+const { layNgayLeCuaNam } = require('../src/utils/ngayLe');
 
 const THU_MUC_CSDL = path.join(__dirname, '..', '..', 'database');
 const TEN_CSDL = process.env.CSDL_TEN || 'quanlydoanhnghiepthongminh';
@@ -42,8 +43,15 @@ async function khoiTaoCsdl() {
 
     console.log('1/2 Import schema.sql ...');
     await ketNoi.query(docFileSql('schema.sql'));
+    // Bảng TẠM (chỉ tồn tại trong phiên này, không thuộc schema): ngày lễ năm trước/nay/sau lấy từ
+    // config THAM_SO_NGAY_LE để seed.sql bỏ ngày lễ khi sinh chấm công, tính công chuẩn và số ngày nghỉ
+    const namNay = new Date().getFullYear();
+    const cacNgayLe = [namNay - 1, namNay, namNay + 1].flatMap((nam) => [...layNgayLeCuaNam(nam)]);
+    await ketNoi.query('CREATE TEMPORARY TABLE tamNgayLe (ngay DATE PRIMARY KEY)');
+    await ketNoi.query('INSERT INTO tamNgayLe (ngay) VALUES ?', [cacNgayLe.map((ngay) => [ngay])]);
     console.log('2/2 Nạp seed.sql ...');
     await ketNoi.query(docFileSql('seed.sql'));
+    await ketNoi.query('DROP TEMPORARY TABLE tamNgayLe');
 
     if (process.argv.includes('--taiKhoanChiDoc')) {
       console.log('+   Tạo tài khoản chỉ đọc aiReadonly ...');
