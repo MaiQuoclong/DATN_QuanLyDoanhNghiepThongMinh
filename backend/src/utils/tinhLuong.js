@@ -83,6 +83,18 @@ function tinhPhuCap(mucPhuCap, soNgayCong, ngayCongChuan) {
   return ngayCongChuan ? lamTronDong((mucPhuCap * soNgayCong) / ngayCongChuan) : 0;
 }
 
+// Đặt khoản thưởng/phạt (cột thuongKPI) cho phiếu rồi tính lại thuế. Dùng khi lập phiếu và khi cộng dồn vào phiếu nháp.
+// Quy ước đồ án: phạt kỷ luật trừ thẳng vào thu nhập (kể cả thu nhập tính thuế) và không làm thực lĩnh âm;
+// phần phạt vượt (thu nhập − bảo hiểm) bị bỏ, ghi ở phatBiCat (số dương) để service ghi nhật ký/cảnh báo.
+function apThuongPhat(phieu, thuongPhat, ngayCongChuan) {
+  const truocThuong = tinhChiTietPhieu({ ...phieu, thuongKPI: 0, khauTruThueTNCN: 0 }, ngayCongChuan).thucLinh;
+  const thuongPhatLamTron = lamTronDong(thuongPhat);
+  const thuongKPI = Math.max(thuongPhatLamTron, -Math.max(0, truocThuong));
+  const ketQua = { ...phieu, thuongKPI, phatBiCat: thuongKPI - thuongPhatLamTron };
+  ketQua.khauTruThueTNCN = tinhThueChoPhieu(ketQua, ngayCongChuan);
+  return ketQua;
+}
+
 // Sinh phiếu nháp từ hợp đồng + công + OT + thưởng/phạt
 function lapPhieu({ luongCoBan, mucPhuCap, soNgayCongThucTe, tongGioLamThem, thuongPhat }, ngayCongChuan) {
   const donGiaGio = ngayCongChuan ? luongCoBan / ngayCongChuan / THAM_SO_LUONG.soGioCongMotNgay : 0;
@@ -94,14 +106,7 @@ function lapPhieu({ luongCoBan, mucPhuCap, soNgayCongThucTe, tongGioLamThem, thu
     tongPhuCap: tinhPhuCap(mucPhuCap, soNgayCongThucTe, ngayCongChuan),
     khauTruBaoHiem: tinhBaoHiem(luongCoBan, soNgayCongThucTe, ngayCongChuan),
   };
-  // Quy ước đồ án: phạt kỷ luật trừ thẳng vào thu nhập (kể cả thu nhập tính thuế) và không làm thực lĩnh âm;
-  // phần phạt vượt (thu nhập − bảo hiểm) bị bỏ, ghi ở phatBiCat để service ghi nhật ký.
-  const truocThuong = tinhChiTietPhieu({ ...phieu, khauTruThueTNCN: 0 }, ngayCongChuan).thucLinh;
-  const thuongPhatLamTron = lamTronDong(thuongPhat);
-  phieu.thuongKPI = Math.max(thuongPhatLamTron, -Math.max(0, truocThuong));
-  phieu.phatBiCat = phieu.thuongKPI - thuongPhatLamTron;
-  phieu.khauTruThueTNCN = tinhThueChoPhieu(phieu, ngayCongChuan);
-  return phieu;
+  return apThuongPhat(phieu, thuongPhat, ngayCongChuan);
 }
 
 // Số tháng dương lịch kỳ KPI trải qua (quý 01/01-31/03 -> 3); tối thiểu 1
@@ -128,4 +133,5 @@ module.exports = {
   tinhChiTietPhieu,
   tinhThueChoPhieu,
   lapPhieu,
+  apThuongPhat,
 };
