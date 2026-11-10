@@ -101,16 +101,25 @@ async function congNgayDaNghi(id, soNgay, ketNoi) {
   await ketNoi.execute('UPDATE quyngayphep SET soNgayDaNghi = soNgayDaNghi + ? WHERE id = ?', [soNgay, id]);
 }
 
-// Cấp quỹ cho mọi nhân viên chưa nghỉ việc, đã vào làm trước hết năm và chưa có quỹ năm đó.
-// Người đã có quỹ giữ nguyên (HR sửa riêng từng người).
-async function capQuyHangLoat(nam, tongSoNgayPhep, ketNoi) {
-  const [ketQua] = await ketNoi.execute(
-    `INSERT INTO quyngayphep (nhanVienId, namHieuLuc, tongSoNgayPhep, soNgayDaNghi)
-     SELECT nv.id, ?, ?, 0 FROM nhanvien nv
+// Nhân viên chưa nghỉ việc, đã vào làm trước hết năm và chưa có quỹ năm đó (người đã có quỹ giữ nguyên).
+// LOCK IN SHARE MODE: không cho HR đổi ngày vào làm/trạng thái giữa lúc tính số ngày phép.
+async function layNhanVienChuaCoQuy(nam, ketNoi) {
+  const [dong] = await ketNoi.execute(
+    `SELECT nv.id, DATE_FORMAT(nv.ngayVaoLam, '%Y-%m-%d') AS ngayVaoLam FROM nhanvien nv
       WHERE nv.trangThaiLamViec <> 'DA_NGHI_VIEC' AND nv.ngayVaoLam <= ?
-        AND NOT EXISTS (SELECT 1 FROM quyngayphep q WHERE q.nhanVienId = nv.id AND q.namHieuLuc = ?)`,
-    [nam, tongSoNgayPhep, `${nam}-12-31`, nam],
+        AND NOT EXISTS (SELECT 1 FROM quyngayphep q WHERE q.nhanVienId = nv.id AND q.namHieuLuc = ?)
+      ORDER BY nv.id LOCK IN SHARE MODE`,
+    [`${nam}-12-31`, nam],
   );
+  return dong;
+}
+
+// cacQuy: [{ nhanVienId, tongSoNgayPhep }]
+async function capQuyHangLoat(nam, cacQuy, ketNoi) {
+  if (cacQuy.length === 0) return 0;
+  const [ketQua] = await ketNoi.query('INSERT INTO quyngayphep (nhanVienId, namHieuLuc, tongSoNgayPhep, soNgayDaNghi) VALUES ?', [
+    cacQuy.map((q) => [q.nhanVienId, nam, q.tongSoNgayPhep, 0]),
+  ]);
   return ketQua.affectedRows;
 }
 
@@ -188,14 +197,15 @@ async function khoaDon(id, ketNoi) {
 }
 
 // Đơn còn hiệu lực (chờ duyệt / đã duyệt) chồng lấn khoảng ngày
+// Mọi đơn CHO_DUYET/DA_DUYET giao với khoảng ngày (service quyết định cặp nửa ngày sáng + chiều có hợp lệ không)
 async function timDonChongLan(nhanVienId, tuNgay, denNgay, ketNoi) {
   const [dong] = await ketNoi.execute(
-    `SELECT id, maDon, ngayBatDau, ngayKetThuc FROM dondexuatnghiphep
+    `SELECT id, maDon, ngayBatDau, ngayKetThuc, soNgayNghi FROM dondexuatnghiphep
       WHERE nhanVienId = ? AND trangThai IN ('CHO_DUYET', 'DA_DUYET') AND ngayBatDau <= ? AND ngayKetThuc >= ?
-      LIMIT 1`,
+      ORDER BY id`,
     [nhanVienId, denNgay, tuNgay],
   );
-  return dong[0] ?? null;
+  return dong.map((d) => ({ ...d, soNgayNghi: Number(d.soNgayNghi) }));
 }
 
 // Chốt công: các đơn chờ duyệt có ngày nghỉ giao với khoảng (mã đơn + người gửi để HR biết cần nhắc ai)
@@ -309,6 +319,7 @@ module.exports = {
   layQuyTheoId,
   capNhatTongQuy,
   congNgayDaNghi,
+  layNhanVienChuaCoQuy,
   capQuyHangLoat,
   demNgayChoDuyetTrongNam,
   layDanhSachQuy,
