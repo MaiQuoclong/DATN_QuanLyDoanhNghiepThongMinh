@@ -455,7 +455,7 @@ INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao
   (4, 'MO_KY_KPI', '127.0.0.1', CONCAT('KPI Quý ', QUARTER(@dauQuyNay), '/', YEAR(@dauQuyNay)), TIMESTAMP(@dauQuyNay, '08:30:00'));
 
 -- ---------------------------------------------------------------------
--- 14. Khen thưởng - Kỷ luật: đề xuất (quanLy/giamDoc) -> HR từ chối hoặc lập quyết định (giamDoc ký)
+-- 14. Khen thưởng - Kỷ luật: đề xuất (quanLy/giamDoc) -> HR từ chối hoặc trình ký (CHO_KY) -> Giám đốc được trình ký / trả lại / từ chối
 --     Quyết định 1-2 ở mục 11; quyết định 3 lập từ đề xuất 4. Ngày ban hành ở tháng chưa có bảng lương.
 -- ---------------------------------------------------------------------
 INSERT INTO quyetdinhkhenthuongkyluat (id, soQuyetDinh, nhanVienId, loaiQuyetDinh, tieuDe, soTien, lyDo, ngayBanHanh, nguoiKyDuyetId) VALUES
@@ -474,13 +474,30 @@ INSERT INTO dexuatkhenthuongkyluat (id, nguoiDeXuatId, nhanVienId, loaiDeXuat, t
   (3, 3, 6, 'KHEN_THUONG', 'Khen thưởng nhân viên thử việc tích cực', 'Chủ động hỗ trợ đồng nghiệp trong đợt triển khai',
    500000.00, 'TU_CHOI', 4, 'Chưa đủ căn cứ theo quy chế khen thưởng, đề nghị xét lại cuối kỳ thử việc', NULL,
    LEAST(TIMESTAMP(CURDATE() - INTERVAL 10 DAY, '10:00:00'), NOW())),
-  -- giamDoc (NV0002) đề xuất khen NV0007: HR lập quyết định số 3
+  -- giamDoc (NV0002) đề xuất khen NV0007: HR trình NV0002 ký, Giám đốc ký quyết định số 3
   (4, 2, 7, 'KHEN_THUONG', 'Khen thưởng sáng kiến quy trình tuyển dụng', 'Rút ngắn thời gian tuyển dụng trung bình từ 30 xuống 20 ngày',
-   1500000.00, 'DA_DUYET', 4, 'Lập quyết định theo đề xuất', 3, TIMESTAMP(@thu2ThangChot - INTERVAL 3 DAY, '09:00:00'));
+   1500000.00, 'DA_DUYET', 2, 'Đồng ý khen thưởng theo đề xuất', 3, TIMESTAMP(@thu2ThangChot - INTERVAL 3 DAY, '09:00:00')),
+  -- HR (NV0004) lập trực tiếp khen NV0006, trình giamdoc (NV0002) ký: chờ Giám đốc ký / trả lại / từ chối
+  (5, 4, 6, 'KHEN_THUONG', 'Khen thưởng hoàn thành tài liệu hướng dẫn hội nhập', 'Biên soạn bộ tài liệu hội nhập cho nhân viên mới trước hạn 2 tuần',
+   800000.00, 'CHO_KY', 2, 'Trình Giám đốc ký theo quy chế khen thưởng', NULL, LEAST(TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '10:30:00'), NOW())),
+  -- quanly đề xuất kỷ luật NV0005, HR trình giamdoc2 (NV0008) ký, Giám đốc trả lại để bổ sung hồ sơ
+  (6, 3, 5, 'KY_LUAT', 'Kỷ luật đi muộn nhiều lần', 'Đi muộn 5 lần trong tháng không có lý do chính đáng',
+   200000.00, 'CHO_DUYET', 8, 'Trả lại: Bổ sung bảng chấm công và biên bản nhắc nhở trước khi trình ký', NULL,
+   LEAST(TIMESTAMP(CURDATE() - INTERVAL 3 DAY, '15:00:00'), NOW()));
+
+-- Nhật ký luồng trình ký (đề xuất 5, 6)
+INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
+  (4, 'TRINH_KY_KTKL', '127.0.0.1', 'Đề xuất #5 (KHEN_THUONG NV0006) trình NV0002 ký: Khen thưởng hoàn thành tài liệu hướng dẫn hội nhập',
+   LEAST(TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '10:30:00'), NOW())),
+  (3, 'TAO_DE_XUAT_KTKL', '127.0.0.1', 'KY_LUAT NV0005: Kỷ luật đi muộn nhiều lần', LEAST(TIMESTAMP(CURDATE() - INTERVAL 3 DAY, '15:00:00'), NOW())),
+  (4, 'TRINH_KY_KTKL', '127.0.0.1', 'Đề xuất #6 (KY_LUAT NV0005) trình NV0008 ký', LEAST(TIMESTAMP(CURDATE() - INTERVAL 3 DAY, '16:00:00'), NOW())),
+  (8, 'TRA_LAI_DE_XUAT_KTKL', '127.0.0.1', 'Đề xuất #6: Bổ sung bảng chấm công và biên bản nhắc nhở trước khi trình ký',
+   LEAST(TIMESTAMP(CURDATE() - INTERVAL 2 DAY, '09:00:00'), NOW()));
 
 INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
   (2, 'TAO_DE_XUAT_KTKL', '127.0.0.1', 'KHEN_THUONG NV0007: Khen thưởng sáng kiến quy trình tuyển dụng', TIMESTAMP(@thu2ThangChot - INTERVAL 3 DAY, '09:00:00')),
-  (4, 'LAP_QUYET_DINH_KTKL', '127.0.0.1', CONCAT('QD', YEAR(@thu2ThangChot), '-0003 (KHEN_THUONG NV0007, 1500000) từ đề xuất #4'), TIMESTAMP(@thu2ThangChot, '10:00:00')),
+  (4, 'TRINH_KY_KTKL', '127.0.0.1', 'Đề xuất #4 (KHEN_THUONG NV0007) trình NV0002 ký', TIMESTAMP(@thu2ThangChot, '09:00:00')),
+  (2, 'KY_QUYET_DINH_KTKL', '127.0.0.1', CONCAT('QD', YEAR(@thu2ThangChot), '-0003 (KHEN_THUONG NV0007, 1500000) từ đề xuất #4'), TIMESTAMP(@thu2ThangChot, '10:00:00')),
   (3, 'TAO_DE_XUAT_KTKL', '127.0.0.1', 'KHEN_THUONG NV0006: Khen thưởng nhân viên thử việc tích cực', LEAST(TIMESTAMP(CURDATE() - INTERVAL 10 DAY, '10:00:00'), NOW())),
   (4, 'TU_CHOI_DE_XUAT_KTKL', '127.0.0.1', 'Đề xuất #3', LEAST(TIMESTAMP(CURDATE() - INTERVAL 9 DAY, '15:00:00'), NOW())),
   (3, 'TAO_DE_XUAT_KTKL', '127.0.0.1', 'KHEN_THUONG NV0005: Khen thưởng hỗ trợ khách hàng xuất sắc', LEAST(TIMESTAMP(CURDATE() - INTERVAL 2 DAY, '09:00:00'), NOW())),
