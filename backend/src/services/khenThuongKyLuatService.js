@@ -267,22 +267,24 @@ async function ghiQuyetDinh(nguoiDung, noiDung, nhanVienId, nguoiKyDuyetId, diaC
       if (noiDung.soQuyetDinh || lan >= SO_LAN_THU_SINH_SO) throw new LoiUngDung(409, `Số quyết định ${soQuyetDinh} đã tồn tại`);
     }
   }
-  // Bảng lương tháng ban hành còn nháp: tính lại ngay để khoản thưởng/phạt có trong phiếu
+  // Bảng lương tháng ban hành còn nháp: cộng/trừ ngay khoản tiền vào phiếu của người nhận (giữ chỉnh sửa tay của HR)
   let canhBao = null;
   if (bangNhap) {
-    // Hành động riêng: không tính là "tham gia lập bảng" (daThamGiaLapBang), giamDoc lập quyết định vẫn duyệt được bảng
-    const soPhieu = await luongService.tinhLaiBangNhapTrongGiaoDich(bangNhap, ketNoi);
-    await nhatKyRepository.themNhatKy(
-      nguoiDung.nguoiDungId,
-      'TINH_LAI_BANG_LUONG_KTKL',
-      diaChiIP,
-      `${bangNhap.maBangLuong}: ${soPhieu} (áp dụng ${soQuyetDinh})`.slice(0, 1000),
-      ketNoi,
-    );
-    canhBao = `Đã tính lại bảng lương nháp ${bangNhap.maBangLuong} (các chỉnh sửa tay trên phiếu bị thay bằng số liệu tính lại)`;
-    // sinhPhieu trả "N phiếu; phạt vượt thu nhập bị bỏ: <mã NV> <số tiền>, ...": báo cho HR biết phạt không trừ đủ
-    const phanBiCat = String(soPhieu).split('; ')[1];
-    if (phanBiCat) canhBao += `. Lưu ý ${phanBiCat}`;
+    const soTienThem = noiDung.loaiQuyetDinh === 'KY_LUAT' ? -noiDung.soTien : noiDung.soTien;
+    const kq = await luongService.congThuongPhatVaoPhieuNhap(bangNhap, nhanVienId, soTienThem, ketNoi);
+    if (kq) {
+      // Hành động riêng: không tính là "tham gia lập bảng" (daThamGiaLapBang), giamDoc lập quyết định vẫn duyệt được bảng
+      await nhatKyRepository.themNhatKy(
+        nguoiDung.nguoiDungId,
+        'TINH_LAI_BANG_LUONG_KTKL',
+        diaChiIP,
+        `${bangNhap.maBangLuong} ${kq.maNhanVien}: thuongKPI ${kq.thuongCu} -> ${kq.thuongMoi} (áp dụng ${soQuyetDinh})`.slice(0, 1000),
+        ketNoi,
+      );
+      canhBao = `Đã cập nhật phiếu lương của ${kq.maNhanVien} trong bảng lương nháp ${bangNhap.maBangLuong}`;
+      // Phạt vượt thu nhập: phần vượt bị bỏ để thực lĩnh không âm, báo cho HR biết phạt không trừ đủ
+      if (kq.phatBiCat) canhBao += `. Lưu ý phạt vượt thu nhập bị bỏ: ${kq.maNhanVien} ${kq.phatBiCat}`;
+    }
   }
   // Lương chỉ tính cho người có hợp đồng hiệu lực trong tháng: không có thì khoản tiền không vào phiếu nào
   if (noiDung.soTien > 0) {

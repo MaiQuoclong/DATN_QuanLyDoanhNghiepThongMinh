@@ -563,12 +563,133 @@ describe('Quyết định và bảng lương tháng ban hành', () => {
     expect(phat.status).toBe(201);
     expect(phat.body.data.canhBao).toEqual(expect.stringContaining('phạt vượt thu nhập bị bỏ'));
     expect(phat.body.data.canhBao).toEqual(expect.stringContaining('NV0003'));
-    // Quyết định sau cùng tháng tính lại cả bảng: phạt của NV0003 vẫn bị cắt nên vẫn cảnh báo
+    // Quyết định sau cho người khác chỉ chạm phiếu của người đó (không sinh lại cả bảng) nên không cảnh báo lại NV0003
     const khen = await goi('post', '/quyetDinhKhenThuongKyLuat', token.hr).send(
       bodyQuyetDinh({ nhanVienId: NV_NHANVIEN, soTien: 100000, ngayBanHanh: '2020-05-21' }),
     );
     expect(khen.status).toBe(201);
-    expect(khen.body.data.canhBao).toEqual(expect.stringContaining('NV0003'));
+    expect(String(khen.body.data.canhBao ?? '')).not.toContain('NV0003');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Giữ chỉnh sửa tay của HR khi quyết định KTKL rơi vào tháng có bảng nháp (luongService.congThuongPhatVaoPhieuNhap)
+describe('Quyết định KTKL vào bảng nháp giữ chỉnh sửa tay', () => {
+  const { tinhThueChoPhieu, demNgayCongChuan } = require('../src/utils/tinhLuong');
+
+  async function lapBangNhap(thang) {
+    await pool.execute("INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, chiTiet) VALUES (4, 'CHOT_CONG_THANG', ?)", [thang]);
+    const lap = await goi('post', '/bangLuong', token.hr).send({ thang });
+    expect(lap.status).toBe(201);
+    return lap.body.data.id ?? lap.body.data.bangLuong?.id;
+  }
+  async function layPhieuDb(bangId, nhanVienId) {
+    const [[p]] = await pool.execute('SELECT * FROM phieuluongnhanvien WHERE bangTongHopLuongId = ? AND nhanVienId = ?', [
+      bangId,
+      nhanVienId,
+    ]);
+    return p;
+  }
+  const so = (p, cot) => Number(p[cot]);
+  const banHanh = (ghiDe) => goi('post', '/quyetDinhKhenThuongKyLuat', token.hr).send(bodyQuyetDinh(ghiDe));
+
+  test('sửa tay phụ cấp A, OT B rồi khen thưởng A: chỉ thuongKPI + thuế của A đổi, giữ sửa tay, tổng bảng khớp, nhật ký', async () => {
+    const thang = '2020-10';
+    const bangId = await lapBangNhap(thang);
+    const [ds] = await pool.execute('SELECT nhanVienId FROM phieuluongnhanvien WHERE bangTongHopLuongId = ? AND nhanVienId NOT IN (?, ?)', [
+      bangId,
+      NV_QUANLY,
+      NV_HR,
+    ]);
+    expect(ds.length).toBeGreaterThan(0);
+    const nvB = ds[0].nhanVienId;
+    const a0 = await layPhieuDb(bangId, NV_QUANLY);
+    const b0 = await layPhieuDb(bangId, nvB);
+    const suaA = await goi('patch', `/phieuLuong/${a0.id}`, token.hr).send({ tongPhuCap: so(a0, 'tongPhuCap') + 123000 });
+    expect(suaA.status).toBe(200);
+    const suaB = await goi('patch', `/phieuLuong/${b0.id}`, token.hr).send({ luongLamThemOT: so(b0, 'luongLamThemOT') + 50000 });
+    expect(suaB.status).toBe(200);
+    const a1 = await layPhieuDb(bangId, NV_QUANLY);
+    const b1 = await layPhieuDb(bangId, nvB);
+
+    const khen = await banHanh({ nhanVienId: NV_QUANLY, soTien: 800000, ngayBanHanh: '2020-10-15' });
+    expect(khen.status).toBe(201);
+    const a2 = await layPhieuDb(bangId, NV_QUANLY);
+    const b2 = await layPhieuDb(bangId, nvB);
+    expect(so(a2, 'thuongKPI')).toBe(so(a1, 'thuongKPI') + 800000);
+    expect(so(a2, 'tongPhuCap')).toBe(so(a0, 'tongPhuCap') + 123000);
+    for (const cot of ['soNgayCongThucTe', 'luongLamThemOT', 'khauTruBaoHiem', 'luongCoBan']) expect(so(a2, cot)).toBe(so(a1, cot));
+    expect(so(a2, 'khauTruThueTNCN')).toBe(tinhThueChoPhieu(a2, demNgayCongChuan(thang)));
+    for (const cot of ['thuongKPI', 'tongPhuCap', 'luongLamThemOT', 'khauTruThueTNCN', 'soNgayCongThucTe'])
+      expect(so(b2, cot)).toBe(so(b1, cot));
+    expect(so(b2, 'luongLamThemOT')).toBe(so(b0, 'luongLamThemOT') + 50000);
+
+    const ngayCongChuan = demNgayCongChuan(thang);
+    const [tatCa] = await pool.execute('SELECT * FROM phieuluongnhanvien WHERE bangTongHopLuongId = ?', [bangId]);
+    const { tinhChiTietPhieu } = require('../src/utils/tinhLuong');
+    const tong = tatCa.reduce((s, p) => s + tinhChiTietPhieu(p, ngayCongChuan).tongThuNhap, 0);
+    const [[bang]] = await pool.execute('SELECT tongChiPhiLuong FROM bangtonghopluong WHERE id = ?', [bangId]);
+    expect(Number(bang.tongChiPhiLuong)).toBe(tong);
+    const nk = await layNhatKy('TINH_LAI_BANG_LUONG_KTKL');
+    expect(nk).toHaveLength(1);
+    expect(nk[0].chiTiet).toContain('NV0003');
+  });
+
+  test('sửa tay thuongKPI A (+200000) rồi kỷ luật 100000: thuongKPI = giá trị sửa tay − 100000', async () => {
+    const bangId = await lapBangNhap('2020-11');
+    const a0 = await layPhieuDb(bangId, NV_QUANLY);
+    const suaTay = so(a0, 'thuongKPI') + 200000;
+    expect((await goi('patch', `/phieuLuong/${a0.id}`, token.hr).send({ thuongKPI: suaTay })).status).toBe(200);
+    const phat = await banHanh({ nhanVienId: NV_QUANLY, loaiQuyetDinh: 'KY_LUAT', soTien: 100000, ngayBanHanh: '2020-11-10' });
+    expect(phat.status).toBe(201);
+    expect(so(await layPhieuDb(bangId, NV_QUANLY), 'thuongKPI')).toBe(suaTay - 100000);
+  });
+
+  test('phạt vượt thu nhập bị cắt rồi khen (và ngược thứ tự): thuongKPI bằng kết quả nút Tính lại', async () => {
+    const bangId = await lapBangNhap('2020-12');
+    const chay = async (thuTu) => {
+      for (const loai of thuTu) {
+        const r =
+          loai === 'phat'
+            ? await banHanh({ nhanVienId: NV_QUANLY, loaiQuyetDinh: 'KY_LUAT', soTien: 500000000, ngayBanHanh: '2020-12-10' })
+            : await banHanh({ nhanVienId: NV_QUANLY, soTien: 1000000, ngayBanHanh: '2020-12-11' });
+        expect(r.status).toBe(201);
+        if (loai === 'phat' && thuTu[0] === 'phat')
+          expect(r.body.data.canhBao).toEqual(expect.stringContaining('phạt vượt thu nhập bị bỏ'));
+      }
+      const sauQd = await layPhieuDb(bangId, NV_QUANLY);
+      expect((await goi('post', `/bangLuong/${bangId}/tinhLai`, token.hr)).status).toBe(200);
+      const sauTinhLai = await layPhieuDb(bangId, NV_QUANLY);
+      expect(so(sauQd, 'thuongKPI')).toBe(so(sauTinhLai, 'thuongKPI'));
+      expect(so(sauQd, 'khauTruThueTNCN')).toBe(so(sauTinhLai, 'khauTruThueTNCN'));
+      return so(sauQd, 'thuongKPI');
+    };
+    const phatTruoc = await chay(['phat', 'khen']);
+    // Xóa 2 quyết định vừa tạo, tính lại để phiếu về trạng thái gốc, rồi chạy thứ tự ngược trên cùng dữ liệu
+    await pool.execute('DELETE FROM quyetdinhkhenthuongkyluat WHERE id > ?', [anhChup.quyetdinhkhenthuongkyluat]);
+    expect((await goi('post', `/bangLuong/${bangId}/tinhLai`, token.hr)).status).toBe(200);
+    const khenTruoc = await chay(['khen', 'phat']);
+    expect(khenTruoc).toBe(phatTruoc);
+  });
+
+  test('quyết định cho nhân viên không có phiếu trong bảng nháp: 201, không ghi TINH_LAI_BANG_LUONG_KTKL', async () => {
+    const bangId = await lapBangNhap('2020-02');
+    expect(await layPhieuDb(bangId, NV_NHANVIEN)).toBeUndefined();
+    const res = await banHanh({ nhanVienId: NV_NHANVIEN, soTien: 300000, ngayBanHanh: '2020-02-14' });
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ success: true, code: 201 });
+    expect(await layNhatKy('TINH_LAI_BANG_LUONG_KTKL')).toHaveLength(0);
+  });
+
+  test('nút Tính lại vẫn bỏ chỉnh sửa tay (tongPhuCap về giá trị tự động)', async () => {
+    const bangId = await lapBangNhap('2020-10');
+    const a0 = await layPhieuDb(bangId, NV_QUANLY);
+    expect((await goi('patch', `/phieuLuong/${a0.id}`, token.hr).send({ tongPhuCap: so(a0, 'tongPhuCap') + 99000 })).status).toBe(200);
+    expect(so(await layPhieuDb(bangId, NV_QUANLY), 'tongPhuCap')).toBe(so(a0, 'tongPhuCap') + 99000);
+    const tl = await goi('post', `/bangLuong/${bangId}/tinhLai`, token.hr);
+    expect(tl.status).toBe(200);
+    expect(so(await layPhieuDb(bangId, NV_QUANLY), 'tongPhuCap')).toBe(so(a0, 'tongPhuCap'));
+    expect(await layNhatKy('TINH_LAI_BANG_LUONG')).toHaveLength(1);
   });
 });
 

@@ -10,6 +10,7 @@ const {
   tinhChiTietPhieu,
   tinhThueChoPhieu,
   lapPhieu,
+  apThuongPhat,
   tinhPhuCap,
   tinhBaoHiem,
   demSoThangKy,
@@ -207,11 +208,35 @@ async function tinhLaiBang(nguoiDung, id, diaChiIP) {
   return themChiTietBang(await luongRepository.layBangTheoId(id));
 }
 
-// Tính lại phiếu của bảng nháp trong transaction của nơi gọi (bảng đã được khóa FOR UPDATE).
-// Dùng khi ban hành quyết định khen thưởng/kỷ luật vào tháng đang có bảng nháp, để khoản tiền không bị sót.
-async function tinhLaiBangNhapTrongGiaoDich(bang, ketNoi) {
-  await luongRepository.xoaPhieuTheoBang(bang.id, ketNoi);
-  return sinhPhieu(bang.id, maThang(bang.thang, bang.nam), ketNoi);
+// Áp một khoản thưởng (+) / phạt (−) mới vào phiếu của MỘT nhân viên trong bảng nháp, trong transaction của nơi gọi
+// (bảng đã khóa FOR UPDATE; quyết định KTKL / phiếu KPI mới đã được ghi trước khi gọi).
+// Dùng khi ban hành quyết định KTKL / nghiệm thu KPI vào tháng đang có bảng nháp: chỉ chạm đúng phiếu liên quan
+// nên giữ nguyên chỉnh sửa tay của HR (thay cho sinh lại cả bảng).
+// Tính theo nguồn để khớp "Tính lại" (sinhPhieu), kể cả khi phạt từng bị cắt do vượt thu nhập:
+//   nguồn = khen − kỷ luật + thưởng KPI của nhân viên trong tháng (đã gồm khoản mới); nguồn trước = nguồn − khoản mới
+//   chỉnh tay = thuongKPI đang lưu − giá trị tự động theo nguồn trước;  thuongKPI mới = áp(nguồn + chỉnh tay)
+// Ngày công, OT, phụ cấp, bảo hiểm không đổi; thuế TNCN tính lại.
+// soTienThem: số hoặc hàm (phieu) => số (thưởng KPI cần lương HĐ của phiếu). Không có phiếu hoặc khoản = 0 -> null.
+async function congThuongPhatVaoPhieuNhap(bang, nhanVienId, soTienThem, ketNoi) {
+  const phieu = await luongRepository.khoaPhieuCuaNhanVienTrongBang(bang.id, nhanVienId, ketNoi);
+  if (!phieu) return null;
+  const them = typeof soTienThem === 'function' ? soTienThem(phieu) : soTienThem;
+  if (!them) return null;
+  const thang = maThang(bang.thang, bang.nam);
+  const { tuNgay, denNgay } = khoangNgayCuaThang(thang);
+  const ngayCongChuan = demNgayCongChuan(thang);
+  const [thuongPhat, phieuKpi] = await Promise.all([
+    luongRepository.layThuongPhatTrongThang(tuNgay, denNgay, ketNoi),
+    luongRepository.layKpiNghiemThuTrongThang(tuNgay, denNgay, { ketNoi, khoa: true }),
+  ]);
+  const thuongKpi = tongThuongKpiTheoNhanVien(phieuKpi, new Map([[nhanVienId, phieu.luongCoBan]]));
+  const nguonSau = (thuongPhat.get(nhanVienId) ?? 0) + (thuongKpi.get(nhanVienId) ?? 0);
+  const chinhTay = phieu.thuongKPI - apThuongPhat(phieu, nguonSau - them, ngayCongChuan).thuongKPI;
+  const sau = apThuongPhat(phieu, nguonSau + chinhTay, ngayCongChuan);
+  await luongRepository.capNhatPhieu(phieu.id, { thuongKPI: sau.thuongKPI, khauTruThueTNCN: sau.khauTruThueTNCN }, ketNoi);
+  await capNhatLaiTong(bang, ketNoi);
+  const { maNhanVien } = await luongRepository.layPhieuTheoId(phieu.id, ketNoi);
+  return { maNhanVien, thuongCu: phieu.thuongKPI, thuongMoi: sau.thuongKPI, phatBiCat: sau.phatBiCat };
 }
 
 async function xoaBang(nguoiDung, id, diaChiIP) {
@@ -450,7 +475,7 @@ module.exports = {
   layChiTietBang,
   lapBang,
   tinhLaiBang,
-  tinhLaiBangNhapTrongGiaoDich,
+  congThuongPhatVaoPhieuNhap,
   xoaBang,
   guiDuyet,
   duyetBang,

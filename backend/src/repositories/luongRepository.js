@@ -110,6 +110,17 @@ async function layPhieuTheoId(id, ketNoi = pool, khoa = false) {
   return chuanHoaPhieu(dong[0]) ?? null;
 }
 
+// Phiếu của một nhân viên trong một bảng, khóa dòng để cộng thưởng/phạt trong transaction.
+// Chỉ đọc bảng phiếu (không JOIN) để FOR UPDATE không khóa lan sang nhanvien/phongban.
+async function khoaPhieuCuaNhanVienTrongBang(bangId, nhanVienId, ketNoi) {
+  const [dong] = await ketNoi.execute(
+    `SELECT id, nhanVienId, soNgayCongThucTe, luongCoBan, luongLamThemOT, thuongKPI, tongPhuCap, khauTruBaoHiem, khauTruThueTNCN
+       FROM phieuluongnhanvien WHERE bangTongHopLuongId = ? AND nhanVienId = ? FOR UPDATE`,
+    [bangId, nhanVienId],
+  );
+  return chuanHoaPhieu(dong[0]) ?? null;
+}
+
 // Phiếu của một nhân viên, chỉ thuộc bảng đã duyệt (bảng nháp chưa công bố cho nhân viên)
 async function layPhieuDaDuyetCuaNhanVien(nhanVienId, nam) {
   const thamSo = [nhanVienId];
@@ -275,6 +286,7 @@ module.exports = {
   xoaBang,
   layPhieuTheoBang,
   layPhieuTheoId,
+  khoaPhieuCuaNhanVienTrongBang,
   layPhieuDaDuyetCuaNhanVien,
   themPhieu,
   capNhatPhieu,
