@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { LogIn, LogOut, FilePen } from 'lucide-react';
 import goiApi from '../../services/goiApi';
+import useThongBao from '../../hooks/useThongBao';
 import NutBam from '../../components/NutBam';
 import TheThongKe from '../../components/TheThongKe';
 import BangCongNgay from '../../components/chamCong/BangCongNgay';
@@ -83,26 +84,33 @@ function TrangLichCong() {
   const [thang, setThang] = useState(thangHienTai());
   const [homNay, setHomNay] = useState(null);
   const [cong, setCong] = useState(null);
-  const [loi, setLoi] = useState('');
+  const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [ngayDieuChinh, setNgayDieuChinh] = useState(null);
-  const [daGui, setDaGui] = useState('');
 
-  const tai = useCallback(() => {
-    goiApi
-      .get('/chamCong/homNay')
-      .then((kq) => setHomNay(kq.data))
-      .catch((e) => setLoi(e.message));
-    goiApi
-      .get('/chamCong/cuaToi', { params: { thang } })
-      .then((kq) => {
-        setCong(kq.data);
-        setLoi('');
-      })
-      .catch((e) => setLoi(e.message));
-  }, [thang]);
+  // Tải song song 2 nguồn; gộp lỗi để request thành công không xóa mất lỗi của request kia
+  // conHieuLuc: bỏ qua phản hồi cũ khi đã đổi tháng (response về không theo thứ tự)
+  const tai = useCallback(
+    (conHieuLuc = () => true) => {
+      Promise.allSettled([goiApi.get('/chamCong/homNay'), goiApi.get('/chamCong/cuaToi', { params: { thang } })]).then(
+        ([kqHomNay, kqCong]) => {
+          if (!conHieuLuc()) return;
+          if (kqHomNay.status === 'fulfilled') setHomNay(kqHomNay.value.data);
+          // Lỗi thì bỏ dữ liệu tháng trước để không hiện số liệu sai nhãn tháng
+          setCong(kqCong.status === 'fulfilled' ? kqCong.value.data : null);
+          const cacLoi = [kqHomNay, kqCong].filter((kq) => kq.status === 'rejected').map((kq) => kq.reason?.message ?? 'Có lỗi xảy ra');
+          baoLoi([...new Set(cacLoi)].join('. '));
+        },
+      );
+    },
+    [thang, baoLoi],
+  );
 
   useEffect(() => {
-    tai();
+    let daHuy = false;
+    tai(() => !daHuy);
+    return () => {
+      daHuy = true;
+    };
   }, [tai]);
 
   const tongHop = cong?.tongHop;
@@ -125,7 +133,7 @@ function TrangLichCong() {
       </div>
 
       {loi && <div className="thongBao loi">{loi}</div>}
-      {daGui && <div className="thongBao thanhCong">{daGui}</div>}
+      {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
       {thang === thangHienTai() && <TheChamCongHomNay homNay={homNay} onDaChamCong={tai} />}
       {cong?.daChot && (
         <div className="thongBao canhBao">Công tháng đã chốt lúc {dinhDangThoiGian(cong.chot.thoiGianChot)}, không thể gửi điều chỉnh.</div>
@@ -174,7 +182,7 @@ function TrangLichCong() {
           onDong={() => setNgayDieuChinh(null)}
           onDaGui={(yc) => {
             setNgayDieuChinh(null);
-            setDaGui(`Đã gửi yêu cầu điều chỉnh ngày ${dinhDangNgay(yc.ngayCanDieuChinh)}, chờ duyệt`);
+            baoThanhCong(`Đã gửi yêu cầu điều chỉnh ngày ${dinhDangNgay(yc.ngayCanDieuChinh)}, chờ duyệt`);
           }}
         />
       )}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Plus, Pencil, Power, UserCheck, UserMinus } from 'lucide-react';
 import goiApi from '../../services/goiApi';
+import { layIdNhanh } from '../../utils/phongBan';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import NutBam from '../../components/NutBam';
 import ChipTrangThai from '../../components/ChipTrangThai';
@@ -95,6 +96,7 @@ function TrangPhongBan() {
     .filter((pb) => pb.trangThai === 'DANG_HOAT_DONG')
     .map((pb) => ({ giaTri: pb.id, nhan: `${pb.tenPhongBan} (${pb.maPhongBan})` }));
   const luaChonChucDanh = chucDanh.filter((cd) => cd.trangThai === 'DANG_HOAT_DONG').map((cd) => ({ giaTri: cd.id, nhan: cd.tenChucDanh }));
+  const idKhongLamCha = thaoTac?.loai === 'suaPhongBan' && chiTiet ? layIdNhanh([chiTiet.id], danhSach) : new Set();
 
   const xong = () => {
     setThaoTac(null);
@@ -297,7 +299,7 @@ function TrangPhongBan() {
               nhan: 'Phòng ban cha (bỏ trống = gốc)',
               kieu: 'select',
               rongHet: true,
-              luaChon: luaChonPhongBan.filter((lc) => lc.giaTri !== chiTiet.id),
+              luaChon: luaChonPhongBan.filter((lc) => !idKhongLamCha.has(lc.giaTri)),
             },
           ]}
           giaTriBanDau={chiTiet}

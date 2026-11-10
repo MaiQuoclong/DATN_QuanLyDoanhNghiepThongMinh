@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CalendarPlus, Plus } from 'lucide-react';
 import goiApi from '../../services/goiApi';
+import useThongBao from '../../hooks/useThongBao';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import BangDuLieu from '../../components/BangDuLieu';
 import ChipTrangThai from '../../components/ChipTrangThai';
@@ -25,8 +26,7 @@ function BangQuyPhep({ laHR, nhanVienIdCuaToi }) {
   const [trang, setTrang] = useState(1);
   const [phongBan, setPhongBan] = useState([]);
   const [ketQua, setKetQua] = useState(null);
-  const [loi, setLoi] = useState('');
-  const [thongBao, setThongBao] = useState('');
+  const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangSua, setDangSua] = useState(null);
   const [dangCap, setDangCap] = useState(false);
 
@@ -42,10 +42,10 @@ function BangQuyPhep({ laHR, nhanVienIdCuaToi }) {
       .get('/quyPhep', { params: locThamSo({ nam, tuKhoa, ...loc, trang, kichThuoc: 20 }) })
       .then((kq) => {
         setKetQua(kq.data);
-        setLoi('');
+        baoLoi('');
       })
-      .catch((e) => setLoi(e.message));
-  }, [nam, tuKhoa, loc, trang]);
+      .catch((e) => baoLoi(e.message));
+  }, [nam, tuKhoa, loc, trang, baoLoi]);
 
   useEffect(() => {
     const hen = setTimeout(tai, 300);
@@ -147,7 +147,7 @@ function BangQuyPhep({ laHR, nhanVienIdCuaToi }) {
             ? (d) =>
                 suaDuoc(d)
                   ? setDangSua(d)
-                  : setLoi(d.quyId ? 'Không thể tự sửa quỹ phép của chính mình' : 'Nhân viên chưa có quỹ năm này, dùng nút Cấp quỹ')
+                  : baoLoi(d.quyId ? 'Không thể tự sửa quỹ phép của chính mình' : 'Nhân viên chưa có quỹ năm này, dùng nút Cấp quỹ')
             : undefined
         }
         thongBaoRong="Không có nhân viên phù hợp"
@@ -164,7 +164,7 @@ function BangQuyPhep({ laHR, nhanVienIdCuaToi }) {
           onGui={async (giaTri) => {
             const kq = await goiApi.post('/quyPhep/capNam', { nam, tongSoNgayPhep: Number(giaTri.tongSoNgayPhep) });
             setDangCap(false);
-            setThongBao(kq.message);
+            baoThanhCong(kq.message);
             tai();
           }}
           onDong={() => setDangCap(false)}
@@ -185,7 +185,7 @@ function BangQuyPhep({ laHR, nhanVienIdCuaToi }) {
               lyDo: giaTri.lyDo || undefined,
             });
             setDangSua(null);
-            setThongBao('Cập nhật quỹ phép thành công');
+            baoThanhCong('Cập nhật quỹ phép thành công');
             tai();
           }}
           onDong={() => setDangSua(null)}
@@ -219,8 +219,7 @@ function chuyenGiaTriLoai(giaTri) {
 
 function BangLoaiNghiPhep({ laHR }) {
   const [dsLoai, setDsLoai] = useState([]);
-  const [loi, setLoi] = useState('');
-  const [thongBao, setThongBao] = useState('');
+  const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangThem, setDangThem] = useState(false);
   const [dangSua, setDangSua] = useState(null);
 
@@ -229,10 +228,10 @@ function BangLoaiNghiPhep({ laHR }) {
       .get('/loaiNghiPhep')
       .then((kq) => {
         setDsLoai(kq.data);
-        setLoi('');
+        baoLoi('');
       })
-      .catch((e) => setLoi(e.message));
-  }, []);
+      .catch((e) => baoLoi(e.message));
+  }, [baoLoi]);
   useEffect(tai, [tai]);
 
   const cot = [
@@ -250,11 +249,11 @@ function BangLoaiNghiPhep({ laHR }) {
       const kq = await goiApi.patch(`/loaiNghiPhep/${loai.id}`, {
         trangThai: loai.trangThai === 'DANG_AP_DUNG' ? 'NGUNG_AP_DUNG' : 'DANG_AP_DUNG',
       });
-      setThongBao(`${kq.data.tenLoai}: ${kq.data.trangThai === 'DANG_AP_DUNG' ? 'đã áp dụng lại' : 'đã ngừng áp dụng'}`);
+      baoThanhCong(`${kq.data.tenLoai}: ${kq.data.trangThai === 'DANG_AP_DUNG' ? 'đã áp dụng lại' : 'đã ngừng áp dụng'}`);
       setDangSua(null);
       tai();
     } catch (e) {
-      setLoi(e.message);
+      baoLoi(e.message);
     }
   };
 
@@ -273,7 +272,12 @@ function BangLoaiNghiPhep({ laHR }) {
       </div>
       {loi && <div className="thongBao loi">{loi}</div>}
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
-      <BangDuLieu cot={cot} duLieu={dsLoai} onHanhDong={laHR ? (d) => setDangSua(d) : undefined} thongBaoRong="Chưa có loại nghỉ phép" />
+      <BangDuLieu
+        cot={cot}
+        duLieu={dsLoai}
+        onHanhDong={laHR ? (d) => (baoLoi(''), setDangSua(d)) : undefined}
+        thongBaoRong="Chưa có loại nghỉ phép"
+      />
 
       {dangThem && (
         <HopThoaiBieuMau
@@ -292,7 +296,7 @@ function BangLoaiNghiPhep({ laHR }) {
               soNgayToiDa: body.soNgayToiDa === '' ? undefined : body.soNgayToiDa,
             });
             setDangThem(false);
-            setThongBao(kq.message);
+            baoThanhCong(kq.message);
             tai();
           }}
           onDong={() => setDangThem(false)}
@@ -301,6 +305,7 @@ function BangLoaiNghiPhep({ laHR }) {
       {dangSua && (
         <HopThoaiBieuMau
           tieuDe={`Sửa loại ${dangSua.maLoai}`}
+          loiNgoai={loi}
           moTa={
             <>
               Trạng thái: {dangSua.trangThai === 'DANG_AP_DUNG' ? 'đang áp dụng' : 'ngừng áp dụng'}.{' '}
@@ -324,7 +329,7 @@ function BangLoaiNghiPhep({ laHR }) {
             const body = Object.fromEntries(Object.entries(moi).filter(([khoa, gt]) => gt !== cu[khoa]));
             await goiApi.patch(`/loaiNghiPhep/${dangSua.id}`, body);
             setDangSua(null);
-            setThongBao('Cập nhật loại nghỉ phép thành công');
+            baoThanhCong('Cập nhật loại nghỉ phép thành công');
             tai();
           }}
           onDong={() => setDangSua(null)}

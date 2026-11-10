@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import goiApi from '../../services/goiApi';
+import useThongBao from '../../hooks/useThongBao';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import BangDuLieu from '../../components/BangDuLieu';
 import ChipTrangThai from '../../components/ChipTrangThai';
@@ -19,8 +20,8 @@ function TrangKyDanhGia() {
   const { nguoiDung } = useXacThuc();
   const laHR = nguoiDung.vaiTro.includes('HR');
   const [ds, setDs] = useState([]);
-  const [loi, setLoi] = useState('');
-  const [thongBao, setThongBao] = useState('');
+  const [dangTai, setDangTai] = useState(true);
+  const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangThem, setDangThem] = useState(false);
   const [dangSua, setDangSua] = useState(null);
 
@@ -29,21 +30,22 @@ function TrangKyDanhGia() {
       .get('/kyDanhGiaKPI')
       .then((kq) => {
         setDs(kq.data);
-        setLoi('');
+        baoLoi('');
       })
-      .catch((e) => setLoi(e.message));
-  }, []);
+      .catch((e) => baoLoi(e.message))
+      .finally(() => setDangTai(false));
+  }, [baoLoi]);
   useEffect(tai, [tai]);
 
   const hanhDong = async (duongDan, phuongThuc = 'post') => {
     try {
       const kq = await goiApi[phuongThuc](duongDan);
       setDangSua(null);
-      setThongBao(kq.message);
+      baoThanhCong(kq.message);
       tai();
     } catch (e) {
       setDangSua(null);
-      setLoi(e.message);
+      baoLoi(e.message);
     }
   };
 
@@ -73,12 +75,13 @@ function TrangKyDanhGia() {
       {loi && <div className="thongBao loi">{loi}</div>}
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
       <BangDuLieu
+        dangTai={dangTai}
         cot={cot}
         duLieu={ds}
         onHanhDong={
           laHR
             ? (d) => {
-                setLoi('');
+                baoLoi('');
                 setDangSua(d);
               }
             : undefined
@@ -94,7 +97,7 @@ function TrangKyDanhGia() {
           onGui={async (g) => {
             const kq = await goiApi.post('/kyDanhGiaKPI', g);
             setDangThem(false);
-            setThongBao(kq.message);
+            baoThanhCong(kq.message);
             tai();
           }}
           onDong={() => setDangThem(false)}
@@ -128,7 +131,7 @@ function TrangKyDanhGia() {
             const body = Object.fromEntries(Object.entries(g).filter(([k, v]) => v !== dangSua[k]));
             const kq = await goiApi.patch(`/kyDanhGiaKPI/${dangSua.id}`, body);
             setDangSua(null);
-            setThongBao(kq.message);
+            baoThanhCong(kq.message);
             tai();
           }}
           onDong={() => setDangSua(null)}

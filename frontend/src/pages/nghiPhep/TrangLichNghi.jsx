@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import goiApi from '../../services/goiApi';
+import useThongBao from '../../hooks/useThongBao';
 import TheThongKe from '../../components/TheThongKe';
 import HopThoaiChiTietDon from '../../components/nghiPhep/HopThoaiChiTietDon';
 import { layThu, thangHienTai } from '../../utils/dinhDang';
@@ -17,7 +18,7 @@ function TrangLichNghi() {
   const [phongBanId, setPhongBanId] = useState('');
   const [phongBan, setPhongBan] = useState([]);
   const [lich, setLich] = useState(null);
-  const [loi, setLoi] = useState('');
+  const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangXem, setDangXem] = useState(null);
 
   useEffect(() => {
@@ -28,7 +29,6 @@ function TrangLichNghi() {
   }, []);
 
   const [lamMoi, setLamMoi] = useState(0);
-  const [thongBao, setThongBao] = useState('');
 
   useEffect(() => {
     // Bỏ qua phản hồi cũ khi đổi tháng/phòng ban nhanh
@@ -38,19 +38,19 @@ function TrangLichNghi() {
       .then((kq) => {
         if (!daHuy) {
           setLich(kq.data);
-          setLoi('');
+          baoLoi('');
         }
       })
       .catch((e) => {
         if (!daHuy) {
           setLich(null);
-          setLoi(e.message);
+          baoLoi(e.message);
         }
       });
     return () => {
       daHuy = true;
     };
-  }, [thang, phongBanId, lamMoi]);
+  }, [thang, phongBanId, lamMoi, baoLoi]);
 
   const cacNgay = useMemo(() => layCacNgay(thang), [thang]);
   const homNay = new Date().toLocaleDateString('sv-SE');
@@ -186,7 +186,7 @@ function TrangLichNghi() {
           onDong={() => setDangXem(null)}
           onDaXuLy={(tb) => {
             setDangXem(null);
-            setThongBao(tb);
+            baoThanhCong(tb);
             setLamMoi((n) => n + 1);
           }}
         />

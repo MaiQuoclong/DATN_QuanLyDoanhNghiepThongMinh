@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import goiApi from '../../services/goiApi';
+import useThongBao from '../../hooks/useThongBao';
 import NutBam from '../../components/NutBam';
 import TheThongKe from '../../components/TheThongKe';
 import DanhSachDon from '../../components/nghiPhep/DanhSachDon';
@@ -9,8 +10,7 @@ import HopThoaiTaoDon from '../../components/nghiPhep/HopThoaiTaoDon';
 // Đơn của tôi: quỹ phép năm nay + danh sách đơn, tạo / hủy đơn
 function TrangDonCuaToi() {
   const [quy, setQuy] = useState(null);
-  const [loi, setLoi] = useState('');
-  const [thongBao, setThongBao] = useState('');
+  const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangTao, setDangTao] = useState(false);
   const [lamMoi, setLamMoi] = useState(0);
 
@@ -19,10 +19,10 @@ function TrangDonCuaToi() {
       .get('/quyPhep/cuaToi')
       .then((kq) => {
         setQuy(kq.data);
-        setLoi('');
+        baoLoi('');
       })
-      .catch((e) => setLoi(e.message));
-  }, []);
+      .catch((e) => baoLoi(e.message));
+  }, [baoLoi]);
   useEffect(taiQuy, [taiQuy]);
 
   const coQuy = quy?.quy;
@@ -70,7 +70,7 @@ function TrangDonCuaToi() {
           onDong={() => setDangTao(false)}
           onDaGui={(kq) => {
             setDangTao(false);
-            setThongBao(kq.message);
+            baoThanhCong(kq.message);
             setLamMoi((n) => n + 1);
             taiQuy();
           }}

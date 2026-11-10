@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import goiApi from '../../services/goiApi';
+import { locPhongBanTrongPhamVi } from '../../utils/phongBan';
+import useThongBao from '../../hooks/useThongBao';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import BangDuLieu from '../../components/BangDuLieu';
 import HopThoaiBieuMau from '../../components/HopThoaiBieuMau';
@@ -16,36 +18,38 @@ function TrangChiTieuKpi() {
   const laHR = nguoiDung.vaiTro.includes('HR');
   const quanTri = laHR || nguoiDung.vaiTro.includes('quanLy');
   const [ds, setDs] = useState([]);
+  const [dangTai, setDangTai] = useState(true);
   const [dsViTri, setDsViTri] = useState([]);
   const [phongBan, setPhongBan] = useState([]);
   const [tuKhoa, setTuKhoa] = useState('');
   const [loc, setLoc] = useState({});
-  const [loi, setLoi] = useState('');
-  const [thongBao, setThongBao] = useState('');
+  const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangThem, setDangThem] = useState(false);
   const [dangSua, setDangSua] = useState(null);
 
   useEffect(() => {
     goiApi
       .get('/phongBan')
-      .then((kq) => setPhongBan(kq.data))
+      .then((kq) => setPhongBan(locPhongBanTrongPhamVi(kq.data, nguoiDung)))
       .catch(() => {});
     if (quanTri)
       goiApi
         .get('/chiTieuKPI/viTri')
         .then((kq) => setDsViTri(kq.data))
         .catch(() => {});
-  }, [quanTri]);
+  }, [quanTri, nguoiDung]);
 
   const tai = useCallback(() => {
+    setDangTai(true);
     goiApi
       .get('/chiTieuKPI', { params: locThamSo({ tuKhoa, ...loc }) })
       .then((kq) => {
         setDs(kq.data);
-        setLoi('');
+        baoLoi('');
       })
-      .catch((e) => setLoi(e.message));
-  }, [tuKhoa, loc]);
+      .catch((e) => baoLoi(e.message))
+      .finally(() => setDangTai(false));
+  }, [tuKhoa, loc, baoLoi]);
   useEffect(() => {
     const hen = setTimeout(tai, 300);
     return () => clearTimeout(hen);
@@ -100,10 +104,10 @@ function TrangChiTieuKpi() {
     try {
       const kq = await goiApi.delete(`/chiTieuKPI/${d.id}`);
       setDangSua(null);
-      setThongBao(kq.message);
+      baoThanhCong(kq.message);
       tai();
     } catch (e) {
-      setLoi(e.message);
+      baoLoi(e.message);
     }
   };
 
@@ -136,9 +140,10 @@ function TrangChiTieuKpi() {
       {loi && <div className="thongBao loi">{loi}</div>}
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
       <BangDuLieu
+        dangTai={dangTai}
         cot={cot}
         duLieu={ds}
-        onHanhDong={quanTri ? (d) => (suaDuoc(d) ? setDangSua(d) : setLoi('Bạn không có quyền sửa chỉ tiêu này')) : undefined}
+        onHanhDong={quanTri ? (d) => (suaDuoc(d) ? (baoLoi(''), setDangSua(d)) : baoLoi('Bạn không có quyền sửa chỉ tiêu này')) : undefined}
         thongBaoRong="Chưa có chỉ tiêu KPI"
       />
 
@@ -151,7 +156,7 @@ function TrangChiTieuKpi() {
           onGui={async (g) => {
             const kq = await goiApi.post('/chiTieuKPI', { ...chuyen(g), maChiTieu: g.maChiTieu });
             setDangThem(false);
-            setThongBao(kq.message);
+            baoThanhCong(kq.message);
             tai();
           }}
           onDong={() => setDangThem(false)}
@@ -159,6 +164,7 @@ function TrangChiTieuKpi() {
       )}
       {dangSua && (
         <HopThoaiBieuMau
+          loiNgoai={loi}
           tieuDe={`Sửa chỉ tiêu ${dangSua.maChiTieu}`}
           moTa={
             <>
@@ -189,7 +195,7 @@ function TrangChiTieuKpi() {
             const body = Object.fromEntries(Object.entries(moi).filter(([k, v]) => v !== cu[k]));
             await goiApi.patch(`/chiTieuKPI/${dangSua.id}`, body);
             setDangSua(null);
-            setThongBao('Cập nhật chỉ tiêu KPI thành công');
+            baoThanhCong('Cập nhật chỉ tiêu KPI thành công');
             tai();
           }}
           onDong={() => setDangSua(null)}

@@ -3,8 +3,9 @@ import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import './BangDuLieu.css';
 
 // Bảng dữ liệu chung: header sticky, bấm tiêu đề cột để sắp xếp.
+// dangTai: true thì hiện "Đang tải..." thay cho thông báo rỗng.
 // cot: [{ khoa, tieuDe, bieuTuong?, canPhai?, hienThi?: (dong) => node, sapXep?: false }]
-function BangDuLieu({ cot, duLieu, khoaDong = 'id', onHanhDong, thongBaoRong = 'Không có dữ liệu' }) {
+function BangDuLieu({ cot, duLieu, khoaDong = 'id', onHanhDong, thongBaoRong = 'Không có dữ liệu', dangTai = false }) {
   const [sapXep, setSapXep] = useState({ khoa: null, tang: true });
 
   const duLieuDaXep = useMemo(() => {
@@ -40,7 +41,7 @@ function BangDuLieu({ cot, duLieu, khoaDong = 'id', onHanhDong, thongBaoRong = '
           {duLieuDaXep.length === 0 && (
             <tr>
               <td colSpan={cot.length + 1} className="oRong">
-                {thongBaoRong}
+                {dangTai ? 'Đang tải...' : thongBaoRong}
               </td>
             </tr>
           )}

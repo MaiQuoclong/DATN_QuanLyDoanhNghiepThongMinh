@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, Check, Download, FilePlus, RefreshCw, Send, Trash2, Undo2 } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import goiApi from '../../services/goiApi';
+import useThongBao from '../../hooks/useThongBao';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import BangDuLieu from '../../components/BangDuLieu';
 import ChipTrangThai from '../../components/ChipTrangThai';
@@ -25,8 +26,7 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
   const [ketQua, setKetQua] = useState(null);
   const [tuKhoa, setTuKhoa] = useState('');
   const [trang, setTrang] = useState(1);
-  const [loi, setLoi] = useState('');
-  const [thongBao, setThongBao] = useState('');
+  const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangXem, setDangXem] = useState(null);
   const [dangSua, setDangSua] = useState(null);
   const [dangTraLai, setDangTraLai] = useState(false);
@@ -38,10 +38,10 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
       .get(`/bangLuong/${bangId}`, { params: locThamSo({ tuKhoa, trang, kichThuoc: 20 }) })
       .then((kq) => {
         setKetQua(kq.data);
-        setLoi('');
+        baoLoi('');
       })
-      .catch((e) => setLoi(e.message));
-  }, [bangId, tuKhoa, trang]);
+      .catch((e) => baoLoi(e.message));
+  }, [bangId, tuKhoa, trang, baoLoi]);
   useEffect(() => {
     const hen = setTimeout(tai, 300);
     return () => clearTimeout(hen);
@@ -57,12 +57,10 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
     setDangGui(true);
     try {
       const kq = await goiApi.post(`/bangLuong/${bangId}/${hanhDong}`);
-      setThongBao(kq.message);
-      setLoi('');
+      baoThanhCong(kq.message);
       tai();
     } catch (e) {
-      setThongBao('');
-      setLoi(e.message);
+      baoLoi(e.message);
     } finally {
       setDangGui(false);
     }
@@ -87,8 +85,7 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
           /* giữ thông báo mặc định */
         }
       }
-      setThongBao('');
-      setLoi(thongBaoLoi ?? 'Không tải được tệp Excel');
+      baoLoi(thongBaoLoi ?? 'Không tải được tệp Excel');
     }
   };
 
@@ -234,7 +231,7 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
             if (Object.values(body).some(Number.isNaN)) throw new Error('Các khoản phải là số');
             await goiApi.patch(`/phieuLuong/${dangSua.id}`, body);
             setDangSua(null);
-            setThongBao('Cập nhật phiếu lương thành công');
+            baoThanhCong('Cập nhật phiếu lương thành công');
             tai();
           }}
           onDong={() => setDangSua(null)}
@@ -248,7 +245,7 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
           onGui={async (giaTri) => {
             const kq = await goiApi.post(`/bangLuong/${bangId}/traLai`, { lyDo: giaTri.lyDo });
             setDangTraLai(false);
-            setThongBao(kq.message);
+            baoThanhCong(kq.message);
             tai();
           }}
           onDong={() => setDangTraLai(false)}
@@ -296,7 +293,7 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
                     onQuayLai('Đã xóa bảng lương nháp');
                   } catch (e) {
                     setDangXoa(false);
-                    setLoi(e.message);
+                    baoLoi(e.message);
                   }
                 }}
               >
@@ -318,8 +315,7 @@ function DanhSachBang({ laHR, onChon, thongBaoBanDau }) {
   const [nam, setNam] = useState('');
   const [dsBang, setDsBang] = useState([]);
   const [thangDaChot, setThangDaChot] = useState([]);
-  const [loi, setLoi] = useState('');
-  const [thongBao] = useState(thongBaoBanDau ?? '');
+  const { loi, baoLoi } = useThongBao();
   const [dangLap, setDangLap] = useState(false);
 
   const tai = useCallback(() => {
@@ -327,10 +323,10 @@ function DanhSachBang({ laHR, onChon, thongBaoBanDau }) {
       .get('/bangLuong', { params: locThamSo({ nam }) })
       .then((kq) => {
         setDsBang(kq.data);
-        setLoi('');
+        baoLoi('');
       })
-      .catch((e) => setLoi(e.message));
-  }, [nam]);
+      .catch((e) => baoLoi(e.message));
+  }, [nam, baoLoi]);
   useEffect(tai, [tai]);
   useEffect(() => {
     if (laHR)
@@ -382,7 +378,7 @@ function DanhSachBang({ laHR, onChon, thongBaoBanDau }) {
         </div>
       </div>
       {loi && <div className="thongBao loi">{loi}</div>}
-      {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
+      {thongBaoBanDau && !loi && <div className="thongBao thanhCong">{thongBaoBanDau}</div>}
       <BangDuLieu cot={cot} duLieu={dsBang} onHanhDong={(b) => onChon(b.id)} thongBaoRong="Chưa có bảng lương" />
 
       {dangLap && (
@@ -503,7 +499,7 @@ function TrangBangLuong() {
   const laGiamDoc = nguoiDung.vaiTro.includes('giamDoc');
   const [tab, setTab] = useState('bang');
   const [bangDangChon, setBangDangChon] = useState(null);
-  const [thongBao, setThongBao] = useState('');
+  const { thongBao, baoThanhCong } = useThongBao();
 
   return (
     <div>
@@ -524,7 +520,7 @@ function TrangBangLuong() {
             laGiamDoc={laGiamDoc}
             nhanVienIdCuaToi={nguoiDung.nhanVienId}
             onQuayLai={(tb) => {
-              setThongBao(typeof tb === 'string' ? tb : '');
+              baoThanhCong(typeof tb === 'string' ? tb : '');
               setBangDangChon(null);
             }}
           />

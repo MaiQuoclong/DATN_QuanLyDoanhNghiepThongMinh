@@ -8,6 +8,7 @@ import { dinhDangNgay } from '../../utils/dinhDang';
 // Tab Phiếu của tôi (mọi vai trò): tự chấm phiếu nháp, gửi nghiệm thu, xem kết quả
 function TrangPhieuKpiCuaToi() {
   const [dsPhieu, setDsPhieu] = useState([]);
+  const [dangTai, setDangTai] = useState(true);
   const [loi, setLoi] = useState('');
   const [dangXem, setDangXem] = useState(null);
 
@@ -18,7 +19,8 @@ function TrangPhieuKpiCuaToi() {
         setDsPhieu(kq.data);
         setLoi('');
       })
-      .catch((e) => setLoi(e.message));
+      .catch((e) => setLoi(e.message))
+      .finally(() => setDangTai(false));
   }, []);
   useEffect(tai, [tai]);
 
@@ -50,7 +52,13 @@ function TrangPhieuKpiCuaToi() {
         </div>
       </div>
       {loi && <div className="thongBao loi">{loi}</div>}
-      <BangDuLieu cot={cot} duLieu={dsPhieu} onHanhDong={(d) => setDangXem(d.id)} thongBaoRong="Bạn chưa có phiếu đánh giá KPI nào" />
+      <BangDuLieu
+        dangTai={dangTai}
+        cot={cot}
+        duLieu={dsPhieu}
+        onHanhDong={(d) => setDangXem(d.id)}
+        thongBaoRong="Bạn chưa có phiếu đánh giá KPI nào"
+      />
       {dangXem && <HopThoaiPhieuKpi phieuId={dangXem} onDong={() => setDangXem(null)} onThayDoi={tai} />}
     </div>
   );
