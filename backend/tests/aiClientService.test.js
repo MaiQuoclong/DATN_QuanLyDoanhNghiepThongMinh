@@ -50,6 +50,19 @@ describe('aiClientService.goiAiService', () => {
     await expect(goiAiService('/noiBo/cham')).rejects.toMatchObject({ code: 503, message: THONG_BAO_KHONG_KHA_DUNG });
   });
 
+  test('gửi header rồi treo body -> 503 trong thời gian chờ', async () => {
+    let phanHoiTreo;
+    xuLy = (req, res) => {
+      phanHoiTreo = res;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.write('{"success": true, "data": ');
+    };
+    const batDau = Date.now();
+    await expect(goiAiService('/noiBo/treo')).rejects.toMatchObject({ code: 503, message: THONG_BAO_KHONG_KHA_DUNG });
+    expect(Date.now() - batDau).toBeLessThan(1500);
+    phanHoiTreo.end();
+  });
+
   test('ECONNREFUSED -> 503 thân thiện', async () => {
     process.env.AI_SERVICE_URL = 'http://127.0.0.1:1';
     await expect(goiAiService('/noiBo/x')).rejects.toMatchObject({ code: 503, message: THONG_BAO_KHONG_KHA_DUNG });

@@ -20,7 +20,7 @@ def _layClient() -> anthropic.Anthropic:
         raise LoiLlm("Chưa cấu hình ANTHROPIC_API_KEY")
     khoaCauHinh = (cauHinh.anthropicApiKey, cauHinh.thoiGianChoLlm)
     if _client is None or _cauHinhClient != khoaCauHinh:
-        _client = anthropic.Anthropic(api_key=cauHinh.anthropicApiKey, timeout=cauHinh.thoiGianChoLlm, max_retries=1)
+        _client = anthropic.Anthropic(api_key=cauHinh.anthropicApiKey, timeout=cauHinh.thoiGianChoLlm, max_retries=0)
         _cauHinhClient = khoaCauHinh
     return _client
 

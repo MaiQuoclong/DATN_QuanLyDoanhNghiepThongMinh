@@ -44,7 +44,7 @@ def thanhCong(data=None, message: str = "Thành công") -> dict:
     return {"success": True, "code": 200, "message": message, "data": data}
 
 
-@app.get("/suKhoe")
+@app.get("/sucKhoe")
 def kiemTraSucKhoe():
     # Không cần khóa, không lộ cấu hình nhạy cảm: chỉ báo đã có khóa LLM hay chưa
     llm = "DA_CAU_HINH" if daCauHinhLlm() else "CHUA_CAU_HINH"

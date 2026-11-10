@@ -32,7 +32,7 @@ Express:
 | GET | `/api/v1/troLyAi/phien/:id/tinNhan` | 5 vai trò |
 | POST | `/api/v1/troLyAi/hoiDap` `{phienId?, cauHoi 1–1000}` → `{phienId, traLoi, nguonTrichDan:[{taiLieuId, maTaiLieu, tieuDe, dieu, khoan, doanTrich, diem}]}` | 5 vai trò |
 
-FastAPI: `POST /noiBo/rag/lapChiMuc`, `DELETE /noiBo/rag/taiLieu/{id}`, `POST /noiBo/rag/hoiDap`, `GET/POST/DELETE /noiBo/lichSu/{phienId}`, `GET /suKhoe`.
+FastAPI: `POST /noiBo/rag/lapChiMuc`, `DELETE /noiBo/rag/taiLieu/{id}`, `POST /noiBo/rag/hoiDap`, `GET/POST/DELETE /noiBo/lichSu/{phienId}`, `GET /sucKhoe`.
 
 ## File
 - Backend: `routes/taiLieuQuyCheRoutes.js`, `routes/troLyAiRoutes.js`, `middlewares/taiTep.js` (multer, uuid tên file, kiểm magic bytes, chống path traversal), `controllers/taiLieuQuyCheController.js`, `troLyAiController.js`, `services/taiLieuQuyCheService.js`, `troLyAiService.js`, `aiClientService.js`, `repositories/taiLieuQuyCheRepository.js`, `phienTroChuyenRepository.js`; env `AI_SERVICE_URL`, `AI_SERVICE_KEY`, `AI_TIMEOUT_MS`, `THU_MUC_TAI_LIEU` (mặc định `backend/uploads/quyChe/`).
