@@ -129,8 +129,10 @@ describe('GET /api/v1/nguoiDung', () => {
     const token = await layToken('admin');
     await pool.execute("UPDATE nguoidung SET trangThai = 'KHOA' WHERE id = 6");
     const khoa = await goi('get', '/nguoiDung?trangThai=KHOA', token);
-    expect(khoa.body.data.items.map((x) => x.nguoiDungId)).toEqual([6]);
-    expect(khoa.body.data.phanTrang.tongSo).toBe(1);
+    // Seed: tài khoản 12 (NV0012 đã nghỉ việc) sẵn KHOA
+    const sapXep = (ds) => ds.sort((a, b) => a - b);
+    expect(sapXep(khoa.body.data.items.map((x) => x.nguoiDungId))).toEqual([6, 12]);
+    expect(khoa.body.data.phanTrang.tongSo).toBe(2);
     const hr = await goi('get', '/nguoiDung?vaiTro=HR', token);
     const [dsHr] = await pool.execute(
       "SELECT nv.nguoiDungId AS id FROM nguoidungvaitro nv JOIN vaitro v ON v.id = nv.vaiTroId WHERE v.maVaiTro = 'HR'",

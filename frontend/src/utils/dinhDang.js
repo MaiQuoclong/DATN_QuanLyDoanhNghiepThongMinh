@@ -66,13 +66,14 @@ export function layThu(ngay) {
 }
 
 // Số ngày làm việc (T2-T6) trong khoảng, khớp backend utils/tinhNgayNghi.js (chỉ để xem trước, backend tính lại)
-export function demNgayLamViec(tuNgay, denNgay) {
+// ngayLe: Set 'YYYY-MM-DD' (hook useNgayLe) để bỏ ngày lễ như backend
+export function demNgayLamViec(tuNgay, denNgay, ngayLe = new Set()) {
   if (!tuNgay || !denNgay || denNgay < tuNgay) return 0;
   let dem = 0;
   const ngay = new Date(`${tuNgay}T00:00:00Z`);
   const cuoi = new Date(`${denNgay}T00:00:00Z`);
   while (ngay <= cuoi) {
-    if (![0, 6].includes(ngay.getUTCDay())) dem += 1;
+    if (![0, 6].includes(ngay.getUTCDay()) && !ngayLe.has(ngay.toISOString().slice(0, 10))) dem += 1;
     ngay.setUTCDate(ngay.getUTCDate() + 1);
   }
   return dem;

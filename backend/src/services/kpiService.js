@@ -523,17 +523,25 @@ async function tuCham(nguoiDung, id, body) {
   return chayTransaction(async (ketNoi) => {
     const { phieu, chiTiet } = await khoaPhieuTrongKyMo(nguoiDung, id, 'BAN_NHAP', ketNoi);
     kiemTraChinhChu(nguoiDung, phieu);
+    // Chỉ ghi các giá trị khác dữ liệu đang lưu; gửi lại y nguyên -> 400 "Không có thông tin nào thay đổi"
     let coThayDoi = false;
     if (body?.giaiTrinhNhanVien !== undefined) {
-      await kpiRepository.capNhatPhieu(id, { giaiTrinhNhanVien: layChuoi(body.giaiTrinhNhanVien, 'Giải trình', { toiDa: 5000 }) }, ketNoi);
-      coThayDoi = true;
+      const giaiTrinh = layChuoi(body.giaiTrinhNhanVien, 'Giải trình', { toiDa: 5000 });
+      if ((giaiTrinh ?? null) !== (phieu.giaiTrinhNhanVien ?? null)) {
+        await kpiRepository.capNhatPhieu(id, { giaiTrinhNhanVien: giaiTrinh }, ketNoi);
+        coThayDoi = true;
+      }
     }
     if (body?.chiTiet !== undefined) {
-      for (const { muc } of layDanhSachChiTietBody(body, chiTiet)) {
+      for (const { muc, goc } of layDanhSachChiTietBody(body, chiTiet)) {
         const thayDoi = {};
-        if (muc.ketQuaThucTe !== undefined) thayDoi.ketQuaThucTe = layChuoi(muc.ketQuaThucTe, 'Kết quả thực tế');
+        if (muc.ketQuaThucTe !== undefined) {
+          const ketQua = layChuoi(muc.ketQuaThucTe, 'Kết quả thực tế');
+          if ((ketQua ?? null) !== (goc.ketQuaThucTe ?? null)) thayDoi.ketQuaThucTe = ketQua;
+        }
         if (muc.diemTuCham !== undefined) {
-          thayDoi.diemTuCham = muc.diemTuCham === null || muc.diemTuCham === '' ? null : layDiem(muc.diemTuCham, 'Điểm tự chấm');
+          const diem = muc.diemTuCham === null || muc.diemTuCham === '' ? null : layDiem(muc.diemTuCham, 'Điểm tự chấm');
+          if (diem !== goc.diemTuCham) thayDoi.diemTuCham = diem;
         }
         if (!Object.keys(thayDoi).length) continue;
         coThayDoi = true;

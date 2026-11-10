@@ -278,10 +278,11 @@ describe('GET /api/v1/nhanVien/:id và /toi - chi tiết và phạm vi', () => {
     expect(res.body.data.soTaiKhoanNganHang).toBe('0011000000003');
   });
 
-  test('quanLy xem hr (PNS, ngoài phạm vi) trả 403', async () => {
+  // Ngoài phạm vi trả 404 (không tiết lộ hồ sơ có tồn tại hay không)
+  test('quanLy xem hr (PNS, ngoài phạm vi) trả 404', async () => {
     const res = await goi('get', '/4', token.quanly);
-    expect(res.status).toBe(403);
-    expect(res.body).toMatchObject({ success: false, code: 403, data: null });
+    expect(res.status).toBe(404);
+    expect(res.body).toMatchObject({ success: false, code: 404, data: null });
   });
 
   test.each([
@@ -289,9 +290,9 @@ describe('GET /api/v1/nhanVien/:id và /toi - chi tiết và phạm vi', () => {
     ['nhanvien', 3],
     ['admin', 5],
     ['admin', 2],
-  ])('%s xem hồ sơ người khác (id %i) trả 403', async (ten, id) => {
+  ])('%s xem hồ sơ người khác (id %i) trả 404', async (ten, id) => {
     const res = await goi('get', `/${id}`, token[ten]);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   test.each([
@@ -968,13 +969,14 @@ describe('POST /api/v1/nhanVien/:id/dieuChuyen', () => {
 // ---------------------------------------------------------------------------
 // Seed nhiều người mỗi vai trò: hr2 (NV0007), giamdoc2 (NV0008), quanly2 (NV0009, trưởng PKD), nhanvien3 (NV0010, PKD)
 describe('Nhiều người cùng vai trò', () => {
-  test('quanly2 chỉ thấy nhân viên PKD (NV0009, NV0010), không thấy PKT', async () => {
+  // Seed PKD: NV0009 (trưởng), NV0010, NV0011 (TAM_NGHI), NV0012 (DA_NGHI_VIEC, tài khoản KHOA)
+  test('quanly2 chỉ thấy nhân viên PKD (NV0009-NV0012), không thấy PKT', async () => {
     const res = await goi('get', '', token.quanly2);
     expect(res.status).toBe(200);
-    expect(res.body.data.items.map((nv) => nv.maNhanVien).sort()).toEqual(['NV0009', 'NV0010']);
-    expect(res.body.data.phanTrang.tongSo).toBe(2);
-    expect((await goi('get', '/3', token.quanly2)).status).toBe(403);
-    expect((await goi('get', '/5', token.quanly2)).status).toBe(403);
+    expect(res.body.data.items.map((nv) => nv.maNhanVien).sort()).toEqual(['NV0009', 'NV0010', 'NV0011', 'NV0012']);
+    expect(res.body.data.phanTrang.tongSo).toBe(4);
+    expect((await goi('get', '/3', token.quanly2)).status).toBe(404);
+    expect((await goi('get', '/5', token.quanly2)).status).toBe(404);
     expect((await goi('get', '?phongBanId=3', token.quanly2)).body.data.items).toEqual([]);
   });
 
@@ -984,8 +986,8 @@ describe('Nhiều người cùng vai trò', () => {
     const ma = res.body.data.items.map((nv) => nv.maNhanVien);
     expect(ma).not.toContain('NV0009');
     expect(ma).not.toContain('NV0010');
-    expect((await goi('get', '/10', token.quanly)).status).toBe(403);
-    expect((await goi('get', '/9', token.quanly)).status).toBe(403);
+    expect((await goi('get', '/10', token.quanly)).status).toBe(404);
+    expect((await goi('get', '/9', token.quanly)).status).toBe(404);
   });
 
   test('quanly2 xem nhanvien3 trong phạm vi bị ẩn ngân hàng', async () => {
@@ -1023,8 +1025,99 @@ describe('Nhiều người cùng vai trò', () => {
   });
 
   test('nhanvien3 không xem được hồ sơ đồng nghiệp cùng PKD', async () => {
-    expect((await goi('get', '/9', token.nhanvien3)).status).toBe(403);
+    expect((await goi('get', '/9', token.nhanvien3)).status).toBe(404);
     expect((await goi('get', '/toi', token.nhanvien3)).body.data.id).toBe(10);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('GET /nhanVien - trangThaiLamViec nhiều giá trị và boQuaIds', () => {
+  async function maTheoTrangThai(cacTrangThai) {
+    const [d] = await pool.query('SELECT maNhanVien FROM nhanvien WHERE trangThaiLamViec IN (?) ORDER BY maNhanVien', [cacTrangThai]);
+    return d.map((x) => x.maNhanVien);
+  }
+
+  test('lọc nhiều trạng thái cách nhau dấu phẩy (TAM_NGHI,DA_NGHI_VIEC) gồm NV0011, NV0012', async () => {
+    const res = await goi('get', '?trangThaiLamViec=TAM_NGHI,DA_NGHI_VIEC&kichThuoc=100', token.hr);
+    expect(res.status).toBe(200);
+    const mong = await maTheoTrangThai(['TAM_NGHI', 'DA_NGHI_VIEC']);
+    expect(mong).toEqual(expect.arrayContaining(['NV0011', 'NV0012']));
+    expect(res.body.data.items.map((nv) => nv.maNhanVien)).toEqual(mong);
+    expect(res.body.data.phanTrang.tongSo).toBe(mong.length);
+  });
+
+  test('trạng thái lặp và khoảng trắng được chuẩn hóa (THU_VIEC, CHINH_THUC ,THU_VIEC)', async () => {
+    const res = await goi('get', `?trangThaiLamViec=${encodeURIComponent('THU_VIEC, CHINH_THUC ,THU_VIEC')}&kichThuoc=100`, token.hr);
+    expect(res.status).toBe(200);
+    expect(res.body.data.items.map((nv) => nv.maNhanVien)).toEqual(await maTheoTrangThai(['THU_VIEC', 'CHINH_THUC']));
+  });
+
+  test.each([
+    '?trangThaiLamViec=THU_VIEC,PENDING',
+    '?trangThaiLamViec=THU_VIEC,,CHINH_THUC',
+    '?trangThaiLamViec=THU_VIEC&trangThaiLamViec=CHINH_THUC', // dạng mảng không hỗ trợ
+    '?boQuaIds=abc',
+    '?boQuaIds=0',
+    '?boQuaIds=1,,2',
+    '?boQuaIds=-1',
+    '?boQuaIds=1.5',
+    '?boQuaIds=1&boQuaIds=2',
+    `?boQuaIds=${Array.from({ length: 101 }, (_, i) => i + 1).join(',')}`, // quá 100 id
+  ])('tham số sai %s trả 400 chuẩn', async (query) => {
+    const res = await goi('get', query, token.hr);
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ success: false, code: 400, message: expect.any(String), data: null });
+  });
+
+  test('boQuaIds loại các id khỏi kết quả và tongSo', async () => {
+    const tong = await demBang('nhanvien');
+    const res = await goi('get', '?boQuaIds=1,2,3,3&kichThuoc=100', token.hr);
+    expect(res.status).toBe(200);
+    const ids = res.body.data.items.map((nv) => nv.id);
+    for (const id of [1, 2, 3]) expect(ids).not.toContain(id);
+    expect(res.body.data.phanTrang.tongSo).toBe(tong - 3);
+  });
+
+  test('boQuaIds kết hợp phạm vi quanLy: id ngoài phạm vi không ảnh hưởng, id trong phạm vi bị loại', async () => {
+    const res = await goi('get', '?boQuaIds=5,9', token.quanly);
+    expect(res.status).toBe(200);
+    expect(res.body.data.items.map((nv) => nv.id).sort()).toEqual([1, 3, 6]);
+    expect(res.body.data.phanTrang.tongSo).toBe(3);
+  });
+
+  test('boQuaIds = 100 id (đúng giới hạn) vẫn hợp lệ', async () => {
+    const res = await goi('get', `?boQuaIds=${Array.from({ length: 100 }, (_, i) => i + 1000).join(',')}`, token.hr);
+    expect(res.status).toBe(200);
+    expect(res.body.data.phanTrang.tongSo).toBe(await demBang('nhanvien'));
+  });
+});
+
+describe('PATCH hồ sơ không có thay đổi', () => {
+  test('HR PATCH /:id với giá trị y nguyên trả 200 "Không có thông tin nào thay đổi", không ghi nhật ký', async () => {
+    const [[nv]] = await pool.execute('SELECT diaChi, soDienThoai FROM nhanvien WHERE id = 5');
+    const body = {};
+    if (nv.diaChi) body.diaChi = nv.diaChi;
+    if (nv.soDienThoai) body.soDienThoai = nv.soDienThoai;
+    expect(Object.keys(body).length).toBeGreaterThan(0);
+    const res = await goi('patch', '/5', token.hr).send(body);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ success: true, code: 200, message: 'Không có thông tin nào thay đổi' });
+    expect(res.body.data).toMatchObject({ id: 5 });
+    expect(await demNhatKy('SUA_NHAN_VIEN')).toBe(0);
+  });
+
+  test('nhanVien PATCH /toi với giá trị y nguyên trả 200 "Không có thông tin nào thay đổi"', async () => {
+    const [[nv]] = await pool.execute('SELECT soDienThoai FROM nhanvien WHERE id = 5');
+    expect(nv.soDienThoai).toBeTruthy();
+    const res = await goi('patch', '/toi', token.nhanvien).send({ soDienThoai: nv.soDienThoai });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ success: true, code: 200, message: 'Không có thông tin nào thay đổi' });
+  });
+
+  test('có thay đổi thật thì message là cập nhật thành công', async () => {
+    const res = await goi('patch', '/5', token.hr).send({ diaChi: 'Địa chỉ QA thay đổi' });
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('Cập nhật hồ sơ nhân viên thành công');
   });
 });
 

@@ -6,7 +6,7 @@ const chamCongRepository = require('../repositories/chamCongRepository');
 const nhanVienRepository = require('../repositories/nhanVienRepository');
 const phongBanRepository = require('../repositories/phongBanRepository');
 const nhatKyRepository = require('../repositories/nhatKyRepository');
-const { congNgay, tinhSoNgayNghi, layCacThang } = require('../utils/tinhNgayNghi');
+const { congNgay, tinhSoNgayNghi, layCacThang, tinhSoNgayPhepNam } = require('../utils/tinhNgayNghi');
 const { laNgayHopLe } = require('../middlewares/kiemTraDuLieu');
 const { ngayHomNay, khoangNgayCuaThang } = require('../utils/ngayThang');
 const { TRANG_THAI_LOAI_NGHI_PHEP } = require('../utils/trangThai');
@@ -244,27 +244,31 @@ async function capQuyNam(nguoiDung, body, diaChiIP) {
   const nam = layNam(body.nam);
   const hienTai = namHienTai();
   if (nam < hienTai - 1 || nam > hienTai + 1) throw new LoiUngDung(400, `Chỉ cấp quỹ phép cho năm ${hienTai - 1} đến ${hienTai + 1}`);
-  const tongSoNgayPhep =
-    body.tongSoNgayPhep === undefined || body.tongSoNgayPhep === ''
-      ? THAM_SO_NGHI_PHEP.soNgayPhepNamMacDinh
-      : laySoNgay(body.tongSoNgayPhep, 'Số ngày phép');
+  // HR nhập số ngày -> áp chung cho mọi người; để trống -> tính theo Bộ luật Lao động từng người
+  const theoLuat = body.tongSoNgayPhep === undefined || body.tongSoNgayPhep === '' || body.tongSoNgayPhep === null;
+  const tongSoNgayPhep = theoLuat ? null : laySoNgay(body.tongSoNgayPhep, 'Số ngày phép');
   // INSERT ... SELECT khóa chia sẻ nhiều dòng nhanvien, có thể deadlock với tạo đơn -> thử lại
   const soNhanVien = await chayVoiThuLai(() =>
     chayTransaction(async (ketNoi) => {
-      const soLuong = await nghiPhepRepository.capQuyHangLoat(nam, tongSoNgayPhep, ketNoi);
+      const cacNhanVien = await nghiPhepRepository.layNhanVienChuaCoQuy(nam, ketNoi);
+      const cacQuy = cacNhanVien.map((nv) => ({
+        nhanVienId: nv.id,
+        tongSoNgayPhep: theoLuat ? tinhSoNgayPhepNam(nv.ngayVaoLam, nam) : tongSoNgayPhep,
+      }));
+      const soLuong = await nghiPhepRepository.capQuyHangLoat(nam, cacQuy, ketNoi);
       if (soLuong > 0) {
         await nhatKyRepository.themNhatKy(
           nguoiDung.nguoiDungId,
           'CAP_QUY_PHEP_NAM',
           diaChiIP ?? null,
-          `Năm ${nam}: ${soLuong} nhân viên x ${tongSoNgayPhep} ngày`,
+          `Năm ${nam}: ${soLuong} nhân viên x ${theoLuat ? 'theo Bộ luật Lao động (thâm niên, tỷ lệ tháng làm việc)' : `${tongSoNgayPhep} ngày`}`,
           ketNoi,
         );
       }
       return soLuong;
     }),
   );
-  return { nam, tongSoNgayPhep, soNhanVien };
+  return { nam, tongSoNgayPhep, theoLuat, soNhanVien };
 }
 
 // HR sửa tổng số ngày phép của một người (trừ quỹ của mình); không được thấp hơn số đã nghỉ + đang chờ duyệt
@@ -349,7 +353,7 @@ async function taoDon(nguoiDung, body, phuongThucTao = 'FORM_GIAO_DIEN') {
     throw new LoiUngDung(400, `Chỉ được tạo đơn bắt đầu trong vòng ${THAM_SO_NGHI_PHEP.soNgayDatTruocToiDa} ngày tới`);
   }
   const soNgayNghi = tinhSoNgayNghi(ngayBatDau, ngayKetThuc, nuaNgay);
-  if (soNgayNghi === 0) throw new LoiUngDung(400, 'Khoảng ngày chỉ gồm thứ 7, Chủ nhật nên không cần xin nghỉ');
+  if (soNgayNghi === 0) throw new LoiUngDung(400, 'Khoảng ngày chỉ gồm thứ 7, Chủ nhật hoặc ngày lễ nên không cần xin nghỉ');
   canHoSo(nguoiDung);
 
   const id = await chayVoiThuLai(() =>
@@ -366,8 +370,18 @@ async function taoDon(nguoiDung, body, phuongThucTao = 'FORM_GIAO_DIEN') {
         throw new LoiUngDung(400, `Loại "${loai.tenLoai}" chỉ được nghỉ tối đa ${loai.soNgayToiDa} ngày mỗi đơn`);
       }
       await chanThangDaChot(ngayBatDau, ngayKetThuc, ketNoi);
-      const chongLan = await nghiPhepRepository.timDonChongLan(hoSo.id, ngayBatDau, ngayKetThuc, ketNoi);
-      if (chongLan) throw new LoiUngDung(409, `Khoảng ngày nghỉ trùng với đơn ${chongLan.maDon} đang chờ duyệt hoặc đã duyệt`);
+      const cacDonTrung = await nghiPhepRepository.timDonChongLan(hoSo.id, ngayBatDau, ngayKetThuc, ketNoi);
+      // Schema không có cột buổi: cho tối đa 2 đơn nửa ngày (sáng + chiều) cùng một ngày, tổng không quá 1 ngày
+      const ghepNuaNgay = soNgayNghi === 0.5 && cacDonTrung.length === 1 && cacDonTrung[0].soNgayNghi === 0.5;
+      if (cacDonTrung.length > 0 && !ghepNuaNgay) {
+        const donTrung = cacDonTrung[0];
+        throw new LoiUngDung(
+          409,
+          soNgayNghi === 0.5 && donTrung.soNgayNghi === 0.5
+            ? `Ngày ${ngayBatDau} đã có đủ hai đơn nghỉ nửa ngày (${cacDonTrung.map((d) => d.maDon).join(', ')})`
+            : `Khoảng ngày nghỉ trùng với đơn ${donTrung.maDon} đang chờ duyệt hoặc đã duyệt`,
+        );
+      }
 
       const nam = Number(ngayBatDau.slice(0, 4));
       const soMa = (await nghiPhepRepository.laySoMaLonNhat(nam, ketNoi)) + 1;
@@ -474,7 +488,7 @@ async function kiemTraTruocKhiDuyet(nguoiDung, id) {
 async function khoaDonChoDuyet(nguoiDungGoc, don, ketNoi) {
   const hoSo = await khoaNhanVienTonTai(don.nhanVienId, ketNoi);
   const nguoiDung = await kemQuyenTuDuyet(nguoiDungGoc, ketNoi);
-  kiemTraQuyenTrenDon(nguoiDung, { ...don, phongBanId: hoSo.phongBanId }, await phongBanRepository.layCayPhongBan(ketNoi));
+  kiemTraQuyenTrenDon(nguoiDung, { ...don, phongBanId: hoSo.phongBanId }, await phongBanRepository.layCayPhongBan(ketNoi, true));
   const donKhoa = await nghiPhepRepository.khoaDon(don.id, ketNoi);
   if (!donKhoa) throw new LoiUngDung(404, 'Không tìm thấy đơn nghỉ phép');
   if (donKhoa.trangThai !== 'CHO_DUYET') throw new LoiUngDung(409, 'Đơn này đã được xử lý hoặc đã bị hủy');
@@ -489,53 +503,59 @@ async function traVeSauXuLy(nguoiDung, id) {
 async function duyetDon(nguoiDungGoc, id, diaChiIP) {
   const nguoiDung = await kemQuyenTuDuyet(nguoiDungGoc);
   const don = await kiemTraTruocKhiDuyet(nguoiDung, id);
-  await chayTransaction(async (ketNoi) => {
-    const { hoSo, donKhoa } = await khoaDonChoDuyet(nguoiDung, don, ketNoi);
-    if (hoSo.trangThaiLamViec === 'DA_NGHI_VIEC') throw new LoiUngDung(409, 'Nhân viên đã nghỉ việc, chỉ có thể từ chối đơn');
-    await chanThangDaChot(donKhoa.ngayBatDau, donKhoa.ngayKetThuc, ketNoi);
-    const loai = await nghiPhepRepository.layLoaiTheoId(donKhoa.loaiNghiPhepId, ketNoi);
-    if (loai.truVaoQuyPhepNam) {
-      const nam = Number(donKhoa.ngayBatDau.slice(0, 4));
-      const quy = await nghiPhepRepository.layQuy(hoSo.id, nam, ketNoi, true);
-      if (!quy) throw new LoiUngDung(409, `Nhân viên chưa được cấp quỹ phép năm ${nam}`);
-      const conLai = quy.tongSoNgayPhep - quy.soNgayDaNghi;
-      if (donKhoa.soNgayNghi > conLai) throw new LoiUngDung(409, `Quỹ phép năm ${nam} của nhân viên chỉ còn ${conLai} ngày`);
-      await nghiPhepRepository.congNgayDaNghi(quy.id, donKhoa.soNgayNghi, ketNoi);
-    }
-    await nghiPhepRepository.capNhatTrangThaiDon(id, { trangThai: 'DA_DUYET', nguoiDuyetId: nguoiDung.nhanVienId }, ketNoi);
-    await nhatKyRepository.themNhatKy(
-      nguoiDung.nguoiDungId,
-      'DUYET_DON_NGHI_PHEP',
-      diaChiIP ?? null,
-      `${don.maDon} của ${hoSo.maNhanVien}${hoSo.id === nguoiDung.nhanVienId ? ' (tự duyệt: không còn giám đốc khác)' : ''}`,
-      ketNoi,
-    );
-  });
+  // Khóa chia sẻ cây phòng ban có thể deadlock với HR đang bổ nhiệm -> chạy lại transaction
+  await chayVoiThuLai(() =>
+    chayTransaction(async (ketNoi) => {
+      const { hoSo, donKhoa } = await khoaDonChoDuyet(nguoiDung, don, ketNoi);
+      if (hoSo.trangThaiLamViec === 'DA_NGHI_VIEC') throw new LoiUngDung(409, 'Nhân viên đã nghỉ việc, chỉ có thể từ chối đơn');
+      await chanThangDaChot(donKhoa.ngayBatDau, donKhoa.ngayKetThuc, ketNoi);
+      const loai = await nghiPhepRepository.layLoaiTheoId(donKhoa.loaiNghiPhepId, ketNoi);
+      if (loai.truVaoQuyPhepNam) {
+        const nam = Number(donKhoa.ngayBatDau.slice(0, 4));
+        const quy = await nghiPhepRepository.layQuy(hoSo.id, nam, ketNoi, true);
+        if (!quy) throw new LoiUngDung(409, `Nhân viên chưa được cấp quỹ phép năm ${nam}`);
+        const conLai = quy.tongSoNgayPhep - quy.soNgayDaNghi;
+        if (donKhoa.soNgayNghi > conLai) throw new LoiUngDung(409, `Quỹ phép năm ${nam} của nhân viên chỉ còn ${conLai} ngày`);
+        await nghiPhepRepository.congNgayDaNghi(quy.id, donKhoa.soNgayNghi, ketNoi);
+      }
+      await nghiPhepRepository.capNhatTrangThaiDon(id, { trangThai: 'DA_DUYET', nguoiDuyetId: nguoiDung.nhanVienId }, ketNoi);
+      await nhatKyRepository.themNhatKy(
+        nguoiDung.nguoiDungId,
+        'DUYET_DON_NGHI_PHEP',
+        diaChiIP ?? null,
+        `${don.maDon} của ${hoSo.maNhanVien}${hoSo.id === nguoiDung.nhanVienId ? ' (tự duyệt: không còn giám đốc khác)' : ''}`,
+        ketNoi,
+      );
+    }),
+  );
   return traVeSauXuLy(nguoiDung, id);
 }
 
 async function tuChoiDon(nguoiDungGoc, id, { lyDoTuChoi }, diaChiIP) {
   const nguoiDung = await kemQuyenTuDuyet(nguoiDungGoc);
   const don = await kiemTraTruocKhiDuyet(nguoiDung, id);
-  await chayTransaction(async (ketNoi) => {
-    const { hoSo } = await khoaDonChoDuyet(nguoiDung, don, ketNoi);
-    await nghiPhepRepository.capNhatTrangThaiDon(
-      id,
-      {
-        trangThai: 'TU_CHOI',
-        nguoiDuyetId: nguoiDung.nhanVienId,
-        lyDoTuChoi: lyDoTuChoi.trim(),
-      },
-      ketNoi,
-    );
-    await nhatKyRepository.themNhatKy(
-      nguoiDung.nguoiDungId,
-      'TU_CHOI_DON_NGHI_PHEP',
-      diaChiIP ?? null,
-      `${don.maDon} của ${hoSo.maNhanVien}`,
-      ketNoi,
-    );
-  });
+  // Khóa chia sẻ cây phòng ban có thể deadlock với HR đang bổ nhiệm -> chạy lại transaction
+  await chayVoiThuLai(() =>
+    chayTransaction(async (ketNoi) => {
+      const { hoSo } = await khoaDonChoDuyet(nguoiDung, don, ketNoi);
+      await nghiPhepRepository.capNhatTrangThaiDon(
+        id,
+        {
+          trangThai: 'TU_CHOI',
+          nguoiDuyetId: nguoiDung.nhanVienId,
+          lyDoTuChoi: lyDoTuChoi.trim(),
+        },
+        ketNoi,
+      );
+      await nhatKyRepository.themNhatKy(
+        nguoiDung.nguoiDungId,
+        'TU_CHOI_DON_NGHI_PHEP',
+        diaChiIP ?? null,
+        `${don.maDon} của ${hoSo.maNhanVien}`,
+        ketNoi,
+      );
+    }),
+  );
   return traVeSauXuLy(nguoiDung, id);
 }
 

@@ -88,7 +88,11 @@ INSERT INTO nguoidung (id, tenDangNhap, email, matKhauMaHoa) VALUES
   (7, 'hr2',       'hr2@smarthrm.local',       '$2b$10$zD6lfRlSpyvz9L74T597FOGTh28RJBVSK4Lw2ncM6/kuxXzfzUcpm'),
   (8, 'giamdoc2',  'giamdoc2@smarthrm.local',  '$2b$10$zD6lfRlSpyvz9L74T597FOGTh28RJBVSK4Lw2ncM6/kuxXzfzUcpm'),
   (9, 'quanly2',   'quanly2@smarthrm.local',   '$2b$10$zD6lfRlSpyvz9L74T597FOGTh28RJBVSK4Lw2ncM6/kuxXzfzUcpm'),
-  (10,'nhanvien3', 'nhanvien3@smarthrm.local', '$2b$10$zD6lfRlSpyvz9L74T597FOGTh28RJBVSK4Lw2ncM6/kuxXzfzUcpm');
+  (10,'nhanvien3', 'nhanvien3@smarthrm.local', '$2b$10$zD6lfRlSpyvz9L74T597FOGTh28RJBVSK4Lw2ncM6/kuxXzfzUcpm'),
+  (11,'nhanvien4', 'nhanvien4@smarthrm.local', '$2b$10$zD6lfRlSpyvz9L74T597FOGTh28RJBVSK4Lw2ncM6/kuxXzfzUcpm'),
+  (12,'nhanvien5', 'nhanvien5@smarthrm.local', '$2b$10$zD6lfRlSpyvz9L74T597FOGTh28RJBVSK4Lw2ncM6/kuxXzfzUcpm');
+-- nhanvien5 (NV0012) đã nghỉ việc -> tài khoản bị khóa (mẫu KHOA để demo đăng nhập bị chặn, Admin mở khóa)
+UPDATE nguoidung SET trangThai = 'KHOA' WHERE id = 12;
 
 -- Mọi người có hồ sơ nhân viên đều có thêm vai trò nhanVien (đa vai trò, xem docs/phan-quyen.md)
 INSERT INTO nguoidungvaitro (nguoiDungId, vaiTroId) VALUES
@@ -101,7 +105,9 @@ INSERT INTO nguoidungvaitro (nguoiDungId, vaiTroId) VALUES
   (7, 4), (7, 5),
   (8, 2), (8, 5),
   (9, 3), (9, 5),
-  (10, 5);
+  (10, 5),
+  (11, 5),
+  (12, 5);
 
 -- ---------------------------------------------------------------------
 -- 4. Hồ sơ nhân viên
@@ -117,7 +123,10 @@ INSERT INTO nhanvien (id, maNhanVien, nguoiDungId, hoVaTen, gioiTinh, ngaySinh, 
   (7, 'NV0007', 7, 'Đặng Thu Trang',  'NU',  '1994-05-21', '0905000007', 'Đà Nẵng', '0011000000007', 'Vietinbank',  2, '2023-04-03', 'CHINH_THUC'),
   (8, 'NV0008', 8, 'Bùi Quốc Bảo',    'NAM', '1983-10-14', '0905000008', 'Đà Nẵng', '0011000000008', 'Vietcombank', 6, '2019-02-11', 'CHINH_THUC'),
   (9, 'NV0009', 9, 'Ngô Thị Thu',     'NU',  '1990-01-09', '0905000009', 'Huế',     '0011000000009', 'BIDV',        7, '2021-03-15', 'CHINH_THUC'),
-  (10,'NV0010', 10,'Trương Minh Đức', 'NAM', '1999-06-27', '0905000010', 'Đà Nẵng', '0011000000010', 'ACB',         8, '2025-02-17', 'CHINH_THUC');
+  (10,'NV0010', 10,'Trương Minh Đức', 'NAM', '1999-06-27', '0905000010', 'Đà Nẵng', '0011000000010', 'ACB',         8, '2025-02-17', 'CHINH_THUC'),
+  -- Mẫu trạng thái khác: NV0011 tạm nghỉ (không chấm công, không tạo đơn), NV0012 đã nghỉ việc (tài khoản KHOA)
+  (11,'NV0011', 11,'Lý Thị Mai',      'NU',  '1997-04-16', '0905000011', 'Đà Nẵng', '0011000000011', 'ACB',         8, '2025-03-03', 'TAM_NGHI'),
+  (12,'NV0012', 12,'Phan Văn Tài',    'NAM', '1996-08-05', '0905000012', 'Quảng Nam','0011000000012','Agribank',    8, '2023-07-03', 'DA_NGHI_VIEC');
 
 -- ---------------------------------------------------------------------
 -- 5. Trưởng bộ phận (PNS và PKT-PT để trống để thử chuỗi duyệt lên phòng ban cha)
@@ -137,25 +146,32 @@ INSERT INTO loainghiphep (id, maLoai, tenLoai, soNgayToiDa, coLuong, truVaoQuyPh
   (5, 'KHONG_LUONG',  'Nghỉ không lương',         NULL, 0, 0, 'Cần thỏa thuận với quản lý');
 
 -- ---------------------------------------------------------------------
--- 7. Quỹ phép năm hiện tại (năm theo CURDATE(); soNgayDaNghi tính lại từ đơn đã duyệt ở mục 10)
+-- 7. Quỹ phép năm trước / hiện tại / năm sau (năm theo CURDATE(); soNgayDaNghi tính lại từ đơn đã duyệt ở mục 10)
+--    Theo utils/tinhNgayNghi.tinhSoNgayPhepNam (BLLĐ 2019 Điều 113-114): vào làm trước năm -> 12 + 1 ngày/5 năm
+--    thâm niên tính tới 01/01; vào làm trong năm -> 12 x số tháng / 12 (tháng vào làm tính khi số ngày làm việc
+--    từ ngày vào làm >= 50% ngày làm việc của tháng), làm tròn 0.5. 12 = THAM_SO_NGHI_PHEP.soNgayPhepNamMacDinh.
+--    NV0012 đã nghỉ việc nên không cấp quỹ.
 -- ---------------------------------------------------------------------
-INSERT INTO quyngayphep (nhanVienId, namHieuLuc, tongSoNgayPhep, soNgayDaNghi) VALUES
-  (1, YEAR(CURDATE()), 12.0, 0.0),
-  (2, YEAR(CURDATE()), 14.0, 0.0),
-  (3, YEAR(CURDATE()), 13.0, 0.0),
-  (4, YEAR(CURDATE()), 12.0, 0.0),
-  (5, YEAR(CURDATE()), 12.0, 0.0),
-  (6, YEAR(CURDATE()),  4.0, 0.0),
-  (7, YEAR(CURDATE()), 12.0, 0.0),
-  (8, YEAR(CURDATE()), 14.0, 0.0),
-  (9, YEAR(CURDATE()), 13.0, 0.0),
-  (10, YEAR(CURDATE()), 12.0, 0.0);
--- Năm trước và năm sau (đơn mẫu theo CURDATE() có thể rơi sang năm khác vào cuối/đầu năm)
 INSERT INTO quyngayphep (nhanVienId, namHieuLuc, tongSoNgayPhep, soNgayDaNghi)
-SELECT q.nhanVienId, q.namHieuLuc + n.lech, q.tongSoNgayPhep, 0.0
-  FROM quyngayphep q CROSS JOIN (SELECT -1 AS lech UNION ALL SELECT 1) n
-  JOIN nhanvien nv ON nv.id = q.nhanVienId
- WHERE nv.ngayVaoLam <= CONCAT(q.namHieuLuc + n.lech, '-12-31');
+SELECT nv.id, n.nam,
+       IF(nv.ngayVaoLam < MAKEDATE(n.nam, 1),
+          12 + FLOOR(TIMESTAMPDIFF(YEAR, nv.ngayVaoLam, MAKEDATE(n.nam, 1)) / 5),
+          ROUND(12 * (12 - MONTH(nv.ngayVaoLam) + (tv.soNgay > 0 AND tv.sauVao * 2 >= tv.soNgay)) / 12 * 2) / 2),
+       0.0
+  FROM nhanvien nv
+  CROSS JOIN (SELECT YEAR(CURDATE()) - 1 AS nam UNION ALL SELECT YEAR(CURDATE()) UNION ALL SELECT YEAR(CURDATE()) + 1) n
+  -- Ngày làm việc của tháng vào làm (T2-T6, không phải ngày lễ) và số ngày từ ngày vào làm
+  LEFT JOIN (SELECT x.id, COUNT(*) AS soNgay, SUM(x.ngay >= x.ngayVaoLam) AS sauVao
+               FROM (SELECT nv2.id, nv2.ngayVaoLam, DATE_ADD(DATE_FORMAT(nv2.ngayVaoLam, '%Y-%m-01'), INTERVAL s.n DAY) AS ngay
+                       FROM nhanvien nv2
+                       CROSS JOIN (SELECT a.n + b.n * 10 AS n
+                                     FROM (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
+                                           UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a
+                                     CROSS JOIN (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3) b) s) x
+               LEFT JOIN tamNgayLe t ON t.ngay = x.ngay
+              WHERE MONTH(x.ngay) = MONTH(x.ngayVaoLam) AND WEEKDAY(x.ngay) < 5 AND t.ngay IS NULL
+              GROUP BY x.id) tv ON tv.id = nv.id
+ WHERE nv.id <= 11 AND nv.ngayVaoLam <= CONCAT(n.nam, '-12-31');
 
 -- ---------------------------------------------------------------------
 -- 8. Hợp đồng lao động + lịch sử (nguoiThucHienId = HR NV0004/NV0007; hợp đồng của HR và hợp đồng
@@ -163,6 +179,14 @@ SELECT q.nhanVienId, q.namHieuLuc + n.lech, q.tongSoNgayPhep, 0.0
 --    trangThai lưu HIEU_LUC / DA_CHAM_DUT; HET_HAN suy ra khi đọc (quá ngày kết thúc)
 --    Demo: NV0005 sắp hết hạn (cảnh báo 30 ngày), NV0006 thử việc, NV0003 có hợp đồng cũ đã chấm dứt (ngày tính theo CURDATE() để demo luôn đúng)
 -- ---------------------------------------------------------------------
+-- HD2024-0001 kết thúc CURDATE()+20 (demo sắp hết hạn); hợp đồng xác định thời hạn tối đa 36 tháng nên ngày bắt đầu
+-- giữ 2024-06-03 tới khi chạm giới hạn, sau đó tự dời theo CURDATE() (seed luôn hợp lệ dù dựng lại vào năm nào)
+SET @ketThucHd6 = DATE_ADD(CURDATE(), INTERVAL 20 DAY);
+SET @batDauHd6 = GREATEST('2024-06-03', DATE_ADD(DATE_SUB(@ketThucHd6, INTERVAL 36 MONTH), INTERVAL 1 DAY));
+-- Lịch sử: ký 12 tháng, gia hạn trước khi hết hạn 2 tuần, điều chỉnh lương sau đó (mốc tự dời theo @batDauHd6)
+SET @ketThucDauHd6 = DATE_SUB(DATE_ADD(@batDauHd6, INTERVAL 12 MONTH), INTERVAL 1 DAY);
+SET @ngayGiaHanHd6 = TIMESTAMP(DATE_SUB(@ketThucDauHd6, INTERVAL 13 DAY), '10:00:00');
+SET @ngayDieuChinhHd6 = TIMESTAMP(GREATEST('2026-01-05', DATE_ADD(@batDauHd6, INTERVAL 13 MONTH)), '09:00:00');
 INSERT INTO hopdonglaodong (id, maHopDong, nhanVienId, loaiHopDong, ngayBatDau, ngayKetThuc,
                             luongCoBan, mucPhuCap, trangThai, duongDanFileHopDong) VALUES
   (1, 'HD2018-0001', 2, 'KHONG_XAC_DINH_THOI_HAN', '2018-05-02', NULL,         45000000.00, 5000000.00, 'HIEU_LUC',    NULL),
@@ -170,12 +194,14 @@ INSERT INTO hopdonglaodong (id, maHopDong, nhanVienId, loaiHopDong, ngayBatDau, 
   (3, 'HD2021-0001', 3, 'KHONG_XAC_DINH_THOI_HAN', '2021-08-15', NULL,         30000000.00, 3000000.00, 'HIEU_LUC',    NULL),
   (4, 'HD2020-0001', 4, 'KHONG_XAC_DINH_THOI_HAN', '2020-03-01', NULL,         16000000.00, 1500000.00, 'HIEU_LUC',    NULL),
   (5, 'HD2022-0001', 1, 'KHONG_XAC_DINH_THOI_HAN', '2022-01-10', NULL,         18000000.00, 1000000.00, 'HIEU_LUC',    NULL),
-  (6, 'HD2024-0001', 5, 'XAC_DINH_THOI_HAN',       '2024-06-03', DATE_ADD(CURDATE(), INTERVAL 20 DAY), 13000000.00,  800000.00, 'HIEU_LUC',    NULL),
+  (6, 'HD2024-0001', 5, 'XAC_DINH_THOI_HAN',       @batDauHd6, @ketThucHd6, 13000000.00,  800000.00, 'HIEU_LUC',    NULL),
   (7, CONCAT('HD', YEAR(DATE_SUB(CURDATE(), INTERVAL 60 DAY)), '-0001'), 6, 'THU_VIEC',                DATE_SUB(CURDATE(), INTERVAL 60 DAY), DATE_ADD(CURDATE(), INTERVAL 100 DAY),  8500000.00,       0.00, 'HIEU_LUC',    NULL),
   (8, 'HD2023-0001', 7, 'KHONG_XAC_DINH_THOI_HAN', '2023-04-03', NULL,         15000000.00, 1500000.00, 'HIEU_LUC',    NULL),
   (9, 'HD2019-0002', 8, 'KHONG_XAC_DINH_THOI_HAN', '2019-02-11', NULL,         38000000.00, 4000000.00, 'HIEU_LUC',    NULL),
   (10,'HD2021-0002', 9, 'KHONG_XAC_DINH_THOI_HAN', '2021-03-15', NULL,         28000000.00, 3000000.00, 'HIEU_LUC',    NULL),
-  (11,'HD2025-0001', 10,'XAC_DINH_THOI_HAN',       '2025-02-17', '2027-02-16', 12000000.00, 1000000.00, 'HIEU_LUC',    NULL);
+  (11,'HD2025-0001', 10,'XAC_DINH_THOI_HAN',       '2025-02-17', '2027-02-16', 12000000.00, 1000000.00, 'HIEU_LUC',    NULL),
+  (12,'HD2025-0002', 11,'KHONG_XAC_DINH_THOI_HAN', '2025-03-03', NULL,         11000000.00,  800000.00, 'HIEU_LUC',    NULL),
+  (13,'HD2023-0002', 12,'XAC_DINH_THOI_HAN',       '2023-07-03', '2025-07-02', 11000000.00,  800000.00, 'DA_CHAM_DUT', NULL);
 
 INSERT INTO lichsuhopdong (hopDongLaoDongId, hanhDong, loaiHopDongCu, loaiHopDongMoi, luongCoBanCu, luongCoBanMoi,
                            mucPhuCapCu, mucPhuCapMoi, ngayBatDauCu, ngayBatDauMoi, ngayKetThucCu, ngayKetThucMoi,
@@ -187,14 +213,24 @@ INSERT INTO lichsuhopdong (hopDongLaoDongId, hanhDong, loaiHopDongCu, loaiHopDon
   (4, 'TAO_MOI', NULL, 'KHONG_XAC_DINH_THOI_HAN', NULL, 15000000.00, NULL, 1500000.00, NULL, '2020-03-01', NULL, NULL, NULL, 'HIEU_LUC', NULL, 2, '2020-03-01 08:00:00'),
   (4, 'DIEU_CHINH', 'KHONG_XAC_DINH_THOI_HAN', 'KHONG_XAC_DINH_THOI_HAN', 15000000.00, 16000000.00, 1500000.00, 1500000.00, '2020-03-01', '2020-03-01', NULL, NULL, 'HIEU_LUC', 'HIEU_LUC', 'Tăng lương định kỳ 2025', 2, '2025-01-02 09:00:00'),
   (5, 'TAO_MOI', NULL, 'KHONG_XAC_DINH_THOI_HAN', NULL, 18000000.00, NULL, 1000000.00, NULL, '2022-01-10', NULL, NULL, NULL, 'HIEU_LUC', NULL, 4, '2022-01-10 08:00:00'),
-  (6, 'TAO_MOI', NULL, 'XAC_DINH_THOI_HAN', NULL, 12000000.00, NULL, 800000.00, NULL, '2024-06-03', NULL, '2025-06-02', NULL, 'HIEU_LUC', NULL, 4, '2024-06-03 08:00:00'),
-  (6, 'GIA_HAN', 'XAC_DINH_THOI_HAN', 'XAC_DINH_THOI_HAN', 12000000.00, 12000000.00, 800000.00, 800000.00, '2024-06-03', '2024-06-03', '2025-06-02', DATE_ADD(CURDATE(), INTERVAL 20 DAY), 'HIEU_LUC', 'HIEU_LUC', 'Gia hạn theo đánh giá năm', 4, '2025-05-20 10:00:00'),
-  (6, 'DIEU_CHINH', 'XAC_DINH_THOI_HAN', 'XAC_DINH_THOI_HAN', 12000000.00, 13000000.00, 800000.00, 800000.00, '2024-06-03', '2024-06-03', DATE_ADD(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 20 DAY), 'HIEU_LUC', 'HIEU_LUC', 'Điều chỉnh lương sau đánh giá KPI', 4, '2026-01-05 09:00:00'),
+  (6, 'TAO_MOI', NULL, 'XAC_DINH_THOI_HAN', NULL, 12000000.00, NULL, 800000.00, NULL, @batDauHd6, NULL, @ketThucDauHd6, NULL, 'HIEU_LUC', NULL, 4, TIMESTAMP(@batDauHd6, '08:00:00')),
+  (6, 'GIA_HAN', 'XAC_DINH_THOI_HAN', 'XAC_DINH_THOI_HAN', 12000000.00, 12000000.00, 800000.00, 800000.00, @batDauHd6, @batDauHd6, @ketThucDauHd6, @ketThucHd6, 'HIEU_LUC', 'HIEU_LUC', 'Gia hạn theo đánh giá năm', 4, @ngayGiaHanHd6),
+  (6, 'DIEU_CHINH', 'XAC_DINH_THOI_HAN', 'XAC_DINH_THOI_HAN', 12000000.00, 13000000.00, 800000.00, 800000.00, @batDauHd6, @batDauHd6, @ketThucHd6, @ketThucHd6, 'HIEU_LUC', 'HIEU_LUC', 'Điều chỉnh lương sau đánh giá KPI', 4, @ngayDieuChinhHd6),
   (7, 'TAO_MOI', NULL, 'THU_VIEC', NULL, 8500000.00, NULL, 0.00, NULL, DATE_SUB(CURDATE(), INTERVAL 60 DAY), NULL, DATE_ADD(CURDATE(), INTERVAL 100 DAY), NULL, 'HIEU_LUC', 'Thử việc lập trình viên', 4, TIMESTAMP(DATE_SUB(CURDATE(), INTERVAL 60 DAY), '08:00:00')),
   (8, 'TAO_MOI', NULL, 'KHONG_XAC_DINH_THOI_HAN', NULL, 15000000.00, NULL, 1500000.00, NULL, '2023-04-03', NULL, NULL, NULL, 'HIEU_LUC', NULL, 2, '2023-04-03 08:00:00'),
   (9, 'TAO_MOI', NULL, 'KHONG_XAC_DINH_THOI_HAN', NULL, 38000000.00, NULL, 4000000.00, NULL, '2019-02-11', NULL, NULL, NULL, 'HIEU_LUC', 'Ký hợp đồng phó giám đốc', 2, '2019-02-11 08:00:00'),
   (10,'TAO_MOI', NULL, 'KHONG_XAC_DINH_THOI_HAN', NULL, 28000000.00, NULL, 3000000.00, NULL, '2021-03-15', NULL, NULL, NULL, 'HIEU_LUC', NULL, 2, '2021-03-15 08:00:00'),
-  (11,'TAO_MOI', NULL, 'XAC_DINH_THOI_HAN', NULL, 12000000.00, NULL, 1000000.00, NULL, '2025-02-17', NULL, '2027-02-16', NULL, 'HIEU_LUC', NULL, 7, '2025-02-17 08:00:00');
+  (11,'TAO_MOI', NULL, 'XAC_DINH_THOI_HAN', NULL, 12000000.00, NULL, 1000000.00, NULL, '2025-02-17', NULL, '2027-02-16', NULL, 'HIEU_LUC', NULL, 7, '2025-02-17 08:00:00'),
+  (12,'TAO_MOI', NULL, 'KHONG_XAC_DINH_THOI_HAN', NULL, 11000000.00, NULL, 800000.00, NULL, '2025-03-03', NULL, NULL, NULL, 'HIEU_LUC', NULL, 4, '2025-03-03 08:00:00'),
+  (13,'TAO_MOI', NULL, 'XAC_DINH_THOI_HAN', NULL, 11000000.00, NULL, 800000.00, NULL, '2023-07-03', NULL, '2025-07-02', NULL, 'HIEU_LUC', NULL, 4, '2023-07-03 08:00:00'),
+  (13,'CHAM_DUT', 'XAC_DINH_THOI_HAN', 'XAC_DINH_THOI_HAN', 11000000.00, 11000000.00, 800000.00, 800000.00, '2023-07-03', '2023-07-03', '2025-07-02', '2025-07-02', 'HIEU_LUC', 'DA_CHAM_DUT', 'Hết hạn, nhân viên không ký tiếp', 4, '2025-07-02 17:00:00');
+
+-- Nhật ký trạng thái lao động của NV0011 (tạm nghỉ từ 30 ngày trước) và NV0012 (nghỉ việc khi hết hợp đồng, khóa tài khoản)
+INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
+  (4, 'DOI_TRANG_THAI_LAM_VIEC', '127.0.0.1', 'NV0012: CHINH_THUC -> DA_NGHI_VIEC. Lý do: Hết hạn hợp đồng, không ký tiếp', '2025-07-02 17:05:00'),
+  (12, 'KHOA_TAI_KHOAN_NGHI_VIEC', '127.0.0.1', 'NV0012', '2025-07-02 17:05:00'),
+  (4, 'DOI_TRANG_THAI_LAM_VIEC', '127.0.0.1', 'NV0011: CHINH_THUC -> TAM_NGHI. Lý do: Nghỉ chăm con nhỏ theo thỏa thuận',
+   TIMESTAMP(DATE_SUB(CURDATE(), INTERVAL 30 DAY), '09:00:00'));
 
 -- ---------------------------------------------------------------------
 -- 9. Chấm công (ngày tính theo CURDATE() để demo luôn đúng)
@@ -219,7 +255,9 @@ SELECT nv.id, ng.ngay,
                 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) b) ng
     ON ng.ngay >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 MONTH), '%Y-%m-01')
    AND DAYOFWEEK(ng.ngay) NOT IN (1, 7)
-   AND ng.ngay >= nv.ngayVaoLam;
+   AND ng.ngay NOT IN (SELECT ngay FROM tamNgayLe) -- ngày lễ (bảng tạm do scripts/khoiTaoCsdl.js tạo từ config)
+   AND ng.ngay >= nv.ngayVaoLam
+ WHERE nv.trangThaiLamViec IN ('THU_VIEC', 'CHINH_THUC'); -- NV0011 tạm nghỉ, NV0012 đã nghỉ việc: không có công gần đây
 
 -- Ba ngày làm việc gần nhất trước hôm nay
 SET @ngay1 = (SELECT MAX(ngayChamCong) FROM banghichamcong WHERE nhanVienId = 5);
@@ -303,10 +341,40 @@ INSERT INTO dondexuatnghiphep (id, maDon, nhanVienId, loaiNghiPhepId, ngayBatDau
   (11, 'TAM-11', 5, 1, DATE_ADD(@thu2Toi, INTERVAL 14 DAY), DATE_ADD(@thu2Toi, INTERVAL 14 DAY), 1.0, 'Đi khám răng',
    'FORM_GIAO_DIEN', 'DA_HUY', NULL, NULL, NULL, TIMESTAMP(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '15:00:00'));
 
+-- Đơn trong 1 ngày rơi vào thứ 7, Chủ nhật hoặc ngày lễ (mốc theo CURDATE()): dời sang ngày làm việc kế tiếp
+UPDATE dondexuatnghiphep d
+   SET d.ngayBatDau = COALESCE((SELECT MIN(DATE_ADD(d.ngayBatDau, INTERVAL s.n DAY))
+                         FROM (SELECT a.n + b.n * 10 AS n
+                                 FROM (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
+                                       UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a
+                                 CROSS JOIN (SELECT 0 n UNION ALL SELECT 1) b) s
+                         LEFT JOIN tamNgayLe t ON t.ngay = DATE_ADD(d.ngayBatDau, INTERVAL s.n DAY)
+                        WHERE WEEKDAY(DATE_ADD(d.ngayBatDau, INTERVAL s.n DAY)) < 5 AND t.ngay IS NULL
+                          -- không dời vào ngày đã có đơn khác (còn hiệu lực) của cùng nhân viên
+                          AND NOT EXISTS (SELECT 1 FROM (SELECT id, nhanVienId, ngayBatDau, ngayKetThuc, trangThai
+                                                           FROM dondexuatnghiphep LIMIT 1000) o
+                                           WHERE o.nhanVienId = d.nhanVienId AND o.id <> d.id
+                                             AND o.trangThai NOT IN ('TU_CHOI', 'DA_HUY')
+                                             AND DATE_ADD(d.ngayBatDau, INTERVAL s.n DAY) BETWEEN o.ngayBatDau AND o.ngayKetThuc)),
+                       d.ngayBatDau),
+       d.ngayKetThuc = d.ngayBatDau
+ WHERE d.ngayBatDau = d.ngayKetThuc;
+
 UPDATE dondexuatnghiphep d
    SET maDon = CONCAT('DNP', YEAR(d.ngayBatDau), '-', LPAD((
          SELECT COUNT(*) FROM (SELECT id, ngayBatDau FROM dondexuatnghiphep) x
           WHERE YEAR(x.ngayBatDau) = YEAR(d.ngayBatDau) AND x.id <= d.id), 4, '0'));
+
+-- Đơn cả ngày: số ngày nghỉ = số ngày T2-T6 không phải ngày lễ trong khoảng (như utils/tinhNgayNghi.tinhSoNgayNghi)
+UPDATE dondexuatnghiphep d
+   SET d.soNgayNghi = (SELECT COUNT(*) FROM (SELECT a.n + b.n * 10 AS n
+                         FROM (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
+                               UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a
+                         CROSS JOIN (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2) b) s
+                        WHERE DATE_ADD(d.ngayBatDau, INTERVAL s.n DAY) <= d.ngayKetThuc
+                          AND WEEKDAY(DATE_ADD(d.ngayBatDau, INTERVAL s.n DAY)) < 5
+                          AND DATE_ADD(d.ngayBatDau, INTERVAL s.n DAY) NOT IN (SELECT ngay FROM tamNgayLe))
+ WHERE d.soNgayNghi >= 1;
 
 -- Ngày nghỉ cả ngày đã duyệt thì không có bản ghi chấm công (đơn nửa ngày vẫn giữ)
 DELETE cc FROM banghichamcong cc
@@ -331,7 +399,7 @@ SET @dauThangLuong = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 3 MONTH), '%Y-%m-0
 SET @cuoiThangLuong = LAST_DAY(@dauThangLuong);
 SET @congChuanLuong = (WITH RECURSIVE ngay AS (
     SELECT @dauThangLuong AS d UNION ALL SELECT d + INTERVAL 1 DAY FROM ngay WHERE d < @cuoiThangLuong)
-  SELECT SUM(WEEKDAY(d) < 5) FROM ngay);
+  SELECT SUM(WEEKDAY(d) < 5 AND d NOT IN (SELECT ngay FROM tamNgayLe)) FROM ngay);
 
 INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
   (4, 'CHOT_CONG_THANG', '127.0.0.1', DATE_FORMAT(@dauThangLuong, '%Y-%m'), TIMESTAMP(@cuoiThangLuong + INTERVAL 2 DAY, '09:00:00')),

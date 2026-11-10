@@ -41,7 +41,7 @@ router.post(
   gioiHanDangNhap,
   kiemTraDuLieu({
     tenDangNhap: { nhan: 'Tên đăng nhập', batBuoc: true, toiDa: 100 },
-    matKhau: { nhan: 'Mật khẩu', batBuoc: true, toiDaByte: 72 },
+    matKhau: { nhan: 'Mật khẩu', batBuoc: true, toiDaByte: 72, khongTrim: true },
   }),
   batLoiBatDongBo(xacThucController.dangNhap),
 );
@@ -53,7 +53,7 @@ router.post(
   xacThucJwtChoMatKhauTam,
   gioiHanDoiMatKhau,
   kiemTraDuLieu({
-    matKhauCu: { nhan: 'Mật khẩu hiện tại', batBuoc: true, toiDaByte: 72 },
+    matKhauCu: { nhan: 'Mật khẩu hiện tại', batBuoc: true, toiDaByte: 72, khongTrim: true },
     matKhauMoi: {
       nhan: 'Mật khẩu mới',
       batBuoc: true,

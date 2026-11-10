@@ -321,15 +321,15 @@ describe('Bảng công theo vai trò', () => {
     expect(r2.body.data.items.every((d) => d.phongBanId === 5)).toBe(true);
   });
 
-  test('bangCong/:id: chính chủ, HR, quanLy phạm vi được xem; ngoài phạm vi 403; không tồn tại 404', async () => {
+  test('bangCong/:id: chính chủ, HR, quanLy phạm vi được xem; ngoài phạm vi 404 như không tồn tại', async () => {
     const { pm, tkPm } = await chuanBi();
     for (const tk of [tkPm, token.hr, token.giamdoc, token.quanly]) {
       const res = await goi('get', `/chamCong/bangCong/${pm.id}`, tk);
       expect(res.status).toBe(200);
       expect(res.body.data.nhanVien).toMatchObject({ id: pm.id });
     }
-    expect((await goi('get', `/chamCong/bangCong/${pm.id}`, token.quanly2)).status).toBe(403);
-    expect((await goi('get', `/chamCong/bangCong/${pm.id}`, token.nhanvien)).status).toBe(403);
+    expect((await goi('get', `/chamCong/bangCong/${pm.id}`, token.quanly2)).status).toBe(404);
+    expect((await goi('get', `/chamCong/bangCong/${pm.id}`, token.nhanvien)).status).toBe(404);
     expect((await goi('get', '/chamCong/bangCong/999999', token.hr)).status).toBe(404);
   });
 });
