@@ -17,6 +17,7 @@ async function goiAiService(duongDan, { method = 'GET', body, thoiGianCho } = {}
   const boHuy = new AbortController();
   const hen = setTimeout(() => boHuy.abort(), thoiGianCho || cauHinh.thoiGianCho);
   let phanHoi;
+  let duLieu = null;
   try {
     phanHoi = await fetch(`${cauHinh.duongDanGoc}${duongDan}`, {
       method,
@@ -24,6 +25,13 @@ async function goiAiService(duongDan, { method = 'GET', body, thoiGianCho } = {}
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: boHuy.signal,
     });
+    // Đọc body vẫn nằm trong thời gian chờ: ai-service treo giữa chừng cũng bị hủy
+    try {
+      duLieu = await phanHoi.json();
+    } catch (loiDoc) {
+      if (loiDoc.name === 'AbortError') throw loiDoc;
+      duLieu = null;
+    }
   } catch (loi) {
     // ECONNREFUSED, DNS, timeout (AbortError)...
     console.error(`[aiClientService] ${method} ${duongDan} thất bại: ${loi.name} ${loi.cause?.code || loi.message}`);
@@ -32,27 +40,22 @@ async function goiAiService(duongDan, { method = 'GET', body, thoiGianCho } = {}
     clearTimeout(hen);
   }
 
-  let duLieu = null;
-  try {
-    duLieu = await phanHoi.json();
-  } catch {
-    duLieu = null;
-  }
-
   if (phanHoi.ok && duLieu?.success) return duLieu.data;
 
   const laLoiNghiepVu = phanHoi.status >= 400 && phanHoi.status < 500 && ![401, 403].includes(phanHoi.status);
   if (laLoiNghiepVu && typeof duLieu?.message === 'string') {
     throw new LoiUngDung(phanHoi.status, duLieu.message);
   }
-  console.error(`[aiClientService] ${method} ${duongDan} trả HTTP ${phanHoi.status}`);
+  // Chỉ ghi log phía server (không trả ra client) để phân biệt sai khóa nội bộ / ai-service chưa cấu hình khóa
+  const chiTiet = typeof duLieu?.message === 'string' ? `: ${duLieu.message}` : '';
+  console.error(`[aiClientService] ${method} ${duongDan} trả HTTP ${phanHoi.status}${chiTiet}`);
   throw new LoiUngDung(503, THONG_BAO_KHONG_KHA_DUNG);
 }
 
 // Kiểm tra nhanh ai-service cho trang tổng quan: không ném lỗi, chỉ trả trạng thái
 async function kiemTraSucKhoeAi() {
   try {
-    const duLieu = await goiAiService('/suKhoe', { thoiGianCho: 2000 });
+    const duLieu = await goiAiService('/sucKhoe', { thoiGianCho: 2000 });
     return { ai: 'HOAT_DONG', llm: duLieu?.llm || 'CHUA_CAU_HINH' };
   } catch {
     return { ai: 'MAT_KET_NOI', llm: null };
