@@ -309,6 +309,57 @@ describe('POST /api/v1/xacThuc/doiMatKhau', () => {
     expect((await dangNhap('nhanvien2')).status).toBe(401);
     expect((await dangNhap('nhanvien2', MAT_KHAU_MOI)).status).toBe(200);
   }, 15000);
+
+  // khongTrim: mật khẩu được băm nguyên văn, khoảng trắng đầu/cuối là một phần của mật khẩu
+  test('mật khẩu có khoảng trắng đầu/cuối được giữ nguyên văn khi đổi và khi đăng nhập', async () => {
+    const coKhoangTrang = '  MatKhau 456  ';
+    const token = await layToken('nhanvien2');
+    const res = await doi(token, { matKhauCu: MAT_KHAU, matKhauMoi: coKhoangTrang });
+    expect(res.status).toBe(200);
+    expect((await dangNhap('nhanvien2', coKhoangTrang)).status).toBe(200);
+    expect((await dangNhap('nhanvien2', coKhoangTrang.trim())).status).toBe(401);
+    // Đổi tiếp: mật khẩu cũ gửi bản đã trim là sai (400), gửi nguyên văn thì đúng
+    const tk2 = (await dangNhap('nhanvien2', coKhoangTrang)).body.data.token;
+    expect((await doi(tk2, { matKhauCu: coKhoangTrang.trim(), matKhauMoi: MAT_KHAU_MOI })).status).toBe(400);
+    const lai = await doi(tk2, { matKhauCu: coKhoangTrang, matKhauMoi: MAT_KHAU_MOI });
+    expect(lai.status).toBe(200);
+    expect((await dangNhap('nhanvien2', MAT_KHAU_MOI)).status).toBe(200);
+  }, 20000);
+
+  test('mật khẩu cũ chỉ khác nhau khoảng trắng cuối vẫn coi là mật khẩu khác (đổi được)', async () => {
+    const token = await layToken('nhanvien2');
+    const res = await doi(token, { matKhauCu: MAT_KHAU, matKhauMoi: `${MAT_KHAU} ` });
+    expect(res.status).toBe(200);
+    expect((await dangNhap('nhanvien2', `${MAT_KHAU} `)).status).toBe(200);
+    expect((await dangNhap('nhanvien2', MAT_KHAU)).status).toBe(401);
+  }, 15000);
+
+  test('mật khẩu đăng nhập chỉ gồm khoảng trắng coi như thiếu (400)', async () => {
+    const res = await dangNhap('nhanvien2', '    ');
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ success: false, code: 400, data: null });
+  });
+
+  test('hash mật khẩu bị đổi ở phiên khác giữa lúc kiểm tra và lúc ghi: 409, không đổi mật khẩu', async () => {
+    const nguoiDungRepository = require('../src/repositories/nguoiDungRepository');
+    const token = await layToken('nhanvien2');
+    const goc = nguoiDungRepository.layMatKhauMaHoa;
+    // Lần đọc trong transaction (có ketNoi) trả hash khác -> giả lập reset/đổi đồng thời
+    const gia = jest.spyOn(nguoiDungRepository, 'layMatKhauMaHoa').mockImplementation(async (id, ketNoi) => {
+      const that = await goc(id, ketNoi);
+      return ketNoi ? `${that}x` : that;
+    });
+    try {
+      const res = await doi(token, { matKhauCu: MAT_KHAU, matKhauMoi: MAT_KHAU_MOI });
+      expect(res.status).toBe(409);
+      expect(res.body).toMatchObject({ success: false, code: 409, data: null });
+    } finally {
+      gia.mockRestore();
+    }
+    const [[d]] = await pool.execute('SELECT matKhauMaHoa FROM nguoidung WHERE id = ?', [ID_NHANVIEN2]);
+    expect(d.matKhauMaHoa).toBe(hashGoc);
+    expect(await demNhatKy(ID_NHANVIEN2, 'DOI_MAT_KHAU')).toBe(0);
+  });
 });
 
 describe('Luồng mật khẩu tạm (RESET_MAT_KHAU_TAM)', () => {

@@ -6,7 +6,7 @@ const nghiPhepService = require('../src/services/nghiPhepService');
 const LoiUngDung = require('../src/utils/LoiUngDung');
 
 const { xacDinhNguoiDuyet } = nghiPhepService;
-const { tinhSoNgayNghi, layNgayLamViec, layCacThang } = require('../src/utils/tinhNgayNghi');
+const { tinhSoNgayNghi, layNgayLamViec, layCacThang, tinhSoNgayPhepNam } = require('../src/utils/tinhNgayNghi');
 
 // Dữ liệu mẫu (database/seed.sql): PB1 BGD (trưởng NV0002 giamDoc, không có vai trò quanLy), PB2 PNS (không trưởng),
 // PB3 PKT (trưởng NV0003 quanly), PB4 PKT-PT con của PB3 (không trưởng), PB5 PKD (trưởng NV0009 quanly2).
@@ -218,6 +218,43 @@ describe('Unit tinhNgayNghi', () => {
   });
 });
 
+describe('Unit tinhSoNgayPhepNam (Bộ luật Lao động Điều 113, 114)', () => {
+  test.each([
+    ['2020-01-01', 2025, 13], // đủ 5 năm tính đến 01/01/2025 -> +1
+    ['2020-01-02', 2025, 12], // thiếu 1 ngày mới đủ 5 năm
+    ['2015-03-01', 2026, 14], // đủ 10 năm -> +2
+    ['2010-01-01', 2026, 15], // đủ 16 năm -> +3
+    ['2025-06-15', 2026, 12], // vào làm năm trước: chưa đủ thâm niên, đủ 12 ngày
+  ])('thâm niên: vào làm %s, năm %i -> %d ngày', (ngayVaoLam, nam, mong) => {
+    expect(tinhSoNgayPhepNam(ngayVaoLam, nam)).toBe(mong);
+  });
+
+  test.each([
+    ['2026-01-01', 2026, 12], // vào làm đầu năm: đủ 12 tháng
+    ['2026-07-01', 2026, 6], // tháng 7 tính trọn -> 6 tháng
+    ['2026-07-31', 2026, 5], // chỉ 1 ngày làm việc trong tháng 7 (< 50%) -> 5 tháng
+    ['2026-12-01', 2026, 1],
+    ['2026-12-31', 2026, 0],
+  ])('vào làm giữa năm %s, năm %i -> %d ngày (tỷ lệ tháng)', (ngayVaoLam, nam, mong) => {
+    expect(tinhSoNgayPhepNam(ngayVaoLam, nam)).toBe(mong);
+  });
+
+  test('quỹ seed năm nay của NV0002/0003/0004/0008 bằng công thức luật (13 ngày)', async () => {
+    const nam = namHienTai();
+    const [dong] = await pool.execute(
+      `SELECT nv.maNhanVien, DATE_FORMAT(nv.ngayVaoLam, '%Y-%m-%d') AS ngayVaoLam, q.tongSoNgayPhep
+         FROM quyngayphep q JOIN nhanvien nv ON nv.id = q.nhanVienId
+        WHERE q.namHieuLuc = ? AND nv.maNhanVien IN ('NV0002', 'NV0003', 'NV0004', 'NV0008')`,
+      [nam],
+    );
+    expect(dong).toHaveLength(4);
+    for (const d of dong) {
+      expect(Number(d.tongSoNgayPhep)).toBe(tinhSoNgayPhepNam(d.ngayVaoLam, nam));
+      expect(Number(d.tongSoNgayPhep)).toBe(13);
+    }
+  });
+});
+
 describe('Unit xacDinhNguoiDuyet', () => {
   const pb = (ghiDe) => ({
     phongBanChaId: null,
@@ -388,6 +425,33 @@ describe('Tạo đơn nghỉ phép', () => {
     await capQuy(nhanVien.id, 12);
     const d = await taoDonOk(tk, { ngayBatDau: '2021-03-01', ngayKetThuc: '2021-03-01', nuaNgay: true });
     expect(d.soNgayNghi).toBe(0.5);
+  });
+  test('2 đơn nửa ngày cùng ngày được (tổng 1 ngày), đơn thứ 3 hoặc đơn cả ngày trùng bị chặn 409', async () => {
+    const { nhanVien, tk } = await taoNhanVien();
+    const quyId = await capQuy(nhanVien.id, 12);
+    const ngay = { ngayBatDau: '2021-03-03', ngayKetThuc: '2021-03-03' };
+    const d1 = await taoDonOk(tk, { ...ngay, nuaNgay: true });
+    const d2 = await taoDonOk(tk, { ...ngay, nuaNgay: true });
+    expect([d1.soNgayNghi, d2.soNgayNghi]).toEqual([0.5, 0.5]);
+    const d3 = await taoDon(tk, { ...ngay, nuaNgay: true });
+    expect(d3.status).toBe(409);
+    expect(d3.body).toMatchObject({ success: false, code: 409, data: null });
+    expect(d3.body.message).toMatch(/đủ hai đơn nghỉ nửa ngày/);
+    expect((await taoDon(tk, ngay)).status).toBe(409);
+    const [[dem]] = await pool.execute(
+      "SELECT COUNT(*) AS n, SUM(soNgayNghi) AS tong FROM dondexuatnghiphep WHERE nhanVienId = ? AND ngayBatDau = '2021-03-03'",
+      [nhanVien.id],
+    );
+    expect(Number(dem.n)).toBe(2);
+    expect(Number(dem.tong)).toBe(1);
+    expect((await layQuy(quyId)).daNghi).toBe(0);
+  });
+  test('đơn cả ngày đã có thì không ghép thêm đơn nửa ngày cùng ngày (409)', async () => {
+    const { nhanVien, tk } = await taoNhanVien();
+    await capQuy(nhanVien.id, 12);
+    const ngay = { ngayBatDau: '2021-03-04', ngayKetThuc: '2021-03-04' };
+    await taoDonOk(tk, ngay);
+    expect((await taoDon(tk, { ...ngay, nuaNgay: true })).status).toBe(409);
   });
   test('dữ liệu sai -> 400', async () => {
     const { nhanVien, tk } = await taoNhanVien();
@@ -867,7 +931,7 @@ describe('Quỹ phép (HR)', () => {
     const [truoc] = await pool.execute('SELECT id, tongSoNgayPhep FROM quyngayphep WHERE namHieuLuc = ? ORDER BY id', [nam]);
     const res = await goi('post', '/quyPhep/capNam', token.hr).send({ nam, tongSoNgayPhep: 15 });
     expect(res.status).toBe(200);
-    expect(res.body.data).toEqual({ nam, tongSoNgayPhep: 15, soNhanVien: Number(dem.n) });
+    expect(res.body.data).toEqual({ nam, tongSoNgayPhep: 15, theoLuat: false, soNhanVien: Number(dem.n) });
     expect(Number(dem.n)).toBeGreaterThanOrEqual(1);
     const [[moi]] = await pool.execute('SELECT tongSoNgayPhep FROM quyngayphep WHERE nhanVienId = ? AND namHieuLuc = ?', [
       nhanVien.id,
@@ -883,6 +947,27 @@ describe('Quỹ phép (HR)', () => {
     expect(lai.body.data.soNhanVien).toBe(0);
     expect(await layNhatKy('CAP_QUY_PHEP_NAM')).toHaveLength(1);
   });
+  test('cấp quỹ để trống số ngày: tính theo Bộ luật Lao động từng người (thâm niên), theoLuat = true', async () => {
+    const nam = namHienTai() + 1;
+    const lau = await taoNhanVien({ ngayVaoLam: '2015-01-01' }); // đủ (nam - 2015) năm tính đến 01/01
+    const moi = await taoNhanVien(); // NGAY_VAO_LAM 2020-01-06: chưa đủ năm thứ nhất tính đến 01/01/2021
+    const res = await goi('post', '/quyPhep/capNam', token.hr).send({ nam });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ success: true, code: 200 });
+    expect(res.body.data).toMatchObject({ nam, tongSoNgayPhep: null, theoLuat: true });
+    expect(res.body.data.soNhanVien).toBeGreaterThanOrEqual(2);
+    const lay = async (id) =>
+      Number(
+        (await pool.execute('SELECT tongSoNgayPhep FROM quyngayphep WHERE nhanVienId = ? AND namHieuLuc = ?', [id, nam]))[0][0]
+          .tongSoNgayPhep,
+      );
+    expect(await lay(lau.nhanVien.id)).toBe(12 + Math.floor((nam - 2015) / 5));
+    expect(await lay(moi.nhanVien.id)).toBe(12 + Math.floor((nam - 2020 - 1) / 5));
+    const nk = await layNhatKy('CAP_QUY_PHEP_NAM');
+    expect(nk).toHaveLength(1);
+    expect(nk[0].chiTiet).toMatch(/Bộ luật Lao động/);
+  });
+
   test('sửa quỹ: tự sửa 403, thấp hơn đã nghỉ + chờ duyệt 409, bước 0.5, không đổi 400, thành công ghi nhật ký', async () => {
     const [[quyHr]] = await pool.execute('SELECT id FROM quyngayphep WHERE nhanVienId = 4 LIMIT 1');
     expect((await goi('patch', `/quyPhep/${quyHr.id}`, token.hr).send({ tongSoNgayPhep: 20 })).status).toBe(403);
