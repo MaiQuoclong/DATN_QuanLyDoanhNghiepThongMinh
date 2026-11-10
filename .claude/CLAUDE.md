@@ -57,6 +57,7 @@ Mỗi service có `.env.example` (commit) và `.env` (không commit).
 ## Workflow
 1. Làm theo lát cắt dọc từng tính năng: DB → API → UI, trên nhánh `feature/ten-chuc-nang` (gạch ngang) tách từ `develop`, commit nhỏ theo Conventional Commits.
 2. Thứ tự: Auth/RBAC → Hồ sơ nhân sự & Hợp đồng → Chấm công/Phép → Lương → KPI/Khen thưởng → AI Agent.
+2a. Chức năng mới (từ Module 5): gọi `planner` (chỉ đọc) lập kế hoạch → người dùng duyệt → lưu `docs/thiet-ke/<ten-chuc-nang>.md` → mới code. Rà soát kiến trúc module đã xong: gọi `planner` chế độ rà soát, mỗi lượt một module/chủ đề; chỉ sửa lỗi nghiêm trọng/trung bình, phần còn lại ghi "Hạn chế đã biết".
 3. Xong **mỗi chức năng** trong một module (không đợi hết module): gọi `reviewer` rà toàn project → sửa hết lỗi → gọi `qa-tester` chạy test toàn project (tự cập nhật `docs/progress.md`) → sửa lỗi nếu có. Chỉ khi lượt này sạch mới làm chức năng tiếp theo của cùng module.
    - Xong **trọn một module**: gọi `reviewer` + `qa-tester` toàn project thêm 1 lượt → sửa hết lỗi nghiêm trọng/trung bình; lỗi nhẹ có thể để sau thì ghi vào "Hạn chế đã biết" trong `docs/progress.md` (file:dòng, kịch bản, cách sửa) → đưa hướng dẫn commit/push/PR.
 4. Mỗi lần sửa code: tóm tắt file đã đổi và xác nhận không lệch schema.
