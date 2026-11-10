@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Lock } from 'lucide-react';
 import goiApi from '../../services/goiApi';
+import useThongBao from '../../hooks/useThongBao';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import BangDuLieu from '../../components/BangDuLieu';
 import ChipTrangThai from '../../components/ChipTrangThai';
@@ -123,8 +124,7 @@ function TrangBangCong() {
   const [trang, setTrang] = useState(1);
   const [phongBan, setPhongBan] = useState([]);
   const [ketQua, setKetQua] = useState(null);
-  const [loi, setLoi] = useState('');
-  const [thongBao, setThongBao] = useState('');
+  const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangXem, setDangXem] = useState(null);
   const [dangChot, setDangChot] = useState(false);
 
@@ -140,10 +140,10 @@ function TrangBangCong() {
       .get('/chamCong/bangCong', { params: locThamSo({ thang, tuKhoa, ...loc, trang, kichThuoc: 20 }) })
       .then((kq) => {
         setKetQua(kq.data);
-        setLoi('');
+        baoLoi('');
       })
-      .catch((e) => setLoi(e.message));
-  }, [thang, tuKhoa, loc, trang]);
+      .catch((e) => baoLoi(e.message));
+  }, [thang, tuKhoa, loc, trang, baoLoi]);
 
   // Chờ người dùng gõ xong mới gọi API
   useEffect(() => {
@@ -257,7 +257,7 @@ function TrangBangCong() {
           onDong={() => setDangChot(false)}
           onDaChot={(tb) => {
             setDangChot(false);
-            setThongBao(tb);
+            baoThanhCong(tb);
             tai();
           }}
         />

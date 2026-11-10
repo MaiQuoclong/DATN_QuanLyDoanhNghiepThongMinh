@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import goiApi from '../../services/goiApi';
+import useThongBao from '../../hooks/useThongBao';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import BangDuLieu from '../../components/BangDuLieu';
 import ChipTrangThai from '../../components/ChipTrangThai';
@@ -52,8 +53,7 @@ function TrangQuyetDinh() {
   const [tuKhoa, setTuKhoa] = useState('');
   const [loc, setLoc] = useState({});
   const [trang, setTrang] = useState(1);
-  const [loi, setLoi] = useState('');
-  const [thongBao, setThongBao] = useState('');
+  const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [chiTiet, setChiTiet] = useState(null);
   const [dsNguoiKy, setDsNguoiKy] = useState(null);
   const [dangLap, setDangLap] = useState(false);
@@ -63,10 +63,10 @@ function TrangQuyetDinh() {
       .get('/quyetDinhKhenThuongKyLuat', { params: locThamSo({ tuKhoa: tuKhoa.trim(), ...loc, trang, kichThuoc: KICH_THUOC }) })
       .then((r) => {
         setKq(r.data);
-        setLoi('');
+        baoLoi('');
       })
-      .catch((e) => setLoi(e.message));
-  }, [tuKhoa, loc, trang]);
+      .catch((e) => baoLoi(e.message));
+  }, [tuKhoa, loc, trang, baoLoi]);
   useEffect(() => {
     const hen = setTimeout(tai, 250);
     return () => clearTimeout(hen);
@@ -76,8 +76,8 @@ function TrangQuyetDinh() {
       goiApi
         .get('/quyetDinhKhenThuongKyLuat/nguoiKy')
         .then((r) => setDsNguoiKy(r.data))
-        .catch((e) => setLoi(e.message));
-  }, [laHR]);
+        .catch((e) => baoLoi(e.message));
+  }, [laHR, baoLoi]);
 
   const nam = new Date().getFullYear();
   const cot = [
@@ -103,7 +103,7 @@ function TrangQuyetDinh() {
           <NutBam
             bieuTuong={Plus}
             onClick={() => {
-              setThongBao('');
+              baoThanhCong('');
               setDangLap(true);
             }}
           >
@@ -190,7 +190,7 @@ function TrangQuyetDinh() {
           onGui={async (g) => {
             const r = await goiApi.post('/quyetDinhKhenThuongKyLuat', locThamSo(g));
             setDangLap(false);
-            setThongBao([r.message, r.data.canhBao].filter(Boolean).join('. '));
+            baoThanhCong([r.message, r.data.canhBao].filter(Boolean).join('. '));
             // Đang lọc năm khác năm ban hành thì chuyển bộ lọc sang năm đó để thấy quyết định vừa lập
             const namBanHanh = String(g.ngayBanHanh ?? '').slice(0, 4);
             if (loc.nam && namBanHanh && loc.nam !== namBanHanh) {

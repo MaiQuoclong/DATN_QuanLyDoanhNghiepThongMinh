@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Check, Plus, X } from 'lucide-react';
 import goiApi from '../../services/goiApi';
+import useThongBao from '../../hooks/useThongBao';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import BangDuLieu from '../../components/BangDuLieu';
 import ChipTrangThai from '../../components/ChipTrangThai';
@@ -172,8 +173,7 @@ function DanhSachYeuCau({ cheDo }) {
   const [thang, setThang] = useState('');
   const [trang, setTrang] = useState(1);
   const [ketQua, setKetQua] = useState(null);
-  const [loi, setLoi] = useState('');
-  const [thongBao, setThongBao] = useState('');
+  const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangXem, setDangXem] = useState(null);
   const [dangTao, setDangTao] = useState(false);
 
@@ -184,10 +184,10 @@ function DanhSachYeuCau({ cheDo }) {
       })
       .then((kq) => {
         setKetQua(kq.data);
-        setLoi('');
+        baoLoi('');
       })
-      .catch((e) => setLoi(e.message));
-  }, [laDuyet, tuKhoa, loc, thang, trang]);
+      .catch((e) => baoLoi(e.message));
+  }, [laDuyet, tuKhoa, loc, thang, trang, baoLoi]);
 
   // Chờ người dùng gõ xong mới gọi API
   useEffect(() => {
@@ -254,7 +254,7 @@ function DanhSachYeuCau({ cheDo }) {
           onDong={() => setDangXem(null)}
           onDaXuLy={(tb) => {
             setDangXem(null);
-            setThongBao(tb);
+            baoThanhCong(tb);
             tai();
           }}
         />
@@ -264,7 +264,7 @@ function DanhSachYeuCau({ cheDo }) {
           onDong={() => setDangTao(false)}
           onDaGui={() => {
             setDangTao(false);
-            setThongBao('Đã gửi yêu cầu điều chỉnh, chờ duyệt');
+            baoThanhCong('Đã gửi yêu cầu điều chỉnh, chờ duyệt');
             tai();
           }}
         />

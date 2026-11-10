@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import goiApi from '../../services/goiApi';
+import useThongBao from '../../hooks/useThongBao';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import BangDuLieu from '../../components/BangDuLieu';
 import ChipTrangThai from '../../components/ChipTrangThai';
@@ -35,8 +36,7 @@ function TrangDeXuat() {
   const [tuKhoa, setTuKhoa] = useState('');
   const [loc, setLoc] = useState({ trangThai: 'CHO_DUYET' });
   const [trang, setTrang] = useState(1);
-  const [loi, setLoi] = useState('');
-  const [thongBao, setThongBao] = useState('');
+  const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangTao, setDangTao] = useState(false);
   const [dangXem, setDangXem] = useState(null);
   const [cheDo, setCheDo] = useState(null); // 'sua' | 'tuChoi' | 'lapQuyetDinh'
@@ -47,10 +47,10 @@ function TrangDeXuat() {
       .get('/deXuatKhenThuongKyLuat', { params: locThamSo({ tuKhoa: tuKhoa.trim(), ...loc, trang, kichThuoc: KICH_THUOC }) })
       .then((r) => {
         setKq(r.data);
-        setLoi('');
+        baoLoi('');
       })
-      .catch((e) => setLoi(e.message));
-  }, [tuKhoa, loc, trang]);
+      .catch((e) => baoLoi(e.message));
+  }, [tuKhoa, loc, trang, baoLoi]);
   useEffect(() => {
     const hen = setTimeout(tai, 250);
     return () => clearTimeout(hen);
@@ -60,14 +60,14 @@ function TrangDeXuat() {
       goiApi
         .get('/quyetDinhKhenThuongKyLuat/nguoiKy')
         .then((r) => setDsNguoiKy(r.data))
-        .catch((e) => setLoi(e.message));
-  }, [laHR]);
+        .catch((e) => baoLoi(e.message));
+  }, [laHR, baoLoi]);
 
   const xong = (thongDiep) => {
     setDangTao(false);
     setDangXem(null);
     setCheDo(null);
-    setThongBao(thongDiep);
+    baoThanhCong(thongDiep);
     tai();
   };
   const laCuaToi = (d) => d.nguoiDeXuatId === nguoiDung.nhanVienId;
@@ -132,7 +132,7 @@ function TrangDeXuat() {
                     xong((await goiApi.delete(`/deXuatKhenThuongKyLuat/${d.id}`)).message);
                   } catch (e) {
                     setDangXem(null);
-                    setLoi(e.message);
+                    baoLoi(e.message);
                   }
                 }}
               >
@@ -156,7 +156,7 @@ function TrangDeXuat() {
           <NutBam
             bieuTuong={Plus}
             onClick={() => {
-              setThongBao('');
+              baoThanhCong('');
               setDangTao(true);
             }}
           >
@@ -187,7 +187,7 @@ function TrangDeXuat() {
         cot={cot}
         duLieu={kq?.items ?? []}
         onHanhDong={(d) => {
-          setLoi('');
+          baoLoi('');
           setCheDo(null);
           setDangXem(d);
         }}

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Users } from 'lucide-react';
 import goiApi from '../../services/goiApi';
+import { locPhongBanTrongPhamVi } from '../../utils/phongBan';
+import useThongBao from '../../hooks/useThongBao';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import BangDuLieu from '../../components/BangDuLieu';
 import ChipTrangThai from '../../components/ChipTrangThai';
@@ -23,14 +25,14 @@ function TrangDanhGiaKpi() {
   const { nguoiDung } = useXacThuc();
   const taoDuoc = nguoiDung.vaiTro.includes('HR') || nguoiDung.vaiTro.includes('quanLy');
   const [dsKy, setDsKy] = useState([]);
+  const [dangTai, setDangTai] = useState(true);
   const [kyId, setKyId] = useState('');
   const [phongBan, setPhongBan] = useState([]);
   const [tuKhoa, setTuKhoa] = useState('');
   const [loc, setLoc] = useState({});
   const [trang, setTrang] = useState(1);
   const [ketQua, setKetQua] = useState(null);
-  const [loi, setLoi] = useState('');
-  const [thongBao, setThongBao] = useState('');
+  const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangXem, setDangXem] = useState(null);
   const [dangTao, setDangTao] = useState(null); // 'mot' | 'hangLoat'
 
@@ -41,24 +43,30 @@ function TrangDanhGiaKpi() {
         setDsKy(kq.data);
         const mo = kq.data.find((k) => k.trangThai === 'DANG_MO') ?? kq.data[0];
         if (mo) setKyId(String(mo.id));
+        else setDangTai(false);
       })
-      .catch((e) => setLoi(e.message));
+      .catch((e) => {
+        baoLoi(e.message);
+        setDangTai(false);
+      });
     goiApi
       .get('/phongBan')
-      .then((kq) => setPhongBan(kq.data))
+      .then((kq) => setPhongBan(locPhongBanTrongPhamVi(kq.data, nguoiDung)))
       .catch(() => {});
-  }, []);
+  }, [baoLoi, nguoiDung]);
 
   const tai = useCallback(() => {
     if (!kyId) return;
+    setDangTai(true);
     goiApi
       .get('/phieuDanhGiaKPI', { params: locThamSo({ kyDanhGiaId: kyId, tuKhoa, ...loc, trang, kichThuoc: 20 }) })
       .then((kq) => {
         setKetQua(kq.data);
-        setLoi('');
+        baoLoi('');
       })
-      .catch((e) => setLoi(e.message));
-  }, [kyId, tuKhoa, loc, trang]);
+      .catch((e) => baoLoi(e.message))
+      .finally(() => setDangTai(false));
+  }, [kyId, tuKhoa, loc, trang, baoLoi]);
 
   useEffect(() => {
     const hen = setTimeout(tai, 300);
@@ -107,7 +115,7 @@ function TrangDanhGiaKpi() {
 
   const xongTao = (kq) => {
     setDangTao(null);
-    setThongBao(kq.message);
+    baoThanhCong(kq.message);
     tai();
   };
 
@@ -171,6 +179,7 @@ function TrangDanhGiaKpi() {
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
       {!dsKy.length && !loi && <div className="thongBao canhBao">Chưa có kỳ đánh giá nào. HR mở kỳ ở tab Kỳ đánh giá.</div>}
       <BangDuLieu
+        dangTai={dangTai}
         cot={cot}
         duLieu={ketQua?.items ?? []}
         onHanhDong={(d) => setDangXem(d.id)}
