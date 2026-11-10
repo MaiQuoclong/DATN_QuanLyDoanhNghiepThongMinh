@@ -6,7 +6,9 @@ const nhanVienRepository = require('../repositories/nhanVienRepository');
 const phongBanRepository = require('../repositories/phongBanRepository');
 const nhatKyRepository = require('../repositories/nhatKyRepository');
 const nghiPhepRepository = require('../repositories/nghiPhepRepository');
-const { tinhChiSoCong, laCuoiTuan } = require('../utils/tinhCong');
+const { tinhChiSoCong } = require('../utils/tinhCong');
+// Công chuẩn dùng chung với lương (T2-T6 trừ ngày lễ)
+const { demNgayCongChuan } = require('../utils/tinhLuong');
 const { ngayHomNay, khoangNgayCuaThang } = require('../utils/ngayThang');
 
 const TRANG_THAI_KHONG_CHAM_CONG = ['TAM_NGHI', 'DA_NGHI_VIEC'];
@@ -17,16 +19,6 @@ function gioHienTai() {
 }
 const thangCua = (ngay) => ngay.slice(0, 7);
 const chuanHoaGio = (gio) => (gio ? `${gio.slice(0, 5)}:00` : null);
-
-// Số ngày công chuẩn = số ngày thứ 2 - thứ 6 trong tháng (chưa trừ ngày lễ)
-function demNgayCongChuan(thang) {
-  const { ngayCuoi } = khoangNgayCuaThang(thang);
-  let dem = 0;
-  for (let ngay = 1; ngay <= ngayCuoi; ngay += 1) {
-    if (!laCuoiTuan(`${thang}-${String(ngay).padStart(2, '0')}`)) dem += 1;
-  }
-  return dem;
-}
 
 function tongHopCong(banGhi) {
   const lamTron = (so) => Math.round(so * 100) / 100;
@@ -180,7 +172,8 @@ async function layCongNhanVien(nguoiDung, nhanVienId, thang = thangCua(ngayHomNa
   if (!duocXem && nguoiDung.vaiTro.includes('quanLy')) {
     duocXem = (await layPhamVi(nguoiDung)).includes(hoSo.phongBanId);
   }
-  if (!duocXem) throw new LoiUngDung(403, 'Bạn không có quyền xem bảng công của nhân viên này');
+  // Ngoài phạm vi trả 404 như id không tồn tại: không để lộ id nào là hồ sơ có thật
+  if (!duocXem) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
   return {
     nhanVien: { id: hoSo.id, maNhanVien: hoSo.maNhanVien, hoVaTen: hoSo.hoVaTen, tenPhongBan: hoSo.tenPhongBan },
     ...(await layCongTheoThang(hoSo.id, thang)),

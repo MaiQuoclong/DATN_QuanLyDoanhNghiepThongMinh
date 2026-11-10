@@ -265,7 +265,7 @@ describe('GET danh sách, cuaToi, chi tiết', () => {
 
   test.each([
     ['?nhanVienId=3', [3, 2]],
-    ['?trangThai=DA_CHAM_DUT', [2]],
+    ['?trangThai=DA_CHAM_DUT', [13, 2]], // 13: hợp đồng của NV0012 đã nghỉ việc
     ['?loaiHopDong=THU_VIEC', [7]],
     ['?tuKhoa=HD2019-0001', [2]],
     ['?tuKhoa=HD2019', [2, 9]],

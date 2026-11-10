@@ -187,7 +187,8 @@ async function layChiTiet(nguoiDung, id) {
     const phamVi = await phongBanRepository.layPhongBanQuanLy(nguoiDung.nhanVienId);
     duocXem = phamVi.includes(hoSo.phongBanId);
   }
-  if (!duocXem) throw new LoiUngDung(403, 'Bạn không có quyền xem hồ sơ nhân viên này');
+  // Ngoài phạm vi trả 404 như id không tồn tại: không để lộ id nào là hồ sơ có thật
+  if (!duocXem) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
   const ketQua = locHoSo(hoSo, laMinh || toanCongTy);
   // Vai trò tài khoản chỉ trả cho người xem toàn công ty: giao diện ẩn nút "Cấp mật khẩu tạm"
   // khi HR mở hồ sơ người có vai trò cấp cao (backend vẫn chặn 403 ở nguoiDungService.datLaiMatKhau)
@@ -252,19 +253,21 @@ async function themNhanVien(nguoiDung, body, diaChiIP) {
   };
 }
 
-// Cập nhật + ghi nhật ký cùng transaction: không bao giờ có thay đổi hồ sơ mà thiếu dấu vết
+// Cập nhật + ghi nhật ký cùng transaction: không bao giờ có thay đổi hồ sơ mà thiếu dấu vết.
+// Trả { hoSo, daThayDoi } để controller báo đúng khi người dùng bấm lưu mà không đổi gì
 async function capNhatCoNhatKy(nguoiDung, id, truong, hanhDong, diaChiIP, kiemTraThem) {
   if (Object.keys(truong).length === 0) throw new LoiUngDung(400, 'Không có thông tin nào để cập nhật');
-  await chayTransaction(async (ketNoi) => {
+  const daThayDoi = await chayTransaction(async (ketNoi) => {
     const hoSo = await khoaVaLayHoSo(id, ketNoi);
-    if (kiemTraThem) await kiemTraThem(hoSo, ketNoi);
-    // Bấm lưu mà không đổi gì: không UPDATE, không ghi nhật ký rỗng
+    // Bấm lưu mà không đổi gì: không kiểm tra lại, không UPDATE, không ghi nhật ký rỗng
     const moTa = moTaThayDoi(hoSo, truong);
-    if (moTa === KHONG_DOI) return;
+    if (moTa === KHONG_DOI) return false;
+    if (kiemTraThem) await kiemTraThem(hoSo, ketNoi);
     await nhanVienRepository.capNhat(id, truong, ketNoi);
     await themNhatKy(nguoiDung.nguoiDungId, hanhDong, diaChiIP, `${hoSo.maNhanVien}: ${moTa}`, ketNoi);
+    return true;
   });
-  return layHoSoHoacLoi(id);
+  return { hoSo: await layHoSoHoacLoi(id), daThayDoi };
 }
 
 // Mọi người tự sửa SĐT, địa chỉ, ngân hàng của mình
@@ -279,11 +282,14 @@ async function capNhatHoSo(nguoiDung, id, body, diaChiIP) {
   chanTuSua(nguoiDung, id);
   const truong = chonTruong(body, COT_HO_SO_HR);
   return capNhatCoNhatKy(nguoiDung, id, truong, 'SUA_NHAN_VIEN', diaChiIP, async (hoSo, ketNoi) => {
-    if (truong.ngaySinh || truong.ngayVaoLam) {
+    // Chỉ kiểm tra ngày thực sự đổi: form gửi lại ngày cũ không bị chặn bởi dữ liệu có sẵn
+    const doiNgaySinh = truong.ngaySinh !== undefined && String(truong.ngaySinh ?? '') !== String(hoSo.ngaySinh ?? '');
+    const doiNgayVaoLam = truong.ngayVaoLam !== undefined && String(truong.ngayVaoLam ?? '') !== String(hoSo.ngayVaoLam ?? '');
+    if (doiNgaySinh || doiNgayVaoLam) {
       kiemTraNgayHoSo(truong.ngaySinh ?? hoSo.ngaySinh, truong.ngayVaoLam ?? hoSo.ngayVaoLam);
     }
     // Hợp đồng không được bắt đầu trước ngày vào làm (đã khóa dòng nhân viên nên không có hợp đồng mới chen vào)
-    if (truong.ngayVaoLam) {
+    if (doiNgayVaoLam) {
       const ngayHopDongSomNhat = await hopDongRepository.layNgayBatDauSomNhat(id, ketNoi);
       if (ngayHopDongSomNhat && ngayHopDongSomNhat < truong.ngayVaoLam) {
         throw new LoiUngDung(409, `Ngày vào làm không được sau ngày bắt đầu hợp đồng sớm nhất (${ngayHopDongSomNhat})`);

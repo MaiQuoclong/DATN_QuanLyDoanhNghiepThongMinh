@@ -314,6 +314,7 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
 function DanhSachBang({ laHR, onChon, thongBaoBanDau }) {
   const [nam, setNam] = useState('');
   const [dsBang, setDsBang] = useState([]);
+  const [thangDaCoBang, setThangDaCoBang] = useState([]);
   const [thangDaChot, setThangDaChot] = useState([]);
   const { loi, baoLoi } = useThongBao();
   const [dangLap, setDangLap] = useState(false);
@@ -326,7 +327,13 @@ function DanhSachBang({ laHR, onChon, thongBaoBanDau }) {
         baoLoi('');
       })
       .catch((e) => baoLoi(e.message));
-  }, [nam, baoLoi]);
+    // Tháng đã có bảng phải tính trên mọi năm (không theo bộ lọc năm) để hộp thoại Lập bảng không đưa tháng đã lập
+    if (laHR)
+      goiApi
+        .get('/bangLuong')
+        .then((kq) => setThangDaCoBang(kq.data.map((b) => b.thangNam)))
+        .catch(() => {});
+  }, [nam, baoLoi, laHR]);
   useEffect(tai, [tai]);
   useEffect(() => {
     if (laHR)
@@ -337,7 +344,7 @@ function DanhSachBang({ laHR, onChon, thongBaoBanDau }) {
   }, [laHR]);
 
   // Tháng đã chốt công nhưng chưa có bảng lương
-  const daCoBang = new Set(dsBang.map((b) => b.thangNam));
+  const daCoBang = new Set(thangDaCoBang);
   const thangLapDuoc = thangDaChot.map((t) => t.thang).filter((t) => !daCoBang.has(t));
 
   const cot = [

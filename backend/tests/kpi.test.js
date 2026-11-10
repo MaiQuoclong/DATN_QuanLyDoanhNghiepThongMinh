@@ -540,6 +540,27 @@ describe('Phiếu đánh giá KPI: tự chấm, gửi, nghiệm thu, trả lại
     expect(gui.body.message).toMatch(/chưa tự chấm/);
   });
 
+  test('tự chấm gửi lại y nguyên (điểm, kết quả, giải trình) -> 400 "Không có thông tin nào thay đổi"', async () => {
+    const ky = await moKy();
+    const phieu = await taoPhieu(ky.id);
+    const url = `/phieuDanhGiaKPI/${phieu.id}/tuCham`;
+    const body = {
+      giaiTrinhNhanVien: 'Hoàn thành đúng hạn',
+      chiTiet: [{ id: phieu.chiTiet[0].id, diemTuCham: 7.5, ketQuaThucTe: 'Đạt 95%' }],
+    };
+    const lan1 = await goi('patch', url, token.nhanvien).send(body);
+    expect(lan1.status).toBe(200);
+    expect(lan1.body).toMatchObject({ success: true, code: 200 });
+    const lan2 = await goi('patch', url, token.nhanvien).send(body);
+    expect(lan2.status).toBe(400);
+    expect(lan2.body).toEqual({ success: false, code: 400, message: 'Không có thông tin nào thay đổi', data: null });
+    // Điểm gửi dạng chuỗi tương đương cũng coi là không đổi
+    const lan3 = await goi('patch', url, token.nhanvien).send({ chiTiet: [{ id: phieu.chiTiet[0].id, diemTuCham: '7.5' }] });
+    expect(lan3.status).toBe(400);
+    // Chỉ đổi giải trình -> 200
+    expect((await goi('patch', url, token.nhanvien).send({ ...body, giaiTrinhNhanVien: 'Bổ sung' })).status).toBe(200);
+  });
+
   test('phiếu đã gửi không tự chấm/gửi lại được (409)', async () => {
     const ky = await moKy();
     const phieu = await phieuChoDuyet(ky.id);

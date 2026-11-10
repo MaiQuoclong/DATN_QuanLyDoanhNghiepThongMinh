@@ -153,6 +153,11 @@ async function doiMatKhau(nguoiDungId, matKhauCu, matKhauMoi, diaChiIP) {
   const matKhauMoiMaHoa = await bcrypt.hash(matKhauMoi, SO_VONG_BAM);
   // Transaction: bản ghi DOI_MAT_KHAU quyết định cờ mật khẩu tạm nên phải ghi cùng lúc với mật khẩu
   await chayTransaction(async (ketNoi) => {
+    // bcrypt chạy ngoài transaction (chậm); trong transaction đọc lại có khóa: mật khẩu vừa bị cấp lại/đổi ở
+    // phiên khác thì mật khẩu cũ đã kiểm tra không còn giá trị -> từ chối
+    if ((await nguoiDungRepository.layMatKhauMaHoa(nguoiDungId, ketNoi)) !== matKhauMaHoa) {
+      throw new LoiUngDung(409, 'Mật khẩu vừa được thay đổi ở phiên khác, vui lòng đăng nhập lại');
+    }
     await nguoiDungRepository.capNhatMatKhau(nguoiDungId, matKhauMoiMaHoa, ketNoi);
     await themNhatKy(nguoiDungId, 'DOI_MAT_KHAU', diaChiIP ?? null, null, ketNoi);
   });

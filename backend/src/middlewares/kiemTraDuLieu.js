@@ -18,7 +18,7 @@ function kiemTraDuLieu(luat) {
     const body = req.body ?? {};
     for (const [truong, quyTac] of Object.entries(luat)) {
       const nhan = quyTac.nhan ?? truong;
-      const giaTri = body[truong];
+      let giaTri = body[truong];
       const rong = giaTri === undefined || giaTri === null || String(giaTri).trim() === '';
       if (rong) {
         if (quyTac.batBuoc) throw new LoiUngDung(400, `${nhan} không được để trống`);
@@ -41,6 +41,11 @@ function kiemTraDuLieu(luat) {
       if (typeof giaTri !== 'string') {
         throw new LoiUngDung(400, `${nhan} phải là chuỗi ký tự`);
       }
+      // Kiểm tra trên giá trị đã trim và ghi lại vào body để service nhận đúng giá trị đã kiểm tra
+      // (khongTrim: mật khẩu giữ nguyên văn vì được băm nguyên văn)
+      const giaTriGoc = giaTri;
+      giaTri = quyTac.khongTrim ? giaTriGoc : giaTriGoc.trim();
+      if (!quyTac.khongTrim) body[truong] = giaTri;
       if (quyTac.kieu === 'ngay' && !laNgayHopLe(giaTri)) {
         throw new LoiUngDung(400, `${nhan} phải là ngày hợp lệ dạng YYYY-MM-DD`);
       }
@@ -50,8 +55,7 @@ function kiemTraDuLieu(luat) {
       if (quyTac.cacGiaTri && !quyTac.cacGiaTri.includes(giaTri)) {
         throw new LoiUngDung(400, `${nhan} chỉ nhận một trong các giá trị: ${quyTac.cacGiaTri.join(', ')}`);
       }
-      // Đo độ dài sau khi trim vì service lưu giá trị đã trim; khongTrim (mật khẩu) đo nguyên văn vì được băm nguyên văn
-      const doDai = quyTac.khongTrim ? giaTri.length : giaTri.trim().length;
+      const doDai = giaTri.length;
       if (quyTac.toiThieu && doDai < quyTac.toiThieu) {
         throw new LoiUngDung(400, `${nhan} phải có ít nhất ${quyTac.toiThieu} ký tự`);
       }

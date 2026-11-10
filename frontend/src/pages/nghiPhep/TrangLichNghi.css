@@ -72,3 +72,10 @@
   border-radius: 3px;
   vertical-align: -2px;
 }
+
+/* Ô có 2 đơn nửa ngày: chia đôi để bấm từng đơn */
+.luoiLichNghi td .nuaO {
+  display: inline-block;
+  width: 50%;
+  cursor: pointer;
+}

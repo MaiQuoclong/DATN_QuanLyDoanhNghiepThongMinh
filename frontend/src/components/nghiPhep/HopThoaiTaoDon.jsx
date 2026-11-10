@@ -3,6 +3,7 @@ import goiApi from '../../services/goiApi';
 import HopThoai from '../HopThoai';
 import NutBam from '../NutBam';
 import { demNgayLamViec } from '../../utils/dinhDang';
+import useNgayLe from '../../hooks/useNgayLe';
 
 // Tạo đơn nghỉ phép của chính mình (CHO_DUYET). Số ngày xem trước bỏ T7/CN; backend tính lại và kiểm tra quỹ.
 function HopThoaiTaoDon({ quy, onDong, onDaGui }) {
@@ -32,7 +33,10 @@ function HopThoaiTaoDon({ quy, onDong, onDaGui }) {
   const motNgay = giaTri.ngayBatDau && giaTri.ngayBatDau === giaTri.ngayKetThuc;
   // Quỹ truyền vào là quỹ năm hiện tại: chỉ nhắc số dư khi đơn thuộc đúng năm đó
   const quyCungNam = quy && (!giaTri.ngayBatDau || Number(giaTri.ngayBatDau.slice(0, 4)) === quy.nam) ? quy : null;
-  const soNgay = motNgay && giaTri.nuaNgay ? 0.5 : demNgayLamViec(giaTri.ngayBatDau, giaTri.ngayKetThuc);
+  const { ngayLe, loi: loiNgayLe } = useNgayLe([giaTri.ngayBatDau?.slice(0, 4), giaTri.ngayKetThuc?.slice(0, 4)]);
+  // Cùng cách tính với backend: bỏ T7/CN và ngày lễ; nửa ngày chỉ khi ngày đó là ngày làm việc
+  const soNgayLamViec = demNgayLamViec(giaTri.ngayBatDau, giaTri.ngayKetThuc, ngayLe);
+  const soNgay = motNgay && giaTri.nuaNgay && soNgayLamViec === 1 ? 0.5 : soNgayLamViec;
 
   const gui = async (e) => {
     e.preventDefault();
@@ -116,7 +120,8 @@ function HopThoaiTaoDon({ quy, onDong, onDaGui }) {
         </label>
       </form>
       <div className="chuPhu">
-        Số ngày nghỉ (bỏ thứ 7, Chủ nhật): <strong>{soNgay}</strong>
+        Số ngày nghỉ (bỏ thứ 7, Chủ nhật, ngày lễ): <strong>{soNgay}</strong>
+        {loiNgayLe && ' (chưa tải được ngày lễ, số ngày chính xác do hệ thống tính khi gửi đơn)'}
         {loai?.truVaoQuyPhepNam && quyCungNam && quyCungNam.soNgayConLai !== null && ` · quỹ phép còn ${quyCungNam.soNgayConLai} ngày`}
         {loai?.truVaoQuyPhepNam && quyCungNam && quyCungNam.soNgayConLai === null && ' · bạn chưa được cấp quỹ phép năm nay'}
         {loai?.truVaoQuyPhepNam && quy && !quyCungNam && ' · quỹ phép năm khác được kiểm tra khi gửi'}
