@@ -96,15 +96,19 @@ Tham số cấu hình (không viết cứng): tỷ lệ BHXH/BHYT/BHTN người 
 | Báo cáo xếp loại | | ✓ | PM | ✓ | |
 
 ## 9. Khen thưởng & Kỷ luật
-Luồng: **quanLy đề xuất** (`dexuatkhenthuongkyluat`, `CHO_DUYET`) → **HR xử lý**: từ chối (`TU_CHOI`, ghi chú) hoặc lập quyết định (`quyetdinhkhenthuongkyluat` + đề xuất `DA_DUYET` – transaction) → **giamDoc** là người ký (`nguoiKyDuyetId`).
+Luồng (schema không đổi; `CHO_KY` là giá trị mới của `dexuatkhenthuongkyluat.trangThai`):
+**quanLy / giamDoc đề xuất** (`CHO_DUYET`) → **HR xem xét**: từ chối (`TU_CHOI`) hoặc **trình ký** – chọn đích danh một giamDoc, có thể chỉnh tiêu đề/lý do/số tiền (`CHO_KY`, `nguoiXuLyId` = giamDoc được trình; nội dung gốc ghi ở nhật ký `TRINH_KY_KTKL`) → **giamDoc được trình**: **ký** (INSERT `quyetdinhkhenthuongkyluat` với `nguoiKyDuyetId` = chính mình, `ngayBanHanh` = ngày ký, đề xuất `DA_DUYET` + `quyetDinhId`, cộng/trừ vào bảng lương nháp – một transaction), **trả lại** (`CHO_DUYET`, `ghiChuXuLy` = "Trả lại: ...") hoặc **từ chối** (`TU_CHOI`).
+Bản ghi `quyetdinhkhenthuongkyluat` luôn là quyết định đã ký. HR lập trực tiếp = tạo đề xuất do HR đứng tên ở thẳng `CHO_KY`. giamDoc lập trực tiếp thì tự ký, ban hành ngay.
 
 | Chức năng | Admin | giamDoc | quanLy | HR | nhanVien |
 |---|---|---|---|---|---|
-| Tạo đề xuất cho nhân viên | | ✓ | PM (trừ mình) | | |
+| Tạo đề xuất cho nhân viên | | ✓ | PM (trừ mình) | ✓ (vào thẳng chờ ký, chọn giamDoc) | |
+| Sửa / thu hồi đề xuất của mình khi `CHO_DUYET` | | ✓ | ✓ | ✓ | |
 | Xem đề xuất | | ✓ | Do mình tạo | ✓ | |
-| Từ chối / chuyển thành quyết định | | | | ✓ | |
-| Lập quyết định trực tiếp (HR chọn giamDoc ký, giamDoc tự ký) | | ✓ | | ✓ | |
-| Ký quyết định | | ✓ | | | |
+| Từ chối đề xuất `CHO_DUYET` | | | | ✓ (trừ đề xuất về mình) | |
+| Trình ký / đổi giamDoc ký (`CHO_DUYET`, `CHO_KY`) | | | | ✓ (trừ đề xuất về mình) | |
+| Ký / trả lại / từ chối đề xuất `CHO_KY` | | Chỉ khi được trình, không phải người nhận | | | |
+| Lập quyết định trực tiếp (tự ký) | | ✓ (trừ cho mình) | | | |
 | Xem quyết định | Mình | ✓ | PM | ✓ | Mình |
 
 ## 10. Dashboard

@@ -17,8 +17,8 @@ export const NHAN_LOAI_KTKL = { KHEN_THUONG: 'Khen thưởng', KY_LUAT: 'Kỷ lu
 const KICH_THUOC = 20;
 const homNay = () => new Date().toLocaleDateString('en-CA');
 
-// Trường lập quyết định; HR chọn người ký (giamDoc), giamDoc tự ký
-export function truongQuyetDinh(dsNguoiKy, { coNhanVien = true, coLoai = true } = {}) {
+// Trường lập quyết định trực tiếp (chỉ Giám đốc, tự ký)
+export function truongQuyetDinh({ coNhanVien = true, coLoai = true } = {}) {
   return [
     ...(coNhanVien
       ? [{ ten: 'nhanVienId', nhan: 'Nhân viên', kieu: 'nhanVien', batBuoc: true, locNhanVien: { trangThai: ['THU_VIEC', 'CHINH_THUC'] } }]
@@ -27,35 +27,22 @@ export function truongQuyetDinh(dsNguoiKy, { coNhanVien = true, coLoai = true } 
     { ten: 'tieuDe', nhan: 'Tiêu đề', batBuoc: true, rongHet: true },
     { ten: 'soTien', nhan: 'Số tiền (VNĐ)', kieu: 'number', ghiChu: 'Khen thưởng cộng, kỷ luật trừ vào lương tháng ban hành' },
     { ten: 'ngayBanHanh', nhan: 'Ngày ban hành', kieu: 'date', batBuoc: true, ghiChu: 'Không chọn được tháng đã gửi/duyệt bảng lương' },
-    ...(dsNguoiKy
-      ? [
-          {
-            ten: 'nguoiKyDuyetId',
-            nhan: 'Người ký',
-            kieu: 'select',
-            batBuoc: true,
-            luaChon: dsNguoiKy.map((n) => ({ giaTri: n.id, nhan: `${n.maNhanVien} - ${n.hoVaTen}` })),
-          },
-        ]
-      : []),
     { ten: 'soQuyetDinh', nhan: 'Số quyết định', goiY: 'Để trống để tự sinh QD<năm>-NNNN' },
     { ten: 'lyDo', nhan: 'Lý do', kieu: 'textarea', batBuoc: true },
   ];
 }
 
-// Tab Quyết định: HR, giamDoc xem toàn công ty và lập quyết định; quanLy xem PM + của mình; nhanVien, Admin xem của mình
+// Tab Quyết định: HR, giamDoc xem toàn công ty; chỉ giamDoc lập trực tiếp (tự ký), HR trình ký ở tab Đề xuất; quanLy xem PM + của mình; nhanVien, Admin xem của mình
 function TrangQuyetDinh() {
   const { nguoiDung } = useXacThuc();
-  const laHR = nguoiDung.vaiTro.includes('HR');
   const laGiamDoc = nguoiDung.vaiTro.includes('giamDoc');
-  const duocLap = laHR || laGiamDoc;
+  const duocLap = laGiamDoc;
   const [kq, setKq] = useState(null);
   const [tuKhoa, setTuKhoa] = useState('');
   const [loc, setLoc] = useState({});
   const [trang, setTrang] = useState(1);
   const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [chiTiet, setChiTiet] = useState(null);
-  const [dsNguoiKy, setDsNguoiKy] = useState(null);
   const [dangLap, setDangLap] = useState(false);
 
   const tai = useCallback(() => {
@@ -71,13 +58,6 @@ function TrangQuyetDinh() {
     const hen = setTimeout(tai, 250);
     return () => clearTimeout(hen);
   }, [tai]);
-  useEffect(() => {
-    if (laHR)
-      goiApi
-        .get('/quyetDinhKhenThuongKyLuat/nguoiKy')
-        .then((r) => setDsNguoiKy(r.data))
-        .catch((e) => baoLoi(e.message));
-  }, [laHR, baoLoi]);
 
   const nam = new Date().getFullYear();
   const cot = [
@@ -97,7 +77,9 @@ function TrangQuyetDinh() {
       <div className="dauTrangNghiepVu">
         <div>
           <h1 className="tieuDeTrang">Quyết định khen thưởng - kỷ luật</h1>
-          <div className="chuPhu">Quyết định do Giám đốc ký · số tiền cộng (khen thưởng) hoặc trừ (kỷ luật) vào lương tháng ban hành</div>
+          <div className="chuPhu">
+            Quyết định do Giám đốc ký (HR trình ký ở tab Đề xuất) · số tiền cộng (khen thưởng) hoặc trừ (kỷ luật) vào lương tháng ban hành
+          </div>
         </div>
         {duocLap && (
           <NutBam
@@ -183,8 +165,8 @@ function TrangQuyetDinh() {
       {dangLap && (
         <HopThoaiBieuMau
           tieuDe="Lập quyết định khen thưởng - kỷ luật"
-          moTa={laHR ? undefined : 'Bạn là người ký quyết định này'}
-          truong={truongQuyetDinh(laHR ? (dsNguoiKy ?? []) : null)}
+          moTa="Bạn là người ký quyết định này"
+          truong={truongQuyetDinh()}
           giaTriBanDau={{ ngayBanHanh: homNay() }}
           nhanNutGui="Ban hành"
           onGui={async (g) => {

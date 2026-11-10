@@ -87,7 +87,8 @@ async function layChiTietDeXuat(nguoiDung, id) {
 async function kiemTraNhanVienDuocDeXuat(nguoiDung, nhanVienId, ketNoi) {
   const nv = await ktklRepository.layNhanVienCoBan(nhanVienId, ketNoi);
   if (!nv) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
-  if (laQuanLy(nguoiDung) && !laGiamDoc(nguoiDung)) {
+  // HR / giamDoc toàn công ty (kể cả khi kiêm quanLy); quanLy thuần chỉ trong phòng mình phụ trách
+  if (laQuanLy(nguoiDung) && !laGiamDoc(nguoiDung) && !laHR(nguoiDung)) {
     const phamVi = await phamViQuanLy(nguoiDung, ketNoi);
     if (nv.phongBanId == null || !phamVi.includes(nv.phongBanId)) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
   }
@@ -107,18 +108,34 @@ function docNoiDungDeXuat(body, cu = null) {
   return moi;
 }
 
+// quanLy / giamDoc tạo đề xuất CHO_DUYET chờ HR xem xét.
+// HR lập trực tiếp (không qua đề xuất của quản lý): tạo đề xuất do HR đứng tên ở thẳng CHO_KY, trình Giám đốc được chọn ký.
 async function taoDeXuat(nguoiDung, body, diaChiIP) {
   canHoSo(nguoiDung);
   const nhanVienId = layIdNhanVien(body.nhanVienId, 'Nhân viên');
   const noiDung = docNoiDungDeXuat(body);
+  const hrLapTrucTiep = laHR(nguoiDung);
+  const nguoiKyDuyetId = hrLapTrucTiep ? layIdNhanVien(body.nguoiKyDuyetId, 'Giám đốc ký') : null;
   return chayTransaction(async (ketNoi) => {
     const nv = await kiemTraNhanVienDuocDeXuat(nguoiDung, nhanVienId, ketNoi);
-    const id = await ktklRepository.themDeXuat({ nguoiDeXuatId: nguoiDung.nhanVienId, nhanVienId, ...noiDung }, ketNoi);
+    const nk = hrLapTrucTiep ? await kiemTraNguoiKyDuocTrinh(nguoiDung, nguoiKyDuyetId, nhanVienId, ketNoi) : null;
+    const id = await ktklRepository.themDeXuat(
+      {
+        nguoiDeXuatId: nguoiDung.nhanVienId,
+        nhanVienId,
+        ...noiDung,
+        ...(hrLapTrucTiep ? { trangThai: 'CHO_KY', nguoiXuLyId: nguoiKyDuyetId } : {}),
+      },
+      ketNoi,
+    );
     await nhatKyRepository.themNhatKy(
       nguoiDung.nguoiDungId,
-      'TAO_DE_XUAT_KTKL',
+      hrLapTrucTiep ? 'TRINH_KY_KTKL' : 'TAO_DE_XUAT_KTKL',
       diaChiIP,
-      `${noiDung.loaiDeXuat} ${nv.maNhanVien}: ${noiDung.tieuDe}`,
+      (nk
+        ? `Đề xuất #${id} (${noiDung.loaiDeXuat} ${nv.maNhanVien}) trình ${nk.maNhanVien} ký: ${noiDung.tieuDe}`
+        : `${noiDung.loaiDeXuat} ${nv.maNhanVien}: ${noiDung.tieuDe}`
+      ).slice(0, 1000),
       ketNoi,
     );
     return ktklRepository.layDeXuatTheoId(id, ketNoi);
@@ -157,22 +174,141 @@ async function xoaDeXuat(nguoiDung, id, diaChiIP) {
   });
 }
 
-// HR khóa đề xuất CHO_DUYET để xử lý; không tự xử lý đề xuất về chính mình
-async function khoaDeXuatChoXuLy(nguoiDung, id, ketNoi) {
+// HR khóa đề xuất để xử lý (mặc định CHO_DUYET; trình ký lại được khi CHO_KY để đổi Giám đốc ký);
+// không tự xử lý đề xuất về chính mình
+async function khoaDeXuatChoXuLy(nguoiDung, id, ketNoi, trangThaiChoPhep = ['CHO_DUYET']) {
   const dx = await ktklRepository.khoaDeXuat(id, ketNoi);
   if (!dx) throw new LoiUngDung(404, 'Không tìm thấy đề xuất');
-  if (dx.trangThai !== 'CHO_DUYET') throw new LoiUngDung(409, 'Đề xuất đã được xử lý');
+  if (!trangThaiChoPhep.includes(dx.trangThai)) throw new LoiUngDung(409, 'Đề xuất đã được xử lý');
   if (dx.nhanVienId === nguoiDung.nhanVienId) throw new LoiUngDung(403, 'Không thể tự xử lý đề xuất về chính mình');
   return dx;
 }
 
+// Giám đốc khóa đề xuất CHO_KY được trình cho chính mình (ký / trả lại / từ chối)
+async function khoaDeXuatChoKy(nguoiDung, id, ketNoi) {
+  const dx = await ktklRepository.khoaDeXuat(id, ketNoi);
+  if (!dx) throw new LoiUngDung(404, 'Không tìm thấy đề xuất');
+  if (dx.trangThai !== 'CHO_KY') throw new LoiUngDung(409, 'Đề xuất không ở trạng thái chờ ký');
+  if (dx.nguoiXuLyId !== nguoiDung.nhanVienId) throw new LoiUngDung(403, 'Đề xuất được trình cho Giám đốc khác ký');
+  if (dx.nhanVienId === nguoiDung.nhanVienId) throw new LoiUngDung(403, 'Không thể tự ký quyết định về chính mình');
+  return dx;
+}
+
+// Nhân viên nhận quyết định phải còn làm việc tại thời điểm xử lý
+async function kiemTraNhanVienConLamViec(nhanVienId, ketNoi) {
+  const nv = await ktklRepository.layNhanVienCoBan(nhanVienId, ketNoi);
+  if (!nv) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
+  if (!TRANG_THAI_DUOC_KTKL.includes(nv.trangThaiLamViec)) {
+    throw new LoiUngDung(409, `Nhân viên ${nv.maNhanVien} không còn làm việc, hãy từ chối đề xuất`);
+  }
+  return nv;
+}
+
+// Từ chối: HR khi đề xuất CHO_DUYET; Giám đốc được trình ký khi CHO_KY
 async function tuChoiDeXuat(nguoiDung, id, body, diaChiIP) {
   canHoSo(nguoiDung);
   const ghiChuXuLy = layChuoi(body?.ghiChuXuLy, 'Lý do từ chối', { batBuoc: true, toiThieu: 3, toiDa: 500 });
   return chayTransaction(async (ketNoi) => {
-    const dx = await khoaDeXuatChoXuLy(nguoiDung, id, ketNoi);
+    const hienTai = await ktklRepository.khoaDeXuat(id, ketNoi);
+    if (!hienTai) throw new LoiUngDung(404, 'Không tìm thấy đề xuất');
+    let dx;
+    if (hienTai.trangThai === 'CHO_KY' && laGiamDoc(nguoiDung)) dx = await khoaDeXuatChoKy(nguoiDung, id, ketNoi);
+    else if (laHR(nguoiDung)) dx = await khoaDeXuatChoXuLy(nguoiDung, id, ketNoi);
+    else if (['CHO_DUYET', 'CHO_KY'].includes(hienTai.trangThai)) throw new LoiUngDung(403, 'Bạn không thể từ chối đề xuất này');
+    else throw new LoiUngDung(409, 'Đề xuất đã được xử lý');
     await ktklRepository.capNhatDeXuat(id, { trangThai: 'TU_CHOI', nguoiXuLyId: nguoiDung.nhanVienId, ghiChuXuLy }, ketNoi);
     await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'TU_CHOI_DE_XUAT_KTKL', diaChiIP, `Đề xuất #${dx.id}`, ketNoi);
+    return ktklRepository.layDeXuatTheoId(id, ketNoi);
+  });
+}
+
+// HR trình Giám đốc ký: CHO_DUYET -> CHO_KY (nguoiXuLyId = Giám đốc được trình). HR có thể chỉnh tiêu đề / lý do / số tiền;
+// nội dung gốc ghi vào nhật ký. Đang CHO_KY thì trình lại được để đổi Giám đốc ký (VD Giám đốc vắng mặt).
+async function trinhKy(nguoiDung, id, body, diaChiIP) {
+  canHoSo(nguoiDung);
+  const nguoiKyDuyetId = layIdNhanVien(body?.nguoiKyDuyetId, 'Giám đốc ký');
+  const chinhSua = docNoiDungDeXuat(body ?? {}, true);
+  delete chinhSua.loaiDeXuat; // loại khen thưởng/kỷ luật giữ theo đề xuất
+  const ghiChuXuLy = layChuoi(body?.ghiChuXuLy, 'Ghi chú trình ký', { toiDa: 500 });
+  return chayTransaction(async (ketNoi) => {
+    const dx = await khoaDeXuatChoXuLy(nguoiDung, id, ketNoi, ['CHO_DUYET', 'CHO_KY']);
+    const nv = await kiemTraNhanVienConLamViec(dx.nhanVienId, ketNoi);
+    const nk = await kiemTraNguoiKyDuocTrinh(nguoiDung, nguoiKyDuyetId, dx.nhanVienId, ketNoi);
+    // Ghi chú trống thì giữ ghi chú cũ (VD lý do Giám đốc trả lại)
+    await ktklRepository.capNhatDeXuat(
+      id,
+      { ...chinhSua, trangThai: 'CHO_KY', nguoiXuLyId: nguoiKyDuyetId, ...(ghiChuXuLy ? { ghiChuXuLy } : {}) },
+      ketNoi,
+    );
+    // Ghi lại nội dung gốc của các trường HR đã chỉnh để tra cứu (đề xuất chỉ giữ nội dung trình ký)
+    const daDoi = Object.keys(chinhSua).filter((k) => String(chinhSua[k]) !== String(dx[k]));
+    const goc = daDoi.length ? `; nội dung gốc: ${daDoi.map((k) => `${k}=${dx[k]}`).join(' | ')}` : '';
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'TRINH_KY_KTKL',
+      diaChiIP,
+      `Đề xuất #${dx.id} (${dx.loaiDeXuat} ${nv.maNhanVien}) trình ${nk.maNhanVien} ký${goc}`.slice(0, 1000),
+      ketNoi,
+    );
+    return ktklRepository.layDeXuatTheoId(id, ketNoi);
+  });
+}
+
+// Giám đốc được trình ký: INSERT quyết định (ngày ban hành = ngày ký, số QĐ tự sinh nếu không nhập)
+// + đề xuất DA_DUYET + cộng/trừ vào bảng lương nháp tháng ban hành, một transaction
+async function kyDeXuat(nguoiDung, id, body, diaChiIP) {
+  canHoSo(nguoiDung);
+  const soQuyetDinh = layChuoi(body?.soQuyetDinh, 'Số quyết định', { toiThieu: 3, toiDa: 50 });
+  const ghiChuXuLy = layChuoi(body?.ghiChuXuLy, 'Ghi chú', { toiDa: 500 });
+  const banDaXem = body?.ngayCapNhat; // ngayCapNhat của đề xuất lúc Giám đốc mở xem
+  return chayTransaction(async (ketNoi) => {
+    const dx = await khoaDeXuatChoKy(nguoiDung, id, ketNoi);
+    // HR có thể trình lại (đổi nội dung) sau khi Giám đốc mở xem: không cho ký nội dung chưa xem
+    if (banDaXem !== undefined && String(banDaXem) !== String(dx.ngayCapNhat)) {
+      throw new LoiUngDung(409, 'Đề xuất vừa được HR chỉnh sửa, vui lòng tải lại và xem nội dung trước khi ký');
+    }
+    const nv = await kiemTraNhanVienConLamViec(dx.nhanVienId, ketNoi);
+    await kiemTraNguoiKy(nguoiDung.nhanVienId, dx.nhanVienId, ketNoi);
+    const noiDung = {
+      soQuyetDinh,
+      loaiQuyetDinh: dx.loaiDeXuat,
+      tieuDe: dx.tieuDe,
+      lyDo: dx.lyDo,
+      soTien: dx.soTienDeXuat,
+      ngayBanHanh: ngayHomNay(),
+    };
+    const kq = await ghiQuyetDinh(nguoiDung, noiDung, dx.nhanVienId, nguoiDung.nhanVienId, diaChiIP, ketNoi, {
+      thongBaoThangKhoa: (thang, nam) =>
+        `Bảng lương tháng ${thang}/${nam} đã gửi duyệt hoặc đã duyệt nên chưa ký được hôm nay: ký từ ngày 01 tháng sau, hoặc trả lại / từ chối đề xuất`,
+    });
+    await ktklRepository.capNhatDeXuat(
+      id,
+      { trangThai: 'DA_DUYET', quyetDinhId: kq.id, nguoiXuLyId: nguoiDung.nhanVienId, ...(ghiChuXuLy ? { ghiChuXuLy } : {}) },
+      ketNoi,
+    );
+    await nhatKyRepository.themNhatKy(
+      nguoiDung.nguoiDungId,
+      'KY_QUYET_DINH_KTKL',
+      diaChiIP,
+      `${kq.soQuyetDinh} (${noiDung.loaiQuyetDinh} ${nv.maNhanVien}, ${noiDung.soTien}) từ đề xuất #${dx.id}`,
+      ketNoi,
+    );
+    return { quyetDinh: await ktklRepository.layQuyetDinhTheoId(kq.id, ketNoi), canhBao: kq.canhBao };
+  });
+}
+
+// Giám đốc trả lại để HR / người đề xuất xem xét lại: CHO_KY -> CHO_DUYET, lý do ở ghiChuXuLy
+async function traLaiDeXuat(nguoiDung, id, body, diaChiIP) {
+  canHoSo(nguoiDung);
+  const lyDo = layChuoi(body?.ghiChuXuLy, 'Lý do trả lại', { batBuoc: true, toiThieu: 3, toiDa: 480 });
+  return chayTransaction(async (ketNoi) => {
+    const dx = await khoaDeXuatChoKy(nguoiDung, id, ketNoi);
+    await ktklRepository.capNhatDeXuat(
+      id,
+      { trangThai: 'CHO_DUYET', nguoiXuLyId: nguoiDung.nhanVienId, ghiChuXuLy: `Trả lại: ${lyDo}` },
+      ketNoi,
+    );
+    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'TRA_LAI_DE_XUAT_KTKL', diaChiIP, `Đề xuất #${dx.id}: ${lyDo}`, ketNoi);
     return ktklRepository.layDeXuatTheoId(id, ketNoi);
   });
 }
@@ -205,11 +341,16 @@ const layDanhSachNguoiKy = () => ktklRepository.layDanhSachNguoiKy();
 
 // Quyết định cộng/trừ vào lương tháng ban hành: khóa bảng lương của tháng (nếu có) để chặn gửi duyệt đồng thời.
 // Tháng đã gửi/duyệt lương thì không ban hành được nữa; bảng còn nháp được tính lại sau khi ghi quyết định.
-async function khoaThangLuong(ngayBanHanh, ketNoi) {
+async function khoaThangLuong(ngayBanHanh, ketNoi, thongBaoThangKhoa = null) {
   const [nam, thang] = ngayBanHanh.split('-').map(Number);
   const bang = await ktklRepository.khoaBangLuongTheoThang(thang, nam, ketNoi);
   if (bang && bang.trangThai !== 'BAN_NHAP') {
-    throw new LoiUngDung(409, `Bảng lương tháng ${thang}/${nam} đã gửi duyệt hoặc đã duyệt, hãy chọn ngày ban hành ở tháng sau`);
+    throw new LoiUngDung(
+      409,
+      thongBaoThangKhoa
+        ? thongBaoThangKhoa(thang, nam)
+        : `Bảng lương tháng ${thang}/${nam} đã gửi duyệt hoặc đã duyệt, hãy chọn ngày ban hành ở tháng sau`,
+    );
   }
   return bang;
 }
@@ -230,6 +371,12 @@ async function kiemTraNguoiKy(nguoiKyDuyetId, nhanVienId, ketNoi) {
   }
   if (nk.id === nhanVienId) throw new LoiUngDung(400, 'Người ký không được là người nhận quyết định');
   return nk;
+}
+
+// Giám đốc được HR trình ký: hợp lệ như người ký và không phải chính người trình (tách người trình / người ký)
+async function kiemTraNguoiKyDuocTrinh(nguoiDung, nguoiKyDuyetId, nhanVienId, ketNoi) {
+  if (nguoiKyDuyetId === nguoiDung.nhanVienId) throw new LoiUngDung(400, 'Không thể trình chính mình ký');
+  return kiemTraNguoiKy(nguoiKyDuyetId, nhanVienId, ketNoi);
 }
 
 function docNoiDungQuyetDinh(body, macDinh = {}) {
@@ -254,8 +401,8 @@ function docNoiDungQuyetDinh(body, macDinh = {}) {
 // Mỗi lần INSERT lỗi trùng khóa chỉ hủy câu lệnh đó, transaction vẫn tiếp tục được.
 const SO_LAN_THU_SINH_SO = 3;
 
-async function ghiQuyetDinh(nguoiDung, noiDung, nhanVienId, nguoiKyDuyetId, diaChiIP, ketNoi) {
-  const bangNhap = await khoaThangLuong(noiDung.ngayBanHanh, ketNoi);
+async function ghiQuyetDinh(nguoiDung, noiDung, nhanVienId, nguoiKyDuyetId, diaChiIP, ketNoi, { thongBaoThangKhoa = null } = {}) {
+  const bangNhap = await khoaThangLuong(noiDung.ngayBanHanh, ketNoi, thongBaoThangKhoa);
   let id;
   let soQuyetDinh;
   for (let lan = 1; !id; lan += 1) {
@@ -298,57 +445,12 @@ async function ghiQuyetDinh(nguoiDung, noiDung, nhanVienId, nguoiKyDuyetId, diaC
   return { id, soQuyetDinh, canhBao };
 }
 
-// HR lập quyết định từ đề xuất: INSERT quyết định + UPDATE đề xuất DA_DUYET (một transaction)
-async function lapQuyetDinhTuDeXuat(nguoiDung, id, body, diaChiIP) {
-  canHoSo(nguoiDung);
-  const nguoiKyDuyetId = layIdNhanVien(body?.nguoiKyDuyetId, 'Người ký');
-  const ghiChuXuLy = layChuoi(body?.ghiChuXuLy, 'Ghi chú xử lý', { toiDa: 500 });
-  return chayTransaction(async (ketNoi) => {
-    const dx = await khoaDeXuatChoXuLy(nguoiDung, id, ketNoi);
-    const noiDung = docNoiDungQuyetDinh(body ?? {}, {
-      loaiQuyetDinh: dx.loaiDeXuat,
-      tieuDe: dx.tieuDe,
-      lyDo: dx.lyDo,
-      soTien: dx.soTienDeXuat,
-    });
-    const nv = await ktklRepository.layNhanVienCoBan(dx.nhanVienId, ketNoi);
-    if (!nv) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
-    if (!TRANG_THAI_DUOC_KTKL.includes(nv.trangThaiLamViec)) {
-      throw new LoiUngDung(409, `Nhân viên ${nv.maNhanVien} không còn làm việc, hãy từ chối đề xuất`);
-    }
-    await kiemTraNguoiKy(nguoiKyDuyetId, dx.nhanVienId, ketNoi);
-    const {
-      id: quyetDinhId,
-      soQuyetDinh,
-      canhBao,
-    } = await ghiQuyetDinh(nguoiDung, noiDung, dx.nhanVienId, nguoiKyDuyetId, diaChiIP, ketNoi);
-    await ktklRepository.capNhatDeXuat(
-      id,
-      {
-        trangThai: 'DA_DUYET',
-        quyetDinhId,
-        nguoiXuLyId: nguoiDung.nhanVienId,
-        ghiChuXuLy,
-      },
-      ketNoi,
-    );
-    await nhatKyRepository.themNhatKy(
-      nguoiDung.nguoiDungId,
-      'LAP_QUYET_DINH_KTKL',
-      diaChiIP,
-      `${soQuyetDinh} (${noiDung.loaiQuyetDinh} ${nv.maNhanVien}, ${noiDung.soTien}) từ đề xuất #${dx.id}`,
-      ketNoi,
-    );
-    return { quyetDinh: await ktklRepository.layQuyetDinhTheoId(quyetDinhId, ketNoi), canhBao };
-  });
-}
-
-// Lập quyết định trực tiếp: HR chọn giamDoc ký; giamDoc tự ký
+// Giám đốc lập quyết định trực tiếp và tự ký (HR lập trực tiếp thì đi qua đề xuất CHO_KY, xem taoDeXuat)
 async function taoQuyetDinh(nguoiDung, body, diaChiIP) {
   canHoSo(nguoiDung);
   const nhanVienId = layIdNhanVien(body?.nhanVienId, 'Nhân viên');
   const noiDung = docNoiDungQuyetDinh(body ?? {});
-  const nguoiKyDuyetId = laHR(nguoiDung) ? layIdNhanVien(body.nguoiKyDuyetId, 'Người ký') : nguoiDung.nhanVienId;
+  const nguoiKyDuyetId = nguoiDung.nhanVienId;
   return chayTransaction(async (ketNoi) => {
     const nv = await ktklRepository.layNhanVienCoBan(nhanVienId, ketNoi);
     if (!nv) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
@@ -376,7 +478,9 @@ module.exports = {
   suaDeXuat,
   xoaDeXuat,
   tuChoiDeXuat,
-  lapQuyetDinhTuDeXuat,
+  trinhKy,
+  kyDeXuat,
+  traLaiDeXuat,
   layDanhSachQuyetDinh,
   layChiTietQuyetDinh,
   layDanhSachNguoiKy,
