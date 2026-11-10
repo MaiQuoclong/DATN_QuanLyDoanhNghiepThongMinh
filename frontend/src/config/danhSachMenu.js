@@ -90,7 +90,17 @@ const danhSachMenu = [
       { duongDan: 'nhatKy', ten: 'Nhật ký', vaiTro: ['Admin', 'giamDoc'] },
     ],
   },
-  { duongDan: '/troLyAi', ten: 'Trợ lý AI', bieuTuong: Bot, vaiTro: TAT_CA },
+  {
+    duongDan: '/troLyAi',
+    ten: 'Trợ lý AI',
+    bieuTuong: Bot,
+    vaiTro: TAT_CA,
+    tab: [
+      { duongDan: '', ten: 'Hỏi đáp' },
+      // Mọi vai trò xem, tải về quy chế; chỉ HR tải lên, xóa (nút ẩn với vai trò khác, backend vẫn chặn)
+      { duongDan: 'taiLieu', ten: 'Tài liệu quy chế' },
+    ],
+  },
 ];
 
 export const NHAN_VAI_TRO = {
