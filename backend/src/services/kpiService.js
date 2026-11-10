@@ -7,6 +7,7 @@ const nhanVienRepository = require('../repositories/nhanVienRepository');
 const nhatKyRepository = require('../repositories/nhatKyRepository');
 const ktklRepository = require('../repositories/khenThuongKyLuatRepository');
 const luongService = require('./luongService');
+const { tinhThuongKpi, demSoThangKy } = require('../utils/tinhLuong');
 const { laNgayHopLe } = require('../middlewares/kiemTraDuLieu');
 
 // Quyền theo docs/phan-quyen.md mục 8 (Đánh giá KPI)
@@ -620,15 +621,25 @@ async function nghiemThu(nguoiDung, id, body, diaChiIP) {
     );
     const ketQua = await layChiTietPhieu(nguoiDung, id, ketNoi);
     if (bangLuong) {
-      const soPhieu = await luongService.tinhLaiBangNhapTrongGiaoDich(bangLuong, ketNoi);
-      await nhatKyRepository.themNhatKy(
-        nguoiDung.nguoiDungId,
-        'TINH_LAI_BANG_LUONG_KPI',
-        diaChiIP,
-        `${bangLuong.maBangLuong}: ${soPhieu} (nghiệm thu KPI ${phieu.maNhanVien})`.slice(0, 1000),
+      // Chỉ cộng thưởng KPI vào phiếu của người được nghiệm thu (giữ chỉnh sửa tay của HR trên các phiếu khác).
+      // Lương HĐ lấy từ chính phiếu lương để khớp phần tách thưởng khi đọc (luongService.themTachThuong).
+      const soThangKy = demSoThangKy(phieu.ngayBatDau, phieu.ngayKetThuc);
+      const kq = await luongService.congThuongPhatVaoPhieuNhap(
+        bangLuong,
+        phieu.nhanVienId,
+        (phieuLuong) => tinhThuongKpi(xepLoaiChung, phieuLuong.luongCoBan, soThangKy),
         ketNoi,
       );
-      ketQua.canhBao = `Đã tính lại bảng lương nháp ${bangLuong.maBangLuong} để cộng thưởng KPI`;
+      if (kq) {
+        await nhatKyRepository.themNhatKy(
+          nguoiDung.nguoiDungId,
+          'TINH_LAI_BANG_LUONG_KPI',
+          diaChiIP,
+          `${bangLuong.maBangLuong} ${kq.maNhanVien}: thuongKPI ${kq.thuongCu} -> ${kq.thuongMoi} (nghiệm thu KPI)`.slice(0, 1000),
+          ketNoi,
+        );
+        ketQua.canhBao = `Đã cộng thưởng KPI vào phiếu lương của ${kq.maNhanVien} trong bảng lương nháp ${bangLuong.maBangLuong}`;
+      }
     }
     return ketQua;
   });
