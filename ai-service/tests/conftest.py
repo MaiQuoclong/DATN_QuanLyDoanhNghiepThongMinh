@@ -6,6 +6,10 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "csdl: test tích hợp MariaDB thật (cần CSDL_MAT_KHAU_TEST)")
+
+
 KHOA_TEST = "khoa-noi-bo-dung-cho-test-dai-toi-thieu-32-ky-tu"
 
 
