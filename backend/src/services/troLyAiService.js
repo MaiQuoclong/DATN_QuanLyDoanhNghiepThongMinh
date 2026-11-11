@@ -9,9 +9,14 @@ const DO_DAI_TIEU_DE = 150;
 
 // Khóa phụ của phiên bên ai-service: id phiên bị dùng lại sau `npm run khoiTaoCsdl` (AUTO_INCREMENT đếm lại)
 // thì nguoiDungId/thoiGianTao khác → không đọc nhầm lịch sử của phiên cũ cùng id.
+// Ràng buộc: thoiGianTao là chuỗi 'YYYY-MM-DD HH:mm:ss' nhờ `dateStrings: true` (config/ketNoiCsdl.js).
+// Bỏ cấu hình đó thì giá trị thành Date (chuỗi phụ thuộc múi giờ) → dauPhien đổi, mất toàn bộ lịch sử cũ.
 function layDauPhien(phien) {
-  return `${phien.nguoiDungId}|${phien.thoiGianTao}`;
+  return `${phien.nguoiDungId}|${String(phien.thoiGianTao).slice(0, 19)}`;
 }
+
+// Khóa so khớp tài liệu theo cả id và mã (id có thể bị cấp lại cho tài liệu khác sau khoiTaoCsdl)
+const khoaTaiLieu = (id, maTaiLieu) => `${id}|${maTaiLieu}`;
 
 // Cùng giá trị aiClientService dùng làm thời gian chờ mặc định
 function layThoiGianChoAi() {
@@ -84,14 +89,17 @@ async function hoiDap(nguoiDung, { phienId, cauHoi }) {
   }
 
   let ketQua;
+  let taiLieuHienCo;
   try {
+    taiLieuHienCo = await taiLieuQuyCheRepository.layTatCaIdVaMa();
     ketQua = await aiClientService.goiAiService('/noiBo/rag/hoiDap', {
       method: 'POST',
       body: {
         phienId: phien.id,
         dauPhien: layDauPhien(phien),
         cauHoi,
-        taiLieuIdsHienCo: await taiLieuQuyCheRepository.layTatCaId(),
+        taiLieuIdsHienCo: taiLieuHienCo.map((t) => t.id),
+        taiLieuHienCo,
         // ai-service bỏ (không gọi LLM, không ghi lịch sử) nếu xử lý xong sau lúc backend đã ngừng chờ:
         // tránh câu hỏi người dùng thấy là lỗi lại xuất hiện trong lịch sử. Trừ 2s dự phòng truyền mạng.
         hanChot: Date.now() + layThoiGianChoAi() - 2000,
@@ -109,18 +117,29 @@ async function hoiDap(nguoiDung, { phienId, cauHoi }) {
     throw loi;
   }
 
+  // Từ đây ai-service ĐÃ ghi lịch sử: lỗi CSDL ở các bước phụ chỉ ghi log, vẫn trả câu trả lời
+  // (trả 500 thì màn hình gỡ câu hỏi trong khi mở lại phiên vẫn thấy → lệch lịch sử).
   // Phiên tạo trống (tiêu đề mặc định) đổi tiêu đề theo câu hỏi đầu tiên
   if (!phienMoi && phien.tieuDePhien === TIEU_DE_MAC_DINH) {
-    await phienTroChuyenRepository.doiTieuDe(phien.id, nguoiDung.nguoiDungId, taoTieuDeTuCauHoi(cauHoi));
-    phien = await layPhienCuaMinh(nguoiDung, phien.id);
+    try {
+      await phienTroChuyenRepository.doiTieuDe(phien.id, nguoiDung.nguoiDungId, taoTieuDeTuCauHoi(cauHoi));
+      phien = await layPhienCuaMinh(nguoiDung, phien.id);
+    } catch (loi) {
+      console.error(`[troLyAi] Không đổi được tiêu đề phiên ${phien.id}: ${loi.message}`);
+    }
   }
 
   // Lọc lại nguồn theo CSDL: tài liệu bị xóa trong lúc đang hỏi không được trích dẫn
-  const conLai = new Set(await taiLieuQuyCheRepository.layTatCaId());
+  try {
+    taiLieuHienCo = await taiLieuQuyCheRepository.layTatCaIdVaMa();
+  } catch (loi) {
+    console.error(`[troLyAi] Không đọc lại được danh sách tài liệu: ${loi.message}`);
+  }
+  const conLai = new Set(taiLieuHienCo.map((t) => khoaTaiLieu(t.id, t.maTaiLieu)));
   return {
     phien: dinhDangPhien(phien),
     traLoi: ketQua.traLoi,
-    nguonTrichDan: (ketQua.nguonTrichDan ?? []).filter((n) => conLai.has(n.taiLieuId)),
+    nguonTrichDan: (ketQua.nguonTrichDan ?? []).filter((n) => conLai.has(khoaTaiLieu(n.taiLieuId, n.maTaiLieu))),
     cheDo: ketQua.cheDo,
     thoiGian: ketQua.thoiGian,
   };

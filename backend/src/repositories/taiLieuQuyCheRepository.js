@@ -60,10 +60,16 @@ async function layTatCaId() {
   return dong.map((d) => d.id);
 }
 
+// {id, maTaiLieu} gửi ai-service để lọc/dọn vector theo cả mã: id tự tăng có thể bị cấp lại sau khoiTaoCsdl
+async function layTatCaIdVaMa() {
+  const [dong] = await pool.query('SELECT id, maTaiLieu FROM tailieuquyche');
+  return dong;
+}
+
 // Mọi tài liệu kèm đường dẫn tệp cho script lập chỉ mục toàn bộ (scripts/lapChiMucTatCa.js)
 async function layTatCaDeLapChiMuc() {
   const [dong] = await pool.query('SELECT id, maTaiLieu, tieuDe, duongDanTep FROM tailieuquyche ORDER BY id');
   return dong;
 }
 
-module.exports = { layDanhSach, layTheoId, layTheoMa, them, xoa, layTatCaId, layTatCaDeLapChiMuc };
+module.exports = { layDanhSach, layTheoId, layTheoMa, them, xoa, layTatCaId, layTatCaIdVaMa, layTatCaDeLapChiMuc };

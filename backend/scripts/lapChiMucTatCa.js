@@ -12,6 +12,7 @@ async function lapChiMucTatCa() {
   // Script quản trị chạy tay, không gắn người dùng nên không ghi nhatkyhethong (lập chỉ mục qua API mới ghi)
   const taiLieu = await taiLieuQuyCheRepository.layTatCaDeLapChiMuc();
   const ids = taiLieu.map((t) => t.id);
+  const taiLieuHienCo = taiLieu.map((t) => ({ id: t.id, maTaiLieu: t.maTaiLieu }));
   let loi = 0;
   for (const t of taiLieu) {
     try {
@@ -23,6 +24,7 @@ async function lapChiMucTatCa() {
           tieuDe: t.tieuDe,
           duongDanTep: t.duongDanTep.replaceAll('\\', '/'),
           taiLieuIdsHienCo: ids,
+          taiLieuHienCo,
         },
         thoiGianCho: THOI_GIAN_CHO,
       });
