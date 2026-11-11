@@ -102,15 +102,36 @@ def thongKeTaiLieu() -> dict[int, int]:
         raise LoiKhoVector("Không đọc được kho vector") from loi
 
 
-def donDepMoCoi(taiLieuIdsHienCo: set[int]) -> list[int]:
+def _maTheoTaiLieu() -> dict[int, set[str]]:
+    """{taiLieuId: các maTaiLieu đang có trong kho} (>1 mã khi id bị cấp lại mà chưa lập lại chỉ mục hết)."""
+    collection = _layCollection()
+    try:
+        ketQua: dict[int, set[str]] = {}
+        for meta in collection.get(include=["metadatas"])["metadatas"]:
+            ketQua.setdefault(int(meta["taiLieuId"]), set()).add(meta.get("maTaiLieu"))
+        return ketQua
+    except Exception as loi:
+        raise LoiKhoVector("Không đọc được kho vector") from loi
+
+
+def donDepMoCoi(taiLieuIdsHienCo: set[int], maTheoId: dict[int, str] | None = None) -> list[int]:
     """Xóa đoạn của tài liệu không còn trong CSDL (VD xóa bản ghi lúc ai-service tắt); trả danh sách id đã dọn.
 
     Chỉ dọn id ≤ id lớn nhất trong ảnh chụp: tài liệu tải lên SAU lúc Express chụp danh sách (id tự tăng lớn hơn)
-    không bị xóa nhầm khi hai lượt lập chỉ mục chạy chen nhau."""
+    không bị xóa nhầm khi hai lượt lập chỉ mục chạy chen nhau.
+    maTheoId {id: maTaiLieu}: dọn thêm id còn trong CSDL nhưng vector mang mã khác (id bị cấp lại sau khoiTaoCsdl)."""
     if not taiLieuIdsHienCo:
         return []
     idLonNhat = max(taiLieuIdsHienCo)
-    daDon = [tid for tid in thongKeTaiLieu() if tid not in taiLieuIdsHienCo and tid <= idLonNhat]
+
+    def laMoCoi(tid: int, cacMa: set[str]) -> bool:
+        if tid > idLonNhat:
+            return False
+        if tid not in taiLieuIdsHienCo:
+            return True
+        return maTheoId is not None and tid in maTheoId and cacMa != {maTheoId[tid]}
+
+    daDon = [tid for tid, cacMa in _maTheoTaiLieu().items() if laMoCoi(tid, cacMa)]
     for tid in daDon:
         xoaTaiLieu(tid)
     return daDon

@@ -27,6 +27,15 @@ def _loiHaTang(loi: Exception) -> HTTPException:
     return HTTPException(status_code=503, detail=str(loi) or "Kho vector hoặc model embedding không khả dụng")
 
 
+class TaiLieuHienCo(BaseModel):
+    id: int = Field(gt=0)
+    maTaiLieu: str = Field(min_length=1, max_length=30)
+
+
+def _maTheoId(danhSach: list[TaiLieuHienCo] | None) -> dict[int, str] | None:
+    return None if danhSach is None else {t.id: t.maTaiLieu for t in danhSach}
+
+
 class YeuCauLapChiMuc(BaseModel):
     taiLieuId: int = Field(gt=0)
     maTaiLieu: str = Field(min_length=1, max_length=30)
@@ -34,6 +43,8 @@ class YeuCauLapChiMuc(BaseModel):
     duongDanTep: str = Field(min_length=1, max_length=255)
     # Danh sách id tài liệu còn trong CSDL (Express gửi): đoạn của tài liệu đã bị xóa sẽ được dọn
     taiLieuIdsHienCo: list[int] | None = None
+    # {id, maTaiLieu} còn trong CSDL: dọn cả vector cùng id nhưng khác mã (id bị cấp lại sau khoiTaoCsdl)
+    taiLieuHienCo: list[TaiLieuHienCo] | None = None
 
 
 @router.post("/lapChiMuc")
@@ -53,7 +64,10 @@ def lapChiMuc(yeuCau: YeuCauLapChiMuc):
             khoVector.thayDoanTaiLieu(yeuCau.taiLieuId, yeuCau.maTaiLieu, yeuCau.tieuDe, doan, vectors)
             daDon = []
             if yeuCau.taiLieuIdsHienCo is not None:
-                daDon = khoVector.donDepMoCoi(set(yeuCau.taiLieuIdsHienCo) | {yeuCau.taiLieuId})
+                maTheoId = _maTheoId(yeuCau.taiLieuHienCo)
+                if maTheoId is not None:
+                    maTheoId[yeuCau.taiLieuId] = yeuCau.maTaiLieu
+                daDon = khoVector.donDepMoCoi(set(yeuCau.taiLieuIdsHienCo) | {yeuCau.taiLieuId}, maTheoId)
     except (nhung.LoiNhung, khoVector.LoiKhoVector) as loi:
         raise _loiHaTang(loi) from loi
 
@@ -103,6 +117,8 @@ class YeuCauHoiDap(BaseModel):
     cauHoi: str = Field(min_length=1, max_length=1000)
     # Id tài liệu còn trong CSDL: đoạn của tài liệu đã xóa (vector chưa dọn) không được trích dẫn
     taiLieuIdsHienCo: list[int] | None = None
+    # {id, maTaiLieu}: lọc theo cả mã (id có thể bị cấp lại cho tài liệu khác sau khoiTaoCsdl)
+    taiLieuHienCo: list[TaiLieuHienCo] | None = None
     # Epoch ms Express ngừng chờ; quá hạn thì không gọi LLM/không ghi lịch sử (Express đã báo lỗi cho người dùng)
     hanChot: int | None = Field(default=None, gt=0)
 
@@ -112,7 +128,14 @@ def hoiDapQuyChe(yeuCau: YeuCauHoiDap):
     if not yeuCau.cauHoi.strip():
         raise HTTPException(status_code=400, detail="Câu hỏi không được để trống")
     try:
-        ketQua = hoiDap(yeuCau.phienId, yeuCau.dauPhien, yeuCau.cauHoi, yeuCau.taiLieuIdsHienCo, yeuCau.hanChot)
+        ketQua = hoiDap(
+            yeuCau.phienId,
+            yeuCau.dauPhien,
+            yeuCau.cauHoi,
+            yeuCau.taiLieuIdsHienCo,
+            yeuCau.hanChot,
+            _maTheoId(yeuCau.taiLieuHienCo),
+        )
     except LoiQuaHanChot as loi:
         raise HTTPException(status_code=504, detail="Quá thời gian chờ, câu hỏi chưa được lưu") from loi
     except (nhung.LoiNhung, khoVector.LoiKhoVector, LoiLichSu) as loi:
