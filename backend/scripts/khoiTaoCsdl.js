@@ -1,8 +1,7 @@
 // Dựng lại CSDL từ đầu bằng một lệnh: tạo database → import schema.sql → nạp seed.sql
 // CẢNH BÁO: xóa toàn bộ bảng và dữ liệu hiện có. Chỉ dùng cho môi trường dev/test.
 // Cách dùng (trong thư mục backend):
-//   npm run khoiTaoCsdl                      → schema + seed
-//   npm run khoiTaoCsdl -- --taiKhoanChiDoc  → thêm tài khoản chỉ đọc aiReadonly cho AI service
+//   npm run khoiTaoCsdl  → schema + seed + tài khoản chỉ đọc aiReadonly (nếu có AI_CSDL_MAT_KHAU)
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
@@ -14,6 +13,29 @@ const TEN_CSDL = process.env.CSDL_TEN || 'quanlydoanhnghiepthongminh';
 
 function docFileSql(tenFile) {
   return fs.readFileSync(path.join(THU_MUC_CSDL, tenFile), 'utf8');
+}
+
+// Tài khoản chỉ đọc aiReadonly cho Text-to-SQL (ai-service dùng CSDL_MAT_KHAU trùng giá trị này).
+// Thiếu AI_CSDL_MAT_KHAU → chỉ cảnh báo, không làm hỏng việc dựng CSDL (CI backend, máy chưa dùng AI).
+// Xóa rồi tạo lại user để quyền luôn đúng theo taoTaiKhoanChiDoc.sql (không giữ quyền cũ thừa).
+async function taoTaiKhoanChiDoc(ketNoi) {
+  const matKhau = process.env.AI_CSDL_MAT_KHAU || '';
+  if (!matKhau) {
+    console.warn('!   Bỏ qua tài khoản aiReadonly: chưa đặt AI_CSDL_MAT_KHAU (báo cáo AI sẽ không chạy).');
+    return;
+  }
+  if (matKhau.length < 12) {
+    throw new Error('AI_CSDL_MAT_KHAU phải có tối thiểu 12 ký tự');
+  }
+  if (TEN_CSDL !== 'quanlydoanhnghiepthongminh') {
+    throw new Error('taoTaiKhoanChiDoc.sql cấp quyền cho database quanlydoanhnghiepthongminh, hãy dùng đúng CSDL_TEN');
+  }
+  console.log('+   Tạo tài khoản chỉ đọc aiReadonly ...');
+  for (const mayChu of ['localhost', '127.0.0.1']) {
+    await ketNoi.query('DROP USER IF EXISTS ?@?', ['aiReadonly', mayChu]);
+    await ketNoi.query('CREATE USER ?@? IDENTIFIED BY ?', ['aiReadonly', mayChu, matKhau]);
+  }
+  await ketNoi.query(docFileSql('taoTaiKhoanChiDoc.sql'));
 }
 
 async function khoiTaoCsdl() {
@@ -53,10 +75,7 @@ async function khoiTaoCsdl() {
     await ketNoi.query(docFileSql('seed.sql'));
     await ketNoi.query('DROP TEMPORARY TABLE tamNgayLe');
 
-    if (process.argv.includes('--taiKhoanChiDoc')) {
-      console.log('+   Tạo tài khoản chỉ đọc aiReadonly ...');
-      await ketNoi.query(docFileSql('taoTaiKhoanChiDoc.sql'));
-    }
+    await taoTaiKhoanChiDoc(ketNoi);
 
     const [bang] = await ketNoi.query('SHOW TABLES');
     console.log(`Xong: database ${TEN_CSDL} có ${bang.length} bảng.`);

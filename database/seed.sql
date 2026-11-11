@@ -606,3 +606,14 @@ INSERT INTO phientrochuyenai (id, nguoiDungId, tieuDePhien, thoiGianTao) VALUES
 INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao)
 SELECT 5, 'AI_TAO_DON', '127.0.0.1', CONCAT('NGHI_PHEP ', maDon, ' (id 12)'), LEAST(TIMESTAMP(CURDATE(), '10:15:00'), NOW())
   FROM dondexuatnghiphep WHERE id = 12;
+
+-- ---------------------------------------------------------------------
+-- Báo cáo AI Text-to-SQL (5.6): nhật ký mẫu để Admin/giamDoc xem trang Nhật ký (lọc AI_TEXT_TO_SQL)
+-- ---------------------------------------------------------------------
+INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
+  (2, 'AI_TEXT_TO_SQL', '127.0.0.1',
+   '{"cauHoi":"Số nhân viên theo từng phòng ban","phamVi":"TOAN_CONG_TY","ketQua":"KET_QUA","soDong":5}',
+   NOW() - INTERVAL 2 DAY),
+  (3, 'AI_TEXT_TO_SQL', '127.0.0.1',
+   '{"cauHoi":"Lương tháng trước của nhân viên phòng tôi","phamVi":"PHONG_BAN","ketQua":"TU_CHOI","soDong":0,"lyDo":"Bạn không có quyền truy vấn dữ liệu lương/hợp đồng"}',
+   NOW() - INTERVAL 1 DAY);

@@ -99,6 +99,8 @@ const danhSachMenu = [
       { duongDan: '', ten: 'Hỏi đáp' },
       // Mọi vai trò xem, tải về quy chế; chỉ HR tải lên, xóa (nút ẩn với vai trò khác, backend vẫn chặn)
       { duongDan: 'taiLieu', ten: 'Tài liệu quy chế' },
+      // Text-to-SQL (5.6): Admin, nhanVien không dùng (backend trả 403)
+      { duongDan: 'baoCao', ten: 'Báo cáo dữ liệu', vaiTro: ['giamDoc', 'HR', 'quanLy'] },
     ],
   },
 ];

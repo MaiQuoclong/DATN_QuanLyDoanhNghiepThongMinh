@@ -20,6 +20,7 @@ Trả về theo thứ tự:
 8. **Kế hoạch test** (Jest/Supertest, pytest) và **seed** cần bổ sung cho 5 vai trò.
 9. **Lựa chọn người dùng phải quyết** (2-4 phương án, nêu phương án khuyến nghị và lý do).
 10. **Rủi ro / hạn chế** dự kiến.
+11. **Kịch bản test tay trên web** (để người dùng tự kiểm tra sau khi code xong, dùng dữ liệu `database/seed.sql` sau `npm run khoiTaoCsdl`): bảng `STT | Vai trò (tài khoản seed cụ thể) | Bước thao tác trên giao diện (trang/menu/nút) | Dữ liệu nhập | Kết quả mong đợi`. Bao phủ: luồng chính cho từng vai trò được dùng; vai trò bị cấm (menu ẩn / 403); phạm vi `quanLy`, `nhanVien`; dữ liệu sai/biên (400, 409); trạng thái sau thao tác (kiểm tra ở trang liên quan, nhật ký); trường hợp ai-service/LLM tắt (thông báo thân thiện). Nêu điều kiện chuẩn bị (service nào phải chạy, env cần có). Tra tên tài khoản/mật khẩu trong `seed.sql`, không bịa.
 
 ## Chế độ B – Rà soát kiến trúc module đã xong
 Mỗi lượt một module hoặc một chủ đề xuyên module. Tìm:
