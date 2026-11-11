@@ -584,3 +584,17 @@ INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao
   (4, 'TAI_LEN_TAI_LIEU', '127.0.0.1', 'QC-NOIQUY (id 1)',   LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:00:00'), NOW())),
   (4, 'TAI_LEN_TAI_LIEU', '127.0.0.1', 'QC-NGHIPHEP (id 2)', LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:10:00'), NOW())),
   (4, 'TAI_LEN_TAI_LIEU', '127.0.0.1', 'QC-LUONG (id 3)',    LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:20:00'), NOW()));
+
+-- ---------------------------------------------------------------------
+-- Trợ lý AI (5.4): phiên trò chuyện mẫu cho cả 5 vai trò (tin nhắn lưu ở SQLite của ai-service,
+-- phiên seed chưa có tin nhắn; đặt câu hỏi trên trang /troLyAi để demo).
+-- thoiGianTao theo NOW() (tới giây) để mỗi lần khoiTaoCsdl phiên có dauPhien mới: không hiện lại lịch sử cũ.
+-- ---------------------------------------------------------------------
+INSERT INTO phientrochuyenai (id, nguoiDungId, tieuDePhien, thoiGianTao) VALUES
+  (1, 1, 'Quy định về giờ làm việc',          NOW() - INTERVAL 2 DAY - INTERVAL 70 MINUTE),
+  (2, 2, 'Chính sách thưởng Tết',             NOW() - INTERVAL 2 DAY - INTERVAL 40 MINUTE),
+  (3, 3, 'Quy trình duyệt đơn nghỉ phép',     NOW() - INTERVAL 1 DAY - INTERVAL 300 MINUTE),
+  (4, 4, 'Cách tính phép năm theo thâm niên', NOW() - INTERVAL 1 DAY - INTERVAL 200 MINUTE),
+  (5, 4, 'Kỷ luật đi muộn',                   NOW() - INTERVAL 1 DAY - INTERVAL 140 MINUTE),
+  (6, 5, 'Nghỉ kết hôn được mấy ngày',        NOW() - INTERVAL 1 DAY - INTERVAL 80 MINUTE),
+  (7, 6, 'Ngày trả lương hằng tháng',         NOW() - INTERVAL 3 DAY - INTERVAL 30 MINUTE);
