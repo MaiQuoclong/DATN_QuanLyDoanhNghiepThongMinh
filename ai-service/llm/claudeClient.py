@@ -63,3 +63,37 @@ def goiLlm(
     if not vanBan:
         raise LoiLlm("LLM trả nội dung rỗng")
     return vanBan
+
+
+def goiLlmVoiCongCu(
+    heThong: str, tinNhan: list[dict], congCu: list[dict], soTokenToiDa: int = 1024, thoiGianCho: float | None = None
+) -> dict | None:
+    """Gọi LLM kèm danh sách tool (tool_choice auto). Trả {"ten", "thamSo"} của khối tool_use đầu tiên,
+    hoặc None nếu LLM trả lời bằng văn bản (không chọn tool nào). Mọi lỗi quy về LoiLlm như goiLlm."""
+    client = _layClient()
+    if thoiGianCho is not None:
+        client = client.with_options(timeout=thoiGianCho)
+    try:
+        phanHoi = client.messages.create(
+            model=layCauHinh().moHinhLlm,
+            max_tokens=soTokenToiDa,
+            system=heThong,
+            messages=tinNhan,
+            tools=congCu,
+            tool_choice={"type": "auto"},
+        )
+    except anthropic.APITimeoutError as loi:
+        raise LoiLlm("LLM phản hồi quá thời gian") from loi
+    except anthropic.RateLimitError as loi:
+        raise LoiLlm("LLM vượt hạn mức gọi") from loi
+    except anthropic.APIStatusError as loi:
+        raise LoiLlm(f"LLM trả lỗi HTTP {loi.status_code}") from loi
+    except anthropic.APIConnectionError as loi:
+        raise LoiLlm("Không kết nối được LLM") from loi
+
+    if phanHoi.stop_reason == "refusal":
+        raise LoiLlm("LLM từ chối trả lời")
+    for khoi in phanHoi.content:
+        if khoi.type == "tool_use":
+            return {"ten": khoi.name, "thamSo": dict(khoi.input or {})}
+    return None
