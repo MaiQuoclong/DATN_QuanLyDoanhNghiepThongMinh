@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "test": "jest --runInBand",
     "khoiTaoCsdl": "node scripts/khoiTaoCsdl.js",
+    "lapChiMuc": "node scripts/lapChiMucTatCa.js",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

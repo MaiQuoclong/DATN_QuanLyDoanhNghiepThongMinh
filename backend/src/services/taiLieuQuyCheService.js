@@ -4,6 +4,7 @@ const path = require('path');
 const LoiUngDung = require('../utils/LoiUngDung');
 const ghiNhatKy = require('../utils/ghiNhatKy');
 const taiLieuQuyCheRepository = require('../repositories/taiLieuQuyCheRepository');
+const aiClientService = require('./aiClientService');
 const { layDuoiTep } = require('../middlewares/taiTep');
 
 // Thư mục gốc lưu tệp quy chế; cột duongDanTep chỉ lưu đường dẫn tương đối (dấu '/') bên trong thư mục này
@@ -42,11 +43,28 @@ async function dinhDangTaiLieu(taiLieu) {
   return { ...conLai, loaiTep: layDuoiTep(duongDanTep).slice(1), kichThuocTep: await layKichThuocTep(duongDanTep) };
 }
 
+// Lập chỉ mục đọc + nhúng toàn bộ tài liệu (lần đầu còn nạp model) nên cho chờ lâu hơn AI_TIMEOUT_MS mặc định
+const THOI_GIAN_CHO_LAP_CHI_MUC = 120000;
+const THOI_GIAN_CHO_TRANG_THAI = 3000;
+
+// {taiLieuId: soDoan} từ kho vector; ai-service không khả dụng → null (danh sách vẫn hiển thị, trạng thái "không rõ")
+async function layTrangThaiChiMuc() {
+  try {
+    const duLieu = await aiClientService.goiAiService('/noiBo/rag/taiLieu', { thoiGianCho: THOI_GIAN_CHO_TRANG_THAI });
+    return new Map((duLieu?.taiLieu || []).map((t) => [t.taiLieuId, t.soDoan]));
+  } catch {
+    return null;
+  }
+}
+
+// soDoanChiMuc: số đoạn đã lập chỉ mục (0 = chưa lập), null = không kiểm tra được (ai-service tắt)
 async function layDanhSach(boLoc) {
-  const { items, tongSo } = await taiLieuQuyCheRepository.layDanhSach(boLoc);
+  const [{ items, tongSo }, trangThai] = await Promise.all([taiLieuQuyCheRepository.layDanhSach(boLoc), layTrangThaiChiMuc()]);
+  const daDinhDang = await Promise.all(items.map(dinhDangTaiLieu));
   return {
-    items: await Promise.all(items.map(dinhDangTaiLieu)),
+    items: daDinhDang.map((t) => ({ ...t, soDoanChiMuc: trangThai ? (trangThai.get(t.id) ?? 0) : null })),
     phanTrang: { trang: boLoc.trang, kichThuoc: boLoc.kichThuoc, tongSo },
+    chiMucKhaDung: trangThai !== null,
   };
 }
 
@@ -64,6 +82,38 @@ async function layTepTaiVe(id) {
     throw new LoiUngDung(404, 'Tệp của tài liệu không còn trên máy chủ');
   }
   return { duongDan: tuyetDoi, tenTaiVe: `${taiLieu.maTaiLieu}${layDuoiTep(taiLieu.duongDanTep)}` };
+}
+
+// Gửi ai-service đọc tệp (cùng thư mục THU_MUC_TAI_LIEU) → chia Điều/Khoản → nhúng → lưu Chroma.
+// Kèm danh sách id còn trong CSDL để ai-service dọn vector của tài liệu đã xóa lúc nó tắt.
+async function goiLapChiMuc(nguoiDung, taiLieu, diaChiIP) {
+  if ((await layKichThuocTep(taiLieu.duongDanTep)) === null) {
+    throw new LoiUngDung(404, 'Tệp của tài liệu không còn trên máy chủ');
+  }
+  const ketQua = await aiClientService.goiAiService('/noiBo/rag/lapChiMuc', {
+    method: 'POST',
+    body: {
+      taiLieuId: taiLieu.id,
+      maTaiLieu: taiLieu.maTaiLieu,
+      tieuDe: taiLieu.tieuDe,
+      duongDanTep: taiLieu.duongDanTep.replaceAll('\\', '/'),
+      taiLieuIdsHienCo: await taiLieuQuyCheRepository.layTatCaId(),
+    },
+    thoiGianCho: THOI_GIAN_CHO_LAP_CHI_MUC,
+  });
+  await ghiNhatKy(
+    nguoiDung.nguoiDungId,
+    'LAP_CHI_MUC_TAI_LIEU',
+    diaChiIP,
+    `${taiLieu.maTaiLieu} (id ${taiLieu.id}): ${ketQua.soDoan} đoạn`,
+  );
+  return { soDoan: ketQua.soDoan, soDieu: ketQua.soDieu, theoDieuKhoan: ketQua.theoDieuKhoan };
+}
+
+// HR lập (lại) chỉ mục: dùng sau khi ai-service tắt lúc tải lên, đổi model embedding hoặc dựng lại kho vector
+async function lapChiMuc(nguoiDung, id, diaChiIP) {
+  const taiLieu = await layTaiLieu(id);
+  return { id, ...(await goiLapChiMuc(nguoiDung, taiLieu, diaChiIP)) };
 }
 
 // HR tải lên: ghi tệp tên uuid → INSERT; INSERT lỗi (VD trùng mã khi hai người tải đồng thời) thì xóa tệp vừa ghi
@@ -88,12 +138,27 @@ async function taiLen(nguoiDung, { maTaiLieu, tieuDe }, tep, diaChiIP) {
     throw loi;
   }
   await ghiNhatKy(nguoiDung.nguoiDungId, 'TAI_LEN_TAI_LIEU', diaChiIP, `${maTaiLieu} (id ${id})`);
-  return dinhDangTaiLieu(await layTaiLieu(id));
+  const taiLieu = await layTaiLieu(id);
+
+  // Lập chỉ mục ngay; lỗi (ai-service tắt, PDF scan...) vẫn giữ bản ghi, trả cảnh báo để HR lập lại sau
+  let chiMuc = null;
+  let canhBao = null;
+  try {
+    chiMuc = await goiLapChiMuc(nguoiDung, taiLieu, diaChiIP);
+  } catch (loi) {
+    // Bản ghi đã lưu: mọi lỗi ở bước này (kể cả lỗi DB khi lấy id/ghi nhật ký) chỉ thành cảnh báo,
+    // tránh client tưởng tải lên thất bại rồi tải lại bị 409 trùng mã
+    if (!(loi instanceof LoiUngDung)) console.error(`[taiLieuQuyChe] Lập chỉ mục ${maTaiLieu} lỗi: ${loi.message}`);
+    const lyDo = loi instanceof LoiUngDung ? loi.message : 'lỗi hệ thống';
+    canhBao = `Đã lưu tài liệu nhưng chưa lập được chỉ mục cho Trợ lý AI: ${lyDo}`;
+  }
+  return { ...(await dinhDangTaiLieu(taiLieu)), soDoanChiMuc: chiMuc ? chiMuc.soDoan : null, canhBao };
 }
 
 // HR xóa: xóa bản ghi trước (nguồn chuẩn), sau đó xóa tệp; tệp đã mất từ trước thì bỏ qua.
 // Tệp mẫu seed (mau/) do git quản lý nên chỉ xóa bản ghi, giữ tệp để `npm run khoiTaoCsdl` dựng lại đầy đủ.
-// Xóa vector chỉ mục bổ sung ở chức năng lập chỉ mục RAG (5.3).
+// Sau đó xóa vector: ai-service tắt thì chỉ cảnh báo, vector mồ côi được dọn ở lần lập chỉ mục kế tiếp
+// (taiLieuIdsHienCo) và trích dẫn của tài liệu không còn bản ghi bị lọc khi hỏi đáp.
 async function xoa(nguoiDung, id, diaChiIP) {
   const taiLieu = await layTaiLieu(id);
   if (!(await taiLieuQuyCheRepository.xoa(id))) throw new LoiUngDung(404, 'Không tìm thấy tài liệu quy chế');
@@ -105,8 +170,15 @@ async function xoa(nguoiDung, id, diaChiIP) {
       console.error(`[taiLieuQuyChe] Không xóa được tệp ${taiLieu.duongDanTep}: ${loi.message}`);
     }
   }
+  let canhBao = null;
+  try {
+    await aiClientService.goiAiService(`/noiBo/rag/taiLieu/${id}`, { method: 'DELETE' });
+  } catch (loi) {
+    if (!(loi instanceof LoiUngDung)) throw loi;
+    canhBao = 'Đã xóa tài liệu nhưng chưa xóa được chỉ mục của Trợ lý AI; chỉ mục sẽ được dọn ở lần lập chỉ mục tiếp theo';
+  }
   await ghiNhatKy(nguoiDung.nguoiDungId, 'XOA_TAI_LIEU', diaChiIP, `${taiLieu.maTaiLieu} (id ${id})`);
-  return { id };
+  return { id, canhBao };
 }
 
-module.exports = { layDanhSach, layTepTaiVe, taiLen, xoa, layThuMucTaiLieu, giaiDuongDanTep, laTepMau };
+module.exports = { layDanhSach, layTepTaiVe, taiLen, xoa, lapChiMuc, layThuMucTaiLieu, giaiDuongDanTep, laTepMau };

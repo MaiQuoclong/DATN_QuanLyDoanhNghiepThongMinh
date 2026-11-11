@@ -27,8 +27,14 @@ function layDuoiTep(tenGoc = '') {
 function noiDungKhopDuoi(duoi, boDem) {
   if (duoi === '.pdf') return boDem.subarray(0, 5).toString('latin1') === '%PDF-';
   // .docx là gói ZIP (PK\x03\x04) chứa thư mục word/
+  // Tên mục trong ZIP lưu dạng chữ thường: phải có đủ [Content_Types].xml và word/document.xml
+  // (ZIP bất kỳ chỉ chứa chuỗi "word/" không lọt qua)
   if (duoi === '.docx') {
-    return boDem.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04])) && boDem.includes('word/');
+    return (
+      boDem.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04])) &&
+      boDem.includes('[Content_Types].xml') &&
+      boDem.includes('word/document.xml')
+    );
   }
   if (duoi === '.md') {
     if (boDem.includes(0)) return false;
