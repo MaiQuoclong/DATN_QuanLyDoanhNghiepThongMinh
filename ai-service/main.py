@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from baoMat import kiemTraKhoaNoiBo
 from cauHinh import layCauHinh
 from llm.claudeClient import daCauHinhLlm
+from lichSu.api import router as routerLichSu
 from rag.api import router as routerRag
 
 app = FastAPI(title="Smart HRM AI Service", docs_url=None, redoc_url=None, openapi_url=None)
@@ -65,6 +66,7 @@ def kiemTraNoiBo():
 
 
 routerNoiBo.include_router(routerRag)
+routerNoiBo.include_router(routerLichSu)
 app.include_router(routerNoiBo)
 
 

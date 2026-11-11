@@ -9,6 +9,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 KHOA_TEST = "khoa-noi-bo-dung-cho-test-dai-toi-thieu-32-ky-tu"
 
 
+@pytest.fixture(autouse=True)
+def cachLyMoiTruong(tmp_path, monkeypatch):
+    """Mọi test: kho vector, lịch sử chat, embedding không dùng giá trị .env thật của máy dev
+    (cauHinh gọi load_dotenv khi import) → kết quả giống nhau trên máy dev và CI, không ghi vào repo."""
+    monkeypatch.setenv("MO_HINH_NHUNG", "gia")
+    monkeypatch.setenv("DUONG_DAN_CHROMA", str(tmp_path / "chromaMacDinh"))
+    monkeypatch.setenv("DUONG_DAN_LICH_SU", str(tmp_path / "lichSu.db"))
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    monkeypatch.setenv("NGUONG_DIEM_RAG", "0.3")
+
+
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setenv("AI_SERVICE_KEY", KHOA_TEST)

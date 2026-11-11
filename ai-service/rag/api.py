@@ -6,9 +6,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from cauHinh import layCauHinh
+from lichSu.khoLichSu import LoiLichSu
 from rag import khoVector, nhung
 from rag.chiaDoan import chiaDoan
 from rag.docTaiLieu import LoiDocTaiLieu, docVanBan, giaiDuongDan
+from rag.hoiDap import LoiQuaHanChot, hoiDap
 
 router = APIRouter(prefix="/rag")
 
@@ -93,3 +95,26 @@ def thongKeChiMuc():
         {"taiLieu": [{"taiLieuId": tid, "soDoan": so} for tid, so in sorted(thongKe.items())]},
         "Lấy trạng thái chỉ mục thành công",
     )
+
+
+class YeuCauHoiDap(BaseModel):
+    phienId: int = Field(gt=0)
+    dauPhien: str = Field(min_length=1, max_length=64)
+    cauHoi: str = Field(min_length=1, max_length=1000)
+    # Id tài liệu còn trong CSDL: đoạn của tài liệu đã xóa (vector chưa dọn) không được trích dẫn
+    taiLieuIdsHienCo: list[int] | None = None
+    # Epoch ms Express ngừng chờ; quá hạn thì không gọi LLM/không ghi lịch sử (Express đã báo lỗi cho người dùng)
+    hanChot: int | None = Field(default=None, gt=0)
+
+
+@router.post("/hoiDap")
+def hoiDapQuyChe(yeuCau: YeuCauHoiDap):
+    if not yeuCau.cauHoi.strip():
+        raise HTTPException(status_code=400, detail="Câu hỏi không được để trống")
+    try:
+        ketQua = hoiDap(yeuCau.phienId, yeuCau.dauPhien, yeuCau.cauHoi, yeuCau.taiLieuIdsHienCo, yeuCau.hanChot)
+    except LoiQuaHanChot as loi:
+        raise HTTPException(status_code=504, detail="Quá thời gian chờ, câu hỏi chưa được lưu") from loi
+    except (nhung.LoiNhung, khoVector.LoiKhoVector, LoiLichSu) as loi:
+        raise _loiHaTang(loi) from loi
+    return _thanhCong(ketQua, "Trả lời câu hỏi thành công")

@@ -30,6 +30,9 @@ async function lapChiMucTatCa() {
     } catch (e) {
       loi += 1;
       console.error(`✗ ${t.maTaiLieu}: ${e.message}`);
+      if (e.code === 503) {
+        console.error('  Gợi ý: ai-service đã chạy chưa? AI_SERVICE_KEY hai bên có trùng? Model embedding đã tải xong chưa?');
+      }
     }
   }
   console.log(`Xong: ${taiLieu.length - loi}/${taiLieu.length} tài liệu đã lập chỉ mục.`);
