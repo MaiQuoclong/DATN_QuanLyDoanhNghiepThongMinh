@@ -32,6 +32,7 @@ import TrangQuyetDinh from './pages/khenThuongKyLuat/TrangQuyetDinh';
 import TrangDeXuat from './pages/khenThuongKyLuat/TrangDeXuat';
 import TrangTaiLieuQuyChe from './pages/troLyAi/TrangTaiLieuQuyChe';
 import TrangTroLyAi from './pages/troLyAi/TrangTroLyAi';
+import TrangBaoCaoAi from './pages/troLyAi/TrangBaoCaoAi';
 
 // Sinh route từ cấu hình menu (kèm tab con), giới hạn theo vai trò.
 // Tab đã làm lấy trang thật từ bảng dưới, tab chưa làm hiện TrangDangPhatTrien.
@@ -61,6 +62,7 @@ const TRANG_DA_LAM = {
   '/khenThuongKyLuat/deXuat': TrangDeXuat,
   '/troLyAi': TrangTroLyAi,
   '/troLyAi/taiLieu': TrangTaiLieuQuyChe,
+  '/troLyAi/baoCao': TrangBaoCaoAi,
 };
 // Trang con không có trên menu: [đường dẫn module, đường dẫn con, component, vai trò của tab cha]
 const TRANG_CON = [['/nhanSu', 'danhSach/:id', TrangChiTietNhanVien, 'danhSach']];
