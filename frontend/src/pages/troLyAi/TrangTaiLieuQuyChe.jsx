@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Download, Trash2, Upload } from 'lucide-react';
+import { DatabaseZap, Download, Trash2, Upload } from 'lucide-react';
 import goiApi from '../../services/goiApi';
 import useThongBao from '../../hooks/useThongBao';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import BangDuLieu from '../../components/BangDuLieu';
+import ChipTrangThai from '../../components/ChipTrangThai';
 import HopThoai from '../../components/HopThoai';
 import HopThoaiBieuMau from '../../components/HopThoaiBieuMau';
 import NutBam from '../../components/NutBam';
@@ -14,6 +15,15 @@ const DINH_DANG_CHAP_NHAN = '.pdf,.docx,.md';
 const KICH_THUOC_TOI_DA = 10 * 1024 * 1024;
 // Tải/gửi tệp lâu hơn request JSON thường (goiApi mặc định 10 giây)
 const THOI_GIAN_CHO_TEP = 60000;
+// Tải lên kèm lập chỉ mục / lập lại chỉ mục: backend chờ ai-service tối đa 120 giây
+const THOI_GIAN_CHO_CHI_MUC = 150000;
+
+// soDoanChiMuc: null = không kiểm tra được (ai-service tắt), 0 = chưa lập, n = số đoạn đã lập
+function ChiMuc({ soDoan }) {
+  if (soDoan === null || soDoan === undefined) return <ChipTrangThai trangThai="KHONG_RO_CHI_MUC" />;
+  if (soDoan === 0) return <ChipTrangThai trangThai="CHUA_LAP_CHI_MUC" />;
+  return <ChipTrangThai trangThai="DA_LAP_CHI_MUC" nhan={`${soDoan} đoạn`} />;
+}
 
 function dinhDangKichThuoc(soByte) {
   if (soByte === null || soByte === undefined) return 'Mất tệp';
@@ -34,7 +44,7 @@ async function layThongBaoLoi(loi) {
   return loi?.message ?? 'Có lỗi xảy ra';
 }
 
-// Tài liệu quy chế: mọi vai trò xem và tải về; HR tải lên, xóa (nguồn tra cứu của Trợ lý AI)
+// Tài liệu quy chế: mọi vai trò xem và tải về; HR tải lên, xóa, lập chỉ mục (nguồn tra cứu của Trợ lý AI)
 function TrangTaiLieuQuyChe() {
   const { nguoiDung } = useXacThuc();
   const laHR = nguoiDung.vaiTro.includes('HR');
@@ -45,6 +55,9 @@ function TrangTaiLieuQuyChe() {
   const [dangThem, setDangThem] = useState(false);
   const [dangXoa, setDangXoa] = useState(null);
   const [dangGuiXoa, setDangGuiXoa] = useState(false);
+  const [dangLapId, setDangLapId] = useState(null);
+  // Cảnh báo khi thao tác thành công nhưng ai-service chưa cập nhật được chỉ mục
+  const [canhBao, setCanhBao] = useState('');
   const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
 
   const tai = useCallback(() => {
@@ -81,11 +94,27 @@ function TrangTaiLieuQuyChe() {
     }
   };
 
+  const lapChiMuc = async (taiLieu) => {
+    setDangLapId(taiLieu.id);
+    setCanhBao('');
+    try {
+      const kq = await goiApi.post(`/taiLieuQuyChe/${taiLieu.id}/lapChiMuc`, null, { timeout: THOI_GIAN_CHO_CHI_MUC });
+      baoThanhCong(`${taiLieu.maTaiLieu}: ${kq.message}`);
+      tai();
+    } catch (e) {
+      baoLoi(e.message);
+    } finally {
+      setDangLapId(null);
+    }
+  };
+
   const xacNhanXoa = async () => {
     setDangGuiXoa(true);
+    setCanhBao('');
     try {
       const kq = await goiApi.delete(`/taiLieuQuyChe/${dangXoa.id}`);
       baoThanhCong(kq.message);
+      setCanhBao(kq.data?.canhBao ?? '');
       setDangXoa(null);
       tai();
     } catch (e) {
@@ -101,6 +130,7 @@ function TrangTaiLieuQuyChe() {
     { khoa: 'tieuDe', tieuDe: 'Tiêu đề' },
     { khoa: 'loaiTep', tieuDe: 'Định dạng', hienThi: (d) => d.loaiTep.toUpperCase() },
     { khoa: 'kichThuocTep', tieuDe: 'Dung lượng', canPhai: true, hienThi: (d) => dinhDangKichThuoc(d.kichThuocTep) },
+    { khoa: 'soDoanChiMuc', tieuDe: 'Chỉ mục AI', hienThi: (d) => <ChiMuc soDoan={d.soDoanChiMuc} /> },
     { khoa: 'tenNguoiTaiLen', tieuDe: 'Người tải lên', hienThi: (d) => `${d.tenNguoiTaiLen} (${d.maNguoiTaiLen})` },
     { khoa: 'ngayTao', tieuDe: 'Ngày tải lên', hienThi: (d) => dinhDangThoiGian(d.ngayTao) },
     {
@@ -112,6 +142,17 @@ function TrangTaiLieuQuyChe() {
           <NutBam bienThe="ma" bieuTuong={Download} onClick={() => taiVe(d)} disabled={d.kichThuocTep === null} title="Tải về">
             Tải về
           </NutBam>
+          {laHR && (
+            <NutBam
+              bienThe="ma"
+              bieuTuong={DatabaseZap}
+              onClick={() => lapChiMuc(d)}
+              disabled={d.kichThuocTep === null || dangLapId !== null}
+              title="Lập lại chỉ mục cho Trợ lý AI"
+            >
+              {dangLapId === d.id ? 'Đang lập...' : 'Lập chỉ mục'}
+            </NutBam>
+          )}
           {laHR && (
             <NutBam bienThe="ma" bieuTuong={Trash2} onClick={() => setDangXoa(d)} title="Xóa tài liệu">
               Xóa
@@ -149,6 +190,10 @@ function TrangTaiLieuQuyChe() {
       </div>
       {loi && <div className="thongBao loi">{loi}</div>}
       {thongBao && <div className="thongBao thanhCong">{thongBao}</div>}
+      {canhBao && <div className="thongBao canhBao">{canhBao}</div>}
+      {laHR && ketQua && ketQua.chiMucKhaDung === false && (
+        <div className="thongBao canhBao">Chưa kết nối được AI service nên không kiểm tra được trạng thái chỉ mục của tài liệu.</div>
+      )}
       <BangDuLieu cot={cot} duLieu={ketQua?.items ?? []} dangTai={dangTai} thongBaoRong="Chưa có tài liệu quy chế" />
       <PhanTrang phanTrang={ketQua?.phanTrang} onDoiTrang={setTrang} />
 
@@ -174,11 +219,12 @@ function TrangTaiLieuQuyChe() {
             if (giaTri.tep.size > KICH_THUOC_TOI_DA) throw new Error('Tệp vượt quá dung lượng cho phép (tối đa 10MB)');
             const duLieu = new FormData();
             duLieu.append('maTaiLieu', giaTri.maTaiLieu.trim().toUpperCase());
-            duLieu.append('tieuDe', giaTri.tieuDe);
+            duLieu.append('tieuDe', giaTri.tieuDe.trim());
             duLieu.append('tep', giaTri.tep);
-            const kq = await goiApi.post('/taiLieuQuyChe', duLieu, { timeout: THOI_GIAN_CHO_TEP });
+            const kq = await goiApi.post('/taiLieuQuyChe', duLieu, { timeout: THOI_GIAN_CHO_CHI_MUC });
             setDangThem(false);
             baoThanhCong(kq.message);
+            setCanhBao(kq.data?.canhBao ?? '');
             setTrang(1);
             tai();
           }}
