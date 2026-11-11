@@ -1,4 +1,5 @@
 const troLyAiService = require('../services/troLyAiService');
+const LoiUngDung = require('../utils/LoiUngDung');
 const { thanhCong } = require('../utils/phanHoi');
 const { laySoNguyenDuong } = require('../utils/thamSoTruyVan');
 
@@ -34,4 +35,20 @@ async function hoiDap(req, res) {
   return thanhCong(res, ketQua, 'Trợ lý AI đã trả lời');
 }
 
-module.exports = { layDanhSachPhien, taoPhien, doiTieuDe, xoaPhien, layTinNhan, hoiDap };
+// Bản nháp đơn do Trợ lý AI soạn: id là UUID của ai-service (không phải số)
+function layBanNhapId(req) {
+  const id = String(req.params.id ?? '');
+  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new LoiUngDung(404, 'Không tìm thấy bản nháp đơn');
+  return id;
+}
+
+async function xacNhanBanNhap(req, res) {
+  const { ketQua, thongBao } = await troLyAiService.xacNhanBanNhap(req.nguoiDung, layBanNhapId(req), req.ip);
+  return thanhCong(res, ketQua, thongBao, 201);
+}
+
+async function huyBanNhap(req, res) {
+  return thanhCong(res, await troLyAiService.huyBanNhap(req.nguoiDung, layBanNhapId(req)), 'Đã hủy bản nháp');
+}
+
+module.exports = { layDanhSachPhien, taoPhien, doiTieuDe, xoaPhien, layTinNhan, hoiDap, xacNhanBanNhap, huyBanNhap };
