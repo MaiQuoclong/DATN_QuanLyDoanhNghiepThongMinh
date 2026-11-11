@@ -51,7 +51,7 @@ const TRA_LOI = {
 
 function aiChay() {
   goiAi.mockImplementation(async (duongDan, { method = 'GET' } = {}) => {
-    if (duongDan === '/noiBo/rag/hoiDap' && method === 'POST') return { phienId: 0, ...TRA_LOI };
+    if (duongDan === '/noiBo/troLy/xuLy' && method === 'POST') return { phienId: 0, ...TRA_LOI };
     if (duongDan.startsWith('/noiBo/lichSu/') && method === 'GET') return { tinNhan: [{ id: 1, vaiTro: 'nguoiDung', noiDung: 'x' }] };
     if (duongDan.startsWith('/noiBo/lichSu/') && method === 'DELETE') return { soTinNhanDaXoa: 2 };
     throw new Error(`Gọi ai-service ngoài dự kiến: ${method} ${duongDan}`);
@@ -181,7 +181,7 @@ describe('POST /troLyAi/hoiDap', () => {
     const [[p]] = await pool.execute('SELECT nguoiDungId FROM phientrochuyenai WHERE id = ?', [res.body.data.phien.id]);
     expect(p.nguoiDungId).toBe(NGUOI_DUNG_ID[ten]);
 
-    const [, tuyChon] = goiAi.mock.calls.find(([d]) => d === '/noiBo/rag/hoiDap');
+    const [, tuyChon] = goiAi.mock.calls.find(([d]) => d === '/noiBo/troLy/xuLy');
     expect(tuyChon.body).toMatchObject({ phienId: res.body.data.phien.id, cauHoi: 'Nghỉ kết hôn\n được mấy ngày?' });
     expect(tuyChon.body.dauPhien).toBe(`${NGUOI_DUNG_ID[ten]}|${res.body.data.phien.thoiGianTao}`);
     expect(tuyChon.body.taiLieuIdsHienCo).toEqual(expect.arrayContaining([1, 2, 3]));

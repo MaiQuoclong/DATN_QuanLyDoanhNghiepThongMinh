@@ -340,3 +340,52 @@
     max-width: 100%;
   }
 }
+
+/* Thẻ xem trước đơn do Trợ lý AI soạn (5.5) */
+.theXemTruocDon {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--mauVien);
+  border-radius: 8px;
+  background: var(--mauThe);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dauXemTruoc {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dongXemTruoc {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px;
+  font-size: 14px;
+}
+.nhanXemTruoc {
+  color: var(--mauChuPhu);
+}
+.loiXemTruoc {
+  color: var(--mauLoi, #c62828);
+  font-size: 13px;
+}
+.thaoTacXemTruoc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.lienKetXemTruoc {
+  font-size: 13px;
+  margin-left: auto;
+}
+@media (max-width: 600px) {
+  .dongXemTruoc {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

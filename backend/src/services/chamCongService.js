@@ -10,6 +10,7 @@ const { tinhChiSoCong } = require('../utils/tinhCong');
 // Công chuẩn dùng chung với lương (T2-T6 trừ ngày lễ)
 const { demNgayCongChuan } = require('../utils/tinhLuong');
 const { ngayHomNay, khoangNgayCuaThang } = require('../utils/ngayThang');
+const { kiemTraDoiTuong } = require('../middlewares/kiemTraDuLieu');
 
 const TRANG_THAI_KHONG_CHAM_CONG = ['TAM_NGHI', 'DA_NGHI_VIEC'];
 
@@ -227,7 +228,22 @@ async function chotCong(nguoiDung, thang, diaChiIP) {
 
 // ===================== Yêu cầu điều chỉnh công =====================
 
-async function taoYeuCau(nguoiDung, { ngayCanDieuChinh, gioVaoDeXuat, gioRaDeXuat, lyDoGiaiTrinh }) {
+// Luật dữ liệu yêu cầu điều chỉnh công: route dùng làm middleware, service kiểm tra lại cho mọi nguồn gọi
+// (form và Trợ lý AI tạo đơn) để không bỏ sót định dạng ngày/giờ, độ dài lý do.
+const LUAT_TAO_YEU_CAU = {
+  ngayCanDieuChinh: { nhan: 'Ngày cần điều chỉnh', batBuoc: true, kieu: 'ngay' },
+  gioVaoDeXuat: { nhan: 'Giờ vào đề xuất', kieu: 'gio' },
+  gioRaDeXuat: { nhan: 'Giờ ra đề xuất', kieu: 'gio' },
+  lyDoGiaiTrinh: { nhan: 'Lý do giải trình', batBuoc: true, toiThieu: 5, toiDa: 1000 },
+};
+
+async function taoYeuCau(nguoiDung, duLieu) {
+  const { ngayCanDieuChinh, gioVaoDeXuat, gioRaDeXuat, lyDoGiaiTrinh } = kiemTraDoiTuong(LUAT_TAO_YEU_CAU, {
+    ngayCanDieuChinh: duLieu?.ngayCanDieuChinh,
+    gioVaoDeXuat: duLieu?.gioVaoDeXuat,
+    gioRaDeXuat: duLieu?.gioRaDeXuat,
+    lyDoGiaiTrinh: duLieu?.lyDoGiaiTrinh,
+  });
   const gioVao = chuanHoaGio(gioVaoDeXuat);
   const gioRa = chuanHoaGio(gioRaDeXuat);
   if (!gioVao && !gioRa) throw new LoiUngDung(400, 'Cần đề xuất ít nhất giờ vào hoặc giờ ra');
@@ -386,6 +402,7 @@ async function tuChoiYeuCau(nguoiDung, id, { lyDoTuChoi }, diaChiIP) {
 }
 
 module.exports = {
+  LUAT_TAO_YEU_CAU,
   layHomNay,
   checkIn,
   checkOut,

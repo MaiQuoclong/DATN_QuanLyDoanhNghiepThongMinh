@@ -20,6 +20,16 @@ const gioiHanHoiDap = rateLimit({
   handler: (req, res) => thatBai(res, 429, 'Bạn hỏi quá nhanh, vui lòng thử lại sau ít phút'),
 });
 
+// Xác nhận bản nháp đơn: 10 lần/phút/người (mỗi lần tạo một đơn thật trong MySQL)
+const gioiHanXacNhan = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => `nguoiDung:${req.nguoiDung.nguoiDungId}`,
+  handler: (req, res) => thatBai(res, 429, 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít phút'),
+});
+
 // /api/v1/troLyAi: mọi vai trò dùng; mỗi người chỉ thấy phiên của mình (phiên người khác → 404)
 const router = express.Router();
 
@@ -52,4 +62,8 @@ router.post(
   batLoiBatDongBo(troLyAiController.hoiDap),
 );
 
-module.exports = { router, gioiHanHoiDap };
+// Bản nháp đơn (5.5): chỉ chủ bản nháp xác nhận/hủy được (của người khác → 404)
+router.post('/banNhap/:id/xacNhan', xacThucJwt, phanQuyen(TAT_CA), gioiHanXacNhan, batLoiBatDongBo(troLyAiController.xacNhanBanNhap));
+router.post('/banNhap/:id/huy', xacThucJwt, phanQuyen(TAT_CA), batLoiBatDongBo(troLyAiController.huyBanNhap));
+
+module.exports = { router, gioiHanHoiDap, gioiHanXacNhan };

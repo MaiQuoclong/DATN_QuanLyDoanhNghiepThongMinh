@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from baoMat import kiemTraKhoaNoiBo
 from cauHinh import layCauHinh
 from llm.claudeClient import daCauHinhLlm
+from functionCalling.api import routerBanNhap, routerTroLy
 from lichSu.api import router as routerLichSu
 from rag.api import router as routerRag
 
@@ -67,6 +68,8 @@ def kiemTraNoiBo():
 
 routerNoiBo.include_router(routerRag)
 routerNoiBo.include_router(routerLichSu)
+routerNoiBo.include_router(routerTroLy)
+routerNoiBo.include_router(routerBanNhap)
 app.include_router(routerNoiBo)
 
 
