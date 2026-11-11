@@ -53,22 +53,22 @@ def thayDoanTaiLieu(taiLieuId: int, maTaiLieu: str, tieuDe: str, doan: list, vec
         idMoi = {f"{taiLieuId}-{d.thuTu}" for d in doan}
         if doan:
             collection.upsert(
-            ids=[f"{taiLieuId}-{d.thuTu}" for d in doan],
-            embeddings=vectors,
-            documents=[d.noiDung for d in doan],
-            metadatas=[
-                {
-                    "taiLieuId": taiLieuId,
-                    "maTaiLieu": maTaiLieu,
-                    "tieuDe": tieuDe,
-                    "dieu": d.dieu or 0,
-                    "tenDieu": d.tenDieu,
-                    "khoan": d.khoan or 0,
-                    "thuTu": d.thuTu,
-                }
-                for d in doan
-            ],
-        )
+                ids=[f"{taiLieuId}-{d.thuTu}" for d in doan],
+                embeddings=vectors,
+                documents=[d.noiDung for d in doan],
+                metadatas=[
+                    {
+                        "taiLieuId": taiLieuId,
+                        "maTaiLieu": maTaiLieu,
+                        "tieuDe": tieuDe,
+                        "dieu": d.dieu or 0,
+                        "tenDieu": d.tenDieu,
+                        "khoan": d.khoan or 0,
+                        "thuTu": d.thuTu,
+                    }
+                    for d in doan
+                ],
+            )
         idCu = collection.get(where={"taiLieuId": taiLieuId}, include=[])["ids"]
         thua = [i for i in idCu if i not in idMoi]
         if thua:

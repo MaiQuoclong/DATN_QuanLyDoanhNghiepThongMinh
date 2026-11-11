@@ -8,16 +8,21 @@ const aiClientService = require('./aiClientService');
 const { layDuoiTep } = require('../middlewares/taiTep');
 
 // Thư mục gốc lưu tệp quy chế; cột duongDanTep chỉ lưu đường dẫn tương đối (dấu '/') bên trong thư mục này
+// Giá trị tương đối trong .env tính từ thư mục backend/ (không phụ thuộc thư mục đang chạy lệnh),
+// cùng quy ước với ai-service (tính từ ai-service/) để hai bên trỏ đúng một thư mục.
+const THU_MUC_BACKEND = path.join(__dirname, '..', '..');
 function layThuMucTaiLieu() {
-  return path.resolve(process.env.THU_MUC_TAI_LIEU || path.join(__dirname, '..', '..', 'uploads', 'quyChe'));
+  return path.resolve(THU_MUC_BACKEND, process.env.THU_MUC_TAI_LIEU || path.join('uploads', 'quyChe'));
 }
 
-// Đường dẫn tuyệt đối của tệp; giá trị trong CSDL trỏ ra ngoài thư mục gốc (../, đường dẫn tuyệt đối) → null
+// Đường dẫn tuyệt đối của tệp; giá trị trong CSDL trỏ ra ngoài thư mục gốc (../, đường dẫn tuyệt đối) → null.
+// Đổi '\' thành '/' trước để giá trị lưu kiểu Windows vẫn đúng khi chạy Linux.
 function giaiDuongDanTep(duongDanTep) {
   const thuMuc = layThuMucTaiLieu();
-  const tuyetDoi = path.resolve(thuMuc, duongDanTep);
+  const tuyetDoi = path.resolve(thuMuc, duongDanTep.replaceAll('\\', '/'));
   const tuongDoi = path.relative(thuMuc, tuyetDoi);
-  if (!tuongDoi || tuongDoi.startsWith('..') || path.isAbsolute(tuongDoi)) return null;
+  const raNgoai = tuongDoi === '..' || tuongDoi.startsWith(`..${path.sep}`) || path.isAbsolute(tuongDoi);
+  if (!tuongDoi || raNgoai) return null;
   return tuyetDoi;
 }
 
