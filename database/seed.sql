@@ -339,7 +339,10 @@ INSERT INTO dondexuatnghiphep (id, maDon, nhanVienId, loaiNghiPhepId, ngayBatDau
    'FORM_GIAO_DIEN', 'TU_CHOI', 9, 'Phòng đang chạy chiến dịch bán hàng, đề nghị dời sang tuần sau',
    TIMESTAMP(@thu2ThangTruoc, '11:00:00'), TIMESTAMP(DATE_SUB(@thu2ThangTruoc, INTERVAL 2 DAY), '08:00:00')),
   (11, 'TAM-11', 5, 1, DATE_ADD(@thu2Toi, INTERVAL 14 DAY), DATE_ADD(@thu2Toi, INTERVAL 14 DAY), 1.0, 'Đi khám răng',
-   'FORM_GIAO_DIEN', 'DA_HUY', NULL, NULL, NULL, TIMESTAMP(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '15:00:00'));
+   'FORM_GIAO_DIEN', 'DA_HUY', NULL, NULL, NULL, TIMESTAMP(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '15:00:00')),
+  -- 5.5: đơn tạo qua Trợ lý AI (người dùng đã bấm Xác nhận trên thẻ xem trước) — chờ trưởng phòng duyệt
+  (12, 'TAM-12', 5, 1, DATE_ADD(@thu2Toi, INTERVAL 4 DAY), DATE_ADD(@thu2Toi, INTERVAL 4 DAY), 1.0, 'Đưa bố mẹ đi khám bệnh',
+   'AI_CHAT', 'CHO_DUYET', NULL, NULL, NULL, LEAST(TIMESTAMP(CURDATE(), '10:15:00'), NOW()));
 
 -- Đơn trong 1 ngày rơi vào thứ 7, Chủ nhật hoặc ngày lễ (mốc theo CURDATE()): dời sang ngày làm việc kế tiếp
 UPDATE dondexuatnghiphep d
@@ -598,3 +601,8 @@ INSERT INTO phientrochuyenai (id, nguoiDungId, tieuDePhien, thoiGianTao) VALUES
   (5, 4, 'Kỷ luật đi muộn',                   NOW() - INTERVAL 1 DAY - INTERVAL 140 MINUTE),
   (6, 5, 'Nghỉ kết hôn được mấy ngày',        NOW() - INTERVAL 1 DAY - INTERVAL 80 MINUTE),
   (7, 6, 'Ngày trả lương hằng tháng',         NOW() - INTERVAL 3 DAY - INTERVAL 30 MINUTE);
+
+-- Trợ lý AI tạo đơn (5.5): dấu vết đơn mẫu id 12 do AI soạn (cùng định dạng chiTiet với troLyAiService)
+INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao)
+SELECT 5, 'AI_TAO_DON', '127.0.0.1', CONCAT('NGHI_PHEP ', maDon, ' (id 12)'), LEAST(TIMESTAMP(CURDATE(), '10:15:00'), NOW())
+  FROM dondexuatnghiphep WHERE id = 12;

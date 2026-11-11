@@ -128,4 +128,4 @@ Bản ghi `quyetdinhkhenthuongkyluat` luôn là quyết định đã ký. HR l�
 | Text-to-SQL (chỉ đọc, user `aiReadonly`) | | ✓ | PM, không bảng lương/hợp đồng | ✓ | |
 | Lịch sử hội thoại | Mình | Mình | Mình | Mình | Mình |
 
-Function Calling không bao giờ tạo đơn hộ người khác và không duyệt đơn. Chi tiết lọc Text-to-SQL cho quanLy: xem `.claude/rules/database.md`.
+Function Calling không bao giờ tạo đơn hộ người khác và không duyệt đơn. AI chỉ soạn bản nháp (SQLite ai-service, không ghi MySQL); đơn chỉ được tạo khi chủ bản nháp gọi `POST /api/v1/troLyAi/banNhap/:id/xacNhan` (cần hồ sơ nhân viên; bản nháp của người khác → 404; 10 lần/phút), Express tạo qua đúng service nghiệp vụ của form và ghi `nhatkyhethong` `AI_TAO_DON`. Chi tiết lọc Text-to-SQL cho quanLy: xem `.claude/rules/database.md`.
