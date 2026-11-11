@@ -9,10 +9,13 @@ const GOI_Y = [
   'Đơn nghỉ phép dài hơn 5 ngày do ai duyệt?',
   'Đi làm muộn bị xử lý thế nào?',
   'Ngày nào trả lương hằng tháng?',
+  'Tôi còn mấy ngày phép?',
+  'Xin nghỉ phép năm thứ 6 tuần sau vì việc gia đình',
+  'Hôm qua tôi quên check-out lúc 17:30',
 ];
 
 // Khung chat: danh sách tin nhắn (tự cuộn xuống cuối) + ô nhập. Enter gửi, Shift+Enter xuống dòng.
-function KhungChat({ tieuDe, tinNhan, dangTaiTin, dangGui, onGui }) {
+function KhungChat({ tieuDe, tinNhan, dangTaiTin, dangGui, onGui, onXacNhanBanNhap, onHuyBanNhap }) {
   const [cauHoi, setCauHoi] = useState('');
   const cuoiDanhSach = useRef(null);
 
@@ -41,8 +44,8 @@ function KhungChat({ tieuDe, tinNhan, dangTaiTin, dangGui, onGui }) {
         {!dangTaiTin && tinNhan.length === 0 && (
           <div className="chaoMungChat">
             <Bot size={32} />
-            <div className="tieuDeChaoMung">Hỏi Trợ lý AI về nội quy, quy chế công ty</div>
-            <div className="chuPhu">Câu trả lời chỉ dựa trên tài liệu quy chế và luôn kèm nguồn Điều/khoản.</div>
+            <div className="tieuDeChaoMung">Hỏi Trợ lý AI về quy chế, hoặc nhờ soạn đơn nghỉ phép / điều chỉnh công</div>
+            <div className="chuPhu">Câu trả lời quy chế luôn kèm nguồn Điều/khoản. Đơn do AI soạn chỉ được gửi khi bạn bấm Xác nhận.</div>
             <div className="dsGoiY">
               {GOI_Y.map((g) => (
                 <button key={g} type="button" className="goiY" onClick={() => gui(g)} disabled={dangGui}>
@@ -53,9 +56,9 @@ function KhungChat({ tieuDe, tinNhan, dangTaiTin, dangGui, onGui }) {
           </div>
         )}
         {tinNhan.map((t) => (
-          <TinNhan key={t.id} tinNhan={t} />
+          <TinNhan key={t.id} tinNhan={t} onXacNhanBanNhap={onXacNhanBanNhap} onHuyBanNhap={onHuyBanNhap} />
         ))}
-        {dangGui && <div className="trangThaiChat dangTraLoi">Trợ lý AI đang tra cứu quy chế...</div>}
+        {dangGui && <div className="trangThaiChat dangTraLoi">Trợ lý AI đang xử lý...</div>}
         <div ref={cuoiDanhSach} />
       </div>
       <div className="oNhapChat">
@@ -63,7 +66,7 @@ function KhungChat({ tieuDe, tinNhan, dangTaiTin, dangGui, onGui }) {
           value={cauHoi}
           onChange={(e) => setCauHoi(e.target.value.slice(0, DO_DAI_TOI_DA))}
           onKeyDown={xuLyPhim}
-          placeholder="Nhập câu hỏi về quy chế (Enter để gửi, Shift+Enter xuống dòng)"
+          placeholder="Hỏi về quy chế hoặc nhờ soạn đơn (Enter để gửi, Shift+Enter xuống dòng)"
           rows={2}
           maxLength={DO_DAI_TOI_DA}
           disabled={dangGui}

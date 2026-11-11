@@ -83,6 +83,8 @@ function TrangTroLyAi() {
           dangTaiTin={troLy.dangTaiTin}
           dangGui={troLy.dangGui}
           onGui={troLy.gui}
+          onXacNhanBanNhap={troLy.xacNhanBanNhap}
+          onHuyBanNhap={troLy.huyBanNhap}
         />
       </div>
 

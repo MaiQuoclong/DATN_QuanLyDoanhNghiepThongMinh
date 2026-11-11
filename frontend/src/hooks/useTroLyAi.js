@@ -74,13 +74,22 @@ export default function useTroLyAi() {
           { cauHoi: noiDung, ...(phienGui ? { phienId: phienGui.id } : {}) },
           { timeout: THOI_GIAN_CHO_HOI_DAP },
         );
-        const { phien, traLoi, nguonTrichDan, cheDo, thoiGian } = kq.data;
+        const { phien, traLoi, nguonTrichDan, cheDo, loaiPhanHoi, banNhap, thoiGian } = kq.data;
         taiDanhSachPhien();
         // Người dùng đã rời phiên trong lúc chờ (mở phiên khác/phiên mới) → không kéo màn hình về phiên cũ
         if (phienYeuCau.current !== (phienGui?.id ?? null)) return true;
         phienYeuCau.current = phien.id;
         setPhienDangChon(phien);
-        setTinNhan((ds) => [...ds, { id: `tl-${Date.now()}`, vaiTro: 'troLy', noiDung: traLoi, nguonTrichDan, cheDo, thoiGian }]);
+        setTinNhan((ds) => {
+          // Bản nháp mới thay bản nháp đang chờ cũ của phiên (server đã chuyển bản cũ sang HUY)
+          const capNhat = banNhap
+            ? ds.map((t) => (t.banNhap?.trangThai === 'CHO_XAC_NHAN' ? { ...t, banNhap: { ...t.banNhap, trangThai: 'HUY' } } : t))
+            : ds;
+          return [
+            ...capNhat,
+            { id: `tl-${Date.now()}`, vaiTro: 'troLy', noiDung: traLoi, nguonTrichDan, cheDo, loaiPhanHoi, banNhap, thoiGian },
+          ];
+        });
         return true;
       } catch (e) {
         // Câu hỏi không được lưu ở server: gỡ khỏi khung chat, trả lại ô nhập để người dùng gửi lại
@@ -112,7 +121,40 @@ export default function useTroLyAi() {
     [phienDangChon, moPhienMoi, taiDanhSachPhien],
   );
 
+  // Cập nhật thẻ xem trước của đúng bản nháp trong khung chat
+  const capNhatBanNhap = useCallback((banNhapId, thayDoi) => {
+    setTinNhan((ds) => ds.map((t) => (t.banNhap?.id === banNhapId ? { ...t, banNhap: { ...t.banNhap, ...thayDoi } } : t)));
+  }, []);
+
+  // Lỗi ném ra để thẻ xem trước hiện ngay dưới thẻ; 409 (đã tạo/hết hạn/lỗi nghiệp vụ) tải lại phiên để thẻ đúng trạng thái
+  const xacNhanBanNhap = useCallback(
+    async (banNhap) => {
+      try {
+        const kq = await goiApi.post(`/troLyAi/banNhap/${banNhap.id}/xacNhan`);
+        capNhatBanNhap(banNhap.id, { trangThai: 'DA_TAO', ketQua: kq.data });
+      } catch (e) {
+        if (e.code === 409) {
+          if (phienDangChon) chonPhien(phienDangChon);
+        } else if (e.code === 400) {
+          capNhatBanNhap(banNhap.id, { trangThai: 'LOI', ketQua: { loi: e.message } });
+        }
+        throw e;
+      }
+    },
+    [capNhatBanNhap, chonPhien, phienDangChon],
+  );
+
+  const huyBanNhap = useCallback(
+    async (banNhap) => {
+      await goiApi.post(`/troLyAi/banNhap/${banNhap.id}/huy`);
+      capNhatBanNhap(banNhap.id, { trangThai: 'HUY' });
+    },
+    [capNhatBanNhap],
+  );
+
   return {
+    xacNhanBanNhap,
+    huyBanNhap,
     dsPhien,
     phienDangChon,
     tinNhan,

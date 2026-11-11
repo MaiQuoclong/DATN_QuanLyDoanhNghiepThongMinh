@@ -1,5 +1,6 @@
 import { Bot, User } from 'lucide-react';
 import TheTrichDan from './TheTrichDan';
+import TheXemTruocDon from './TheXemTruocDon';
 import { dinhDangThoiGian } from '../../utils/dinhDang';
 
 const GHI_CHU_CHE_DO = {
@@ -23,7 +24,7 @@ function NoiDungCoTrichDan({ vanBan }) {
   });
 }
 
-function TinNhan({ tinNhan }) {
+function TinNhan({ tinNhan, onXacNhanBanNhap, onHuyBanNhap }) {
   const laTroLy = tinNhan.vaiTro === 'troLy';
   const nguon = tinNhan.nguonTrichDan ?? [];
   return (
@@ -32,6 +33,7 @@ function TinNhan({ tinNhan }) {
       <div className="bongTinNhan">
         <div className="noiDungTinNhan">{laTroLy ? <NoiDungCoTrichDan vanBan={tinNhan.noiDung} /> : tinNhan.noiDung}</div>
         {laTroLy && GHI_CHU_CHE_DO[tinNhan.cheDo] && <div className="ghiChuCheDo">{GHI_CHU_CHE_DO[tinNhan.cheDo]}</div>}
+        {laTroLy && tinNhan.banNhap && <TheXemTruocDon banNhap={tinNhan.banNhap} onXacNhan={onXacNhanBanNhap} onHuy={onHuyBanNhap} />}
         {nguon.length > 0 && (
           <div className="dsTrichDan">
             <div className="nhanTrichDan">Nguồn trích dẫn</div>
