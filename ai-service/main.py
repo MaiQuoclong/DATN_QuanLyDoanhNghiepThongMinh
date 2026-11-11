@@ -17,6 +17,7 @@ from llm.claudeClient import daCauHinhLlm
 from functionCalling.api import routerBanNhap, routerTroLy
 from lichSu.api import router as routerLichSu
 from rag.api import router as routerRag
+from textToSql.api import router as routerBaoCao
 
 app = FastAPI(title="Smart HRM AI Service", docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -70,6 +71,7 @@ routerNoiBo.include_router(routerRag)
 routerNoiBo.include_router(routerLichSu)
 routerNoiBo.include_router(routerTroLy)
 routerNoiBo.include_router(routerBanNhap)
+routerNoiBo.include_router(routerBaoCao)
 app.include_router(routerNoiBo)
 
 

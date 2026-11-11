@@ -30,6 +30,13 @@ class CauHinh:
     duongDanLichSu: Path
     moHinhNhung: str
     nguongDiemRag: float
+    csdlHost: str
+    csdlCong: int
+    csdlNguoiDung: str
+    csdlMatKhau: str
+    csdlTen: str
+    thoiGianTruyVanGiay: float
+    gioiHanDong: int
 
 
 def layCauHinh() -> CauHinh:
@@ -46,4 +53,12 @@ def layCauHinh() -> CauHinh:
         # "gia" = embedding băm từ khóa (test/CI, không cần tải model)
         moHinhNhung=os.getenv("MO_HINH_NHUNG", "intfloat/multilingual-e5-base").strip(),
         nguongDiemRag=float(os.getenv("NGUONG_DIEM_RAG", "0.78")),
+        # Text-to-SQL: tài khoản CHỈ ĐỌC aiReadonly (backend khoiTaoCsdl tạo từ AI_CSDL_MAT_KHAU)
+        csdlHost=os.getenv("CSDL_HOST", "127.0.0.1"),
+        csdlCong=int(os.getenv("CSDL_CONG", "3306")),
+        csdlNguoiDung=os.getenv("CSDL_NGUOI_DUNG", "aiReadonly"),
+        csdlMatKhau=os.getenv("CSDL_MAT_KHAU", ""),
+        csdlTen=os.getenv("CSDL_TEN", "quanlydoanhnghiepthongminh"),
+        thoiGianTruyVanGiay=float(os.getenv("THOI_GIAN_TRUY_VAN_GIAY", "5")),
+        gioiHanDong=min(max(int(os.getenv("GIOI_HAN_DONG", "200")), 1), 200),
     )
