@@ -18,3 +18,6 @@ venv/
 # Tệp quy chế do HR tải lên (giữ tệp mẫu seed trong mau/)
 backend/uploads/quyChe/*
 !backend/uploads/quyChe/mau/
+
+# Dữ liệu chạy của ai-service (Chroma, SQLite lịch sử chat) - dựng lại bằng script lập chỉ mục
+ai-service/duLieu/

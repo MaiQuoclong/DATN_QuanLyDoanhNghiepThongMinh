@@ -54,4 +54,16 @@ async function xoa(id) {
   return kq.affectedRows;
 }
 
-module.exports = { layDanhSach, layTheoId, layTheoMa, them, xoa };
+// Id mọi tài liệu còn trong CSDL: ai-service dùng để dọn vector của tài liệu đã xóa
+async function layTatCaId() {
+  const [dong] = await pool.query('SELECT id FROM tailieuquyche');
+  return dong.map((d) => d.id);
+}
+
+// Mọi tài liệu kèm đường dẫn tệp cho script lập chỉ mục toàn bộ (scripts/lapChiMucTatCa.js)
+async function layTatCaDeLapChiMuc() {
+  const [dong] = await pool.query('SELECT id, maTaiLieu, tieuDe, duongDanTep FROM tailieuquyche ORDER BY id');
+  return dong;
+}
+
+module.exports = { layDanhSach, layTheoId, layTheoMa, them, xoa, layTatCaId, layTatCaDeLapChiMuc };

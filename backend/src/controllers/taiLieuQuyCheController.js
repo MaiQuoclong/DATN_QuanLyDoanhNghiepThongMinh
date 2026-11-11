@@ -36,4 +36,9 @@ async function xoa(req, res) {
   return thanhCong(res, ketQua, 'Xóa tài liệu quy chế thành công');
 }
 
-module.exports = { layDanhSach, taiTep, taiLen, xoa };
+async function lapChiMuc(req, res) {
+  const ketQua = await taiLieuQuyCheService.lapChiMuc(req.nguoiDung, layId(req), req.ip);
+  return thanhCong(res, ketQua, `Lập chỉ mục tài liệu thành công (${ketQua.soDoan} đoạn)`);
+}
+
+module.exports = { layDanhSach, taiTep, taiLen, xoa, lapChiMuc };

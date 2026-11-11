@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from baoMat import kiemTraKhoaNoiBo
 from cauHinh import layCauHinh
 from llm.claudeClient import daCauHinhLlm
+from rag.api import router as routerRag
 
 app = FastAPI(title="Smart HRM AI Service", docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -63,7 +64,26 @@ def kiemTraNoiBo():
     return thanhCong({"hopLe": True}, "Khóa nội bộ hợp lệ")
 
 
+routerNoiBo.include_router(routerRag)
 app.include_router(routerNoiBo)
 
+
+def _napTruocMoHinhNhung():
+    # Nạp model embedding nền ngay khi khởi động (lần đầu tải ~1.1GB) để request lập chỉ mục/hỏi đáp đầu tiên
+    # không phải chờ; lỗi chỉ ghi log, request sau sẽ thử nạp lại và trả 503 thân thiện
+    from rag import nhung
+
+    if nhung.tenMoHinhHienTai() == nhung.MO_HINH_GIA:
+        return
+    try:
+        nhung.nhungCauHoi("khởi động")
+        print(f"[ai-service] Đã nạp model embedding {nhung.tenMoHinhHienTai()}")
+    except nhung.LoiNhung as loi:
+        print(f"[ai-service] Chưa nạp được model embedding: {loi}")
+
+
 if __name__ == "__main__":
+    import threading
+
+    threading.Thread(target=_napTruocMoHinhNhung, daemon=True).start()
     uvicorn.run(app, host="127.0.0.1", port=layCauHinh().cong)

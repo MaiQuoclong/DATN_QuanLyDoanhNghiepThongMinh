@@ -16,3 +16,25 @@ def client(monkeypatch):
     from main import app
 
     return TestClient(app)
+
+
+THU_MUC_MAU = Path(__file__).resolve().parent.parent.parent / "backend" / "uploads" / "quyChe" / "mau"
+
+
+@pytest.fixture
+def moiTruongRag(tmp_path, monkeypatch):
+    """Kho Chroma + thư mục tài liệu tạm (bản sao tệp mẫu seed), embedding giả: không đụng dữ liệu thật."""
+    import shutil
+
+    thuMuc = tmp_path / "quyChe"
+    shutil.copytree(THU_MUC_MAU, thuMuc / "mau")
+    monkeypatch.setenv("MO_HINH_NHUNG", "gia")
+    monkeypatch.setenv("DUONG_DAN_CHROMA", str(tmp_path / "chroma"))
+    monkeypatch.setenv("THU_MUC_TAI_LIEU", str(thuMuc))
+    return thuMuc
+
+
+@pytest.fixture
+def clientRag(client, moiTruongRag):
+    client.headers.update({"X-Khoa-Noi-Bo": KHOA_TEST})
+    return client
