@@ -1,7 +1,7 @@
 """Đọc văn bản thuần từ tệp quy chế (.md, .pdf, .docx) và chặn đường dẫn ra ngoài thư mục tài liệu."""
 
 import unicodedata
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 DUOI_HO_TRO = {".md", ".pdf", ".docx"}
 
@@ -19,7 +19,8 @@ def giaiDuongDan(thuMucGoc: Path, duongDanTep: str) -> Path:
     """Đường dẫn tuyệt đối của tệp; giá trị trỏ ra ngoài thư mục gốc (../, tuyệt đối) bị từ chối."""
     goc = thuMucGoc.resolve()
     tuongDoi = Path(duongDanTep.replace("\\", "/"))
-    if not duongDanTep or tuongDoi.is_absolute() or tuongDoi.drive:
+    # PureWindowsPath: chặn "C:/..." cả khi chạy Linux (Path Linux coi "C:" là tên thư mục thường)
+    if not duongDanTep or tuongDoi.is_absolute() or PureWindowsPath(duongDanTep).drive:
         raise LoiDocTaiLieu(400, "Đường dẫn tệp tài liệu không hợp lệ")
     tuyetDoi = (goc / tuongDoi).resolve()
     if tuyetDoi == goc or not tuyetDoi.is_relative_to(goc):
