@@ -32,7 +32,7 @@ const tepTaiLen = () => fs.readdirSync(thuMucTam).filter((t) => t !== 'mau');
 const nguon = (taiLieuId, maTaiLieu) => ({ soThuTu: 1, taiLieuId, maTaiLieu, tieuDe: 'x', viTri: maTaiLieu, doanTrich: '...', diem: 0.9 });
 function aiHoiDap(nguonTrichDan) {
   goiAi.mockImplementation(async (duongDan, { method = 'GET' } = {}) => {
-    if (duongDan === '/noiBo/rag/hoiDap' && method === 'POST') {
+    if (duongDan === '/noiBo/troLy/xuLy' && method === 'POST') {
       return { phienId: 0, traLoi: 'Trả lời [1].', nguonTrichDan, cheDo: 'LLM', thoiGian: '2026-11-11T02:00:00+00:00' };
     }
     throw new Error(`Gọi ai-service ngoài dự kiến: ${method} ${duongDan}`);
@@ -84,7 +84,7 @@ describe('TB1: khớp tài liệu theo cả id và maTaiLieu', () => {
     const res = await goi('post', '/troLyAi/hoiDap', token.nhanvien).send({ cauHoi: 'Nghỉ kết hôn?' });
     expect(res.status).toBe(200);
     expect(res.body.data.nguonTrichDan.map((n) => `${n.taiLieuId}|${n.maTaiLieu}`)).toEqual(['2|QC-NGHIPHEP']);
-    const [, tuyChon] = goiAi.mock.calls.find(([d]) => d === '/noiBo/rag/hoiDap');
+    const [, tuyChon] = goiAi.mock.calls.find(([d]) => d === '/noiBo/troLy/xuLy');
     expect(tuyChon.body.taiLieuHienCo).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 2, maTaiLieu: 'QC-NGHIPHEP' }),
