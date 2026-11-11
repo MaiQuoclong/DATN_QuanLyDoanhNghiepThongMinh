@@ -15,6 +15,7 @@ const { deXuatRouter, quyetDinhRouter } = require('./khenThuongKyLuatRoutes');
 const ngayLeRoutes = require('./ngayLeRoutes');
 const taiLieuQuyCheRoutes = require('./taiLieuQuyCheRoutes');
 const { router: troLyAiRoutes } = require('./troLyAiRoutes');
+const { router: baoCaoAiRoutes } = require('./baoCaoAiRoutes');
 
 // Router gốc /api/v1: các module sau gắn thêm tại đây, ví dụ router.use('/nhanVien', nhanVienRoutes)
 const router = express.Router();
@@ -39,6 +40,7 @@ router.use('/quyetDinhKhenThuongKyLuat', quyetDinhRouter);
 router.use('/ngayLe', ngayLeRoutes);
 router.use('/taiLieuQuyChe', taiLieuQuyCheRoutes);
 router.use('/troLyAi', troLyAiRoutes);
+router.use('/baoCaoAi', baoCaoAiRoutes);
 // Các router gắn ở '/' tự gắn xacThucJwt theo từng route (không router.use) để đường dẫn lạ vẫn trả 404
 router.use('/', heThongRoutes);
 router.use('/', coCauToChucRoutes);
