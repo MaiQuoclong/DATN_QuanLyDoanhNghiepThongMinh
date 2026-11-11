@@ -106,6 +106,18 @@ jobs:
           CSDL_TEN: quanlydoanhnghiepthongminh
           AI_CSDL_MAT_KHAU: ci-mat-khau-chi-doc-gia
         run: npm ci && npm run khoiTaoCsdl
+      # Runner nối vào container qua cổng ánh xạ → MariaDB thấy IP cổng docker (172.x), không phải 127.0.0.1,
+      # nên aiReadonly@127.0.0.1 bị "Access denied". Chỉ trong CI: sao chép đúng quyền sang aiReadonly@'%'.
+      - name: Cho aiReadonly đăng nhập từ cổng docker (chỉ CI)
+        working-directory: .
+        run: |
+          {
+            echo "CREATE USER 'aiReadonly'@'%' IDENTIFIED BY '${CSDL_MAT_KHAU_TEST}';"
+            mysql -h 127.0.0.1 -P 3306 -u root -N -e "SHOW GRANTS FOR 'aiReadonly'@'127.0.0.1'" \
+              | grep -v '^GRANT USAGE' | sed "s/'aiReadonly'@'127.0.0.1'/'aiReadonly'@'%'/; s/\$/;/"
+          } > /tmp/capQuyenCi.sql
+          mysql -h 127.0.0.1 -P 3306 -u root < /tmp/capQuyenCi.sql
+          mysql -h 127.0.0.1 -P 3306 -u aiReadonly -p"${CSDL_MAT_KHAU_TEST}" -e "SELECT COUNT(*) FROM quanlydoanhnghiepthongminh.phongban"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
