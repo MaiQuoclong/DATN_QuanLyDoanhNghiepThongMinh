@@ -4,6 +4,7 @@ const kiemTraDuLieu = require('../middlewares/kiemTraDuLieu');
 const phanQuyen = require('../middlewares/phanQuyen');
 const { xacThucJwt } = require('../middlewares/xacThucJwt');
 const chamCongController = require('../controllers/chamCongController');
+const { LUAT_TAO_YEU_CAU } = require('../services/chamCongService');
 
 const MOI_VAI_TRO = ['Admin', 'giamDoc', 'quanLy', 'HR', 'nhanVien'];
 const XEM_BANG_CONG = ['HR', 'giamDoc', 'quanLy'];
@@ -35,17 +36,7 @@ dieuChinhRouter.use(xacThucJwt);
 
 dieuChinhRouter.get('/', phanQuyen(XEM_BANG_CONG), batLoiBatDongBo(chamCongController.layDanhSachYeuCau));
 dieuChinhRouter.get('/cuaToi', phanQuyen(MOI_VAI_TRO), batLoiBatDongBo(chamCongController.layYeuCauCuaToi));
-dieuChinhRouter.post(
-  '/',
-  phanQuyen(MOI_VAI_TRO),
-  kiemTraDuLieu({
-    ngayCanDieuChinh: { nhan: 'Ngày cần điều chỉnh', batBuoc: true, kieu: 'ngay' },
-    gioVaoDeXuat: { nhan: 'Giờ vào đề xuất', kieu: 'gio' },
-    gioRaDeXuat: { nhan: 'Giờ ra đề xuất', kieu: 'gio' },
-    lyDoGiaiTrinh: { nhan: 'Lý do giải trình', batBuoc: true, toiThieu: 5, toiDa: 1000 },
-  }),
-  batLoiBatDongBo(chamCongController.taoYeuCau),
-);
+dieuChinhRouter.post('/', phanQuyen(MOI_VAI_TRO), kiemTraDuLieu(LUAT_TAO_YEU_CAU), batLoiBatDongBo(chamCongController.taoYeuCau));
 dieuChinhRouter.post('/:id/duyet', phanQuyen(XEM_BANG_CONG), batLoiBatDongBo(chamCongController.duyetYeuCau));
 dieuChinhRouter.post(
   '/:id/tuChoi',
