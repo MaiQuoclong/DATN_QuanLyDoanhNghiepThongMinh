@@ -4,7 +4,8 @@ import NutBam from './NutBam';
 import OChonNhanVien from './OChonNhanVien';
 
 // Hộp thoại biểu mẫu theo cấu hình trường.
-// truong: [{ ten, nhan, kieu?: 'text'|'date'|'number'|'select'|'textarea'|'nhanVien',
+// truong: [{ ten, nhan, kieu?: 'text'|'date'|'number'|'select'|'textarea'|'nhanVien'|'tep',
+//            chapNhan? (kieu 'tep': thuộc tính accept, giá trị trường là File hoặc ''),
 //            luaChon?: [{giaTri, nhan}] hoặc hàm (giaTriForm) => [...] khi lựa chọn phụ thuộc trường khác,
 //            locNhanVien? (kieu 'nhanVien', xem OChonNhanVien), batBuoc?, rongHet?, goiY?, ghiChu? }]
 // loiNgoai: lỗi của trang phát sinh khi hộp thoại đang mở (để không bị lớp phủ che).
@@ -59,8 +60,8 @@ function HopThoaiBieuMau({ tieuDe, truong, giaTriBanDau = {}, nhanNutGui = 'Lưu
       {loi && <div className="thongBao loi">{loi}</div>}
       {loiNgoai && loiNgoai !== loi && <div className="thongBao loi">{loiNgoai}</div>}
       <form id="hopThoaiBieuMau" className="bieuMau" onSubmit={gui}>
-        {truong.map(({ ten, nhan, kieu = 'text', luaChon = [], locNhanVien, batBuoc, rongHet, goiY, ghiChu }) => (
-          <label key={ten} className={`truongForm ${rongHet || ['textarea', 'nhanVien'].includes(kieu) ? 'rongHet' : ''}`}>
+        {truong.map(({ ten, nhan, kieu = 'text', luaChon = [], locNhanVien, chapNhan, batBuoc, rongHet, goiY, ghiChu }) => (
+          <label key={ten} className={`truongForm ${rongHet || ['textarea', 'nhanVien', 'tep'].includes(kieu) ? 'rongHet' : ''}`}>
             {nhan}
             {batBuoc && ' *'}
             {kieu === 'nhanVien' && <OChonNhanVien value={giaTri[ten]} onChange={doi(ten)} loc={locNhanVien} batBuoc={batBuoc} />}
@@ -75,7 +76,15 @@ function HopThoaiBieuMau({ tieuDe, truong, giaTriBanDau = {}, nhanNutGui = 'Lưu
               </select>
             )}
             {kieu === 'textarea' && <textarea value={giaTri[ten]} onChange={doi(ten)} required={batBuoc} placeholder={goiY} />}
-            {!['select', 'textarea', 'nhanVien'].includes(kieu) && (
+            {kieu === 'tep' && (
+              <input
+                type="file"
+                accept={chapNhan}
+                required={batBuoc}
+                onChange={(e) => setGiaTri((cu) => ({ ...cu, [ten]: e.target.files?.[0] ?? '' }))}
+              />
+            )}
+            {!['select', 'textarea', 'nhanVien', 'tep'].includes(kieu) && (
               <input
                 type={kieu}
                 value={giaTri[ten]}

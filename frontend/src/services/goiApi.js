@@ -17,8 +17,16 @@ const THONG_BAO_CAN_DOI_MAT_KHAU = 'Bạn cần đổi mật khẩu tạm trư�
 // Trả thẳng phần body chuẩn { success, code, message, data }
 goiApi.interceptors.response.use(
   (phanHoi) => phanHoi.data,
-  (loi) => {
-    const body = loi.response?.data;
+  async (loi) => {
+    let body = loi.response?.data;
+    // Request responseType 'blob' (tải tệp): body lỗi là Blob JSON -> đọc lại để xét thông báo và trả message
+    if (body instanceof Blob) {
+      try {
+        body = JSON.parse(await body.text());
+      } catch {
+        body = undefined;
+      }
+    }
     const trangThai = loi.response?.status;
     // Phiên bị từ chối -> báo NguCanhXacThuc đăng xuất (không áp dụng cho sai mật khẩu khi đăng nhập)
     if (trangThai === 401 && loi.config?.url !== DUONG_DAN_DANG_NHAP) {

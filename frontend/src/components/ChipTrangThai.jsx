@@ -33,6 +33,10 @@ const BANG_TRANG_THAI = {
   // Khen thưởng - kỷ luật (loaiQuyetDinh / loaiDeXuat)
   KHEN_THUONG: ['Khen thưởng', 'xanh'],
   KY_LUAT: ['Kỷ luật', 'do'],
+  // Chỉ mục RAG của tài liệu quy chế (frontend suy ra từ soDoanChiMuc, không lưu CSDL)
+  DA_LAP_CHI_MUC: ['Đã lập chỉ mục', 'xanh'],
+  CHUA_LAP_CHI_MUC: ['Chưa lập chỉ mục', 'cam'],
+  KHONG_RO_CHI_MUC: ['Không rõ', 'xam'],
 };
 
 // kieu: 'cham' (chấm tròn + chữ, dùng trong bảng) | 'chip' (nền nhạt, dùng ở header)

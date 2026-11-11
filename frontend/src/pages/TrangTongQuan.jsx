@@ -19,6 +19,7 @@ function TrangTongQuan() {
   }, []);
 
   const csdlKetNoi = sucKhoe?.csdl === 'KET_NOI';
+  const aiHoatDong = sucKhoe?.ai === 'HOAT_DONG';
 
   return (
     <div>
@@ -45,6 +46,14 @@ function TrangTongQuan() {
           giaTri={!sucKhoe ? '—' : csdlKetNoi ? 'Đã kết nối' : 'Mất kết nối'}
           moTa="MariaDB - quanlydoanhnghiepthongminh"
           trangThai={!sucKhoe ? undefined : csdlKetNoi ? 'thanhCong' : 'loi'}
+        />
+        <TheThongKe
+          tieuDe="Trợ lý AI"
+          giaTri={!sucKhoe ? '—' : aiHoatDong ? 'Hoạt động' : 'Mất kết nối'}
+          moTa={
+            !sucKhoe || !aiHoatDong ? 'AI service - FastAPI' : sucKhoe.llm === 'DA_CAU_HINH' ? 'Đã cấu hình LLM' : 'Chưa cấu hình khóa LLM'
+          }
+          trangThai={!sucKhoe ? undefined : aiHoatDong && sucKhoe.llm === 'DA_CAU_HINH' ? 'thanhCong' : 'loi'}
         />
         <TheThongKe
           tieuDe="Đăng nhập lần trước"

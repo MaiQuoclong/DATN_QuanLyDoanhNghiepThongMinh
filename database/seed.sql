@@ -339,7 +339,10 @@ INSERT INTO dondexuatnghiphep (id, maDon, nhanVienId, loaiNghiPhepId, ngayBatDau
    'FORM_GIAO_DIEN', 'TU_CHOI', 9, 'Phòng đang chạy chiến dịch bán hàng, đề nghị dời sang tuần sau',
    TIMESTAMP(@thu2ThangTruoc, '11:00:00'), TIMESTAMP(DATE_SUB(@thu2ThangTruoc, INTERVAL 2 DAY), '08:00:00')),
   (11, 'TAM-11', 5, 1, DATE_ADD(@thu2Toi, INTERVAL 14 DAY), DATE_ADD(@thu2Toi, INTERVAL 14 DAY), 1.0, 'Đi khám răng',
-   'FORM_GIAO_DIEN', 'DA_HUY', NULL, NULL, NULL, TIMESTAMP(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '15:00:00'));
+   'FORM_GIAO_DIEN', 'DA_HUY', NULL, NULL, NULL, TIMESTAMP(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '15:00:00')),
+  -- 5.5: đơn tạo qua Trợ lý AI (người dùng đã bấm Xác nhận trên thẻ xem trước) — chờ trưởng phòng duyệt
+  (12, 'TAM-12', 5, 1, DATE_ADD(@thu2Toi, INTERVAL 4 DAY), DATE_ADD(@thu2Toi, INTERVAL 4 DAY), 1.0, 'Đưa bố mẹ đi khám bệnh',
+   'AI_CHAT', 'CHO_DUYET', NULL, NULL, NULL, LEAST(TIMESTAMP(CURDATE(), '10:15:00'), NOW()));
 
 -- Đơn trong 1 ngày rơi vào thứ 7, Chủ nhật hoặc ngày lễ (mốc theo CURDATE()): dời sang ngày làm việc kế tiếp
 UPDATE dondexuatnghiphep d
@@ -570,3 +573,47 @@ INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao
   (4, 'TU_CHOI_DE_XUAT_KTKL', '127.0.0.1', 'Đề xuất #3', LEAST(TIMESTAMP(CURDATE() - INTERVAL 9 DAY, '15:00:00'), NOW())),
   (3, 'TAO_DE_XUAT_KTKL', '127.0.0.1', 'KHEN_THUONG NV0005: Khen thưởng hỗ trợ khách hàng xuất sắc', LEAST(TIMESTAMP(CURDATE() - INTERVAL 2 DAY, '09:00:00'), NOW())),
   (9, 'TAO_DE_XUAT_KTKL', '127.0.0.1', 'KY_LUAT NV0010: Kỷ luật vi phạm quy trình báo giá', LEAST(TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '14:00:00'), NOW()));
+
+-- ---------------------------------------------------------------------
+-- Tài liệu quy chế (Module 5 RAG): tệp mẫu .md nằm sẵn trong backend/uploads/quyChe/mau/ (commit kèm mã nguồn);
+-- duongDanTep tương đối so với THU_MUC_TAI_LIEU. HR NV0004 tải lên.
+-- ---------------------------------------------------------------------
+INSERT INTO tailieuquyche (id, maTaiLieu, tieuDe, duongDanTep, nguoiTaiLenId, ngayTao) VALUES
+  (1, 'QC-NOIQUY',   'Nội quy lao động',       'mau/QC-NOIQUY.md',   4, LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:00:00'), NOW())),
+  (2, 'QC-NGHIPHEP', 'Quy chế nghỉ phép',      'mau/QC-NGHIPHEP.md', 4, LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:10:00'), NOW())),
+  (3, 'QC-LUONG',    'Quy chế lương, thưởng',  'mau/QC-LUONG.md',    4, LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:20:00'), NOW()));
+
+INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
+  (4, 'TAI_LEN_TAI_LIEU', '127.0.0.1', 'QC-NOIQUY (id 1)',   LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:00:00'), NOW())),
+  (4, 'TAI_LEN_TAI_LIEU', '127.0.0.1', 'QC-NGHIPHEP (id 2)', LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:10:00'), NOW())),
+  (4, 'TAI_LEN_TAI_LIEU', '127.0.0.1', 'QC-LUONG (id 3)',    LEAST(TIMESTAMP(CURDATE() - INTERVAL 30 DAY, '09:20:00'), NOW()));
+
+-- ---------------------------------------------------------------------
+-- Trợ lý AI (5.4): phiên trò chuyện mẫu cho cả 5 vai trò (tin nhắn lưu ở SQLite của ai-service,
+-- phiên seed chưa có tin nhắn; đặt câu hỏi trên trang /troLyAi để demo).
+-- thoiGianTao theo NOW() (tới giây) để mỗi lần khoiTaoCsdl phiên có dauPhien mới: không hiện lại lịch sử cũ.
+-- ---------------------------------------------------------------------
+INSERT INTO phientrochuyenai (id, nguoiDungId, tieuDePhien, thoiGianTao) VALUES
+  (1, 1, 'Quy định về giờ làm việc',          NOW() - INTERVAL 2 DAY - INTERVAL 70 MINUTE),
+  (2, 2, 'Chính sách thưởng Tết',             NOW() - INTERVAL 2 DAY - INTERVAL 40 MINUTE),
+  (3, 3, 'Quy trình duyệt đơn nghỉ phép',     NOW() - INTERVAL 1 DAY - INTERVAL 300 MINUTE),
+  (4, 4, 'Cách tính phép năm theo thâm niên', NOW() - INTERVAL 1 DAY - INTERVAL 200 MINUTE),
+  (5, 4, 'Kỷ luật đi muộn',                   NOW() - INTERVAL 1 DAY - INTERVAL 140 MINUTE),
+  (6, 5, 'Nghỉ kết hôn được mấy ngày',        NOW() - INTERVAL 1 DAY - INTERVAL 80 MINUTE),
+  (7, 6, 'Ngày trả lương hằng tháng',         NOW() - INTERVAL 3 DAY - INTERVAL 30 MINUTE);
+
+-- Trợ lý AI tạo đơn (5.5): dấu vết đơn mẫu id 12 do AI soạn (cùng định dạng chiTiet với troLyAiService)
+INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao)
+SELECT 5, 'AI_TAO_DON', '127.0.0.1', CONCAT('NGHI_PHEP ', maDon, ' (id 12)'), LEAST(TIMESTAMP(CURDATE(), '10:15:00'), NOW())
+  FROM dondexuatnghiphep WHERE id = 12;
+
+-- ---------------------------------------------------------------------
+-- Báo cáo AI Text-to-SQL (5.6): nhật ký mẫu để Admin/giamDoc xem trang Nhật ký (lọc AI_TEXT_TO_SQL)
+-- ---------------------------------------------------------------------
+INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao) VALUES
+  (2, 'AI_TEXT_TO_SQL', '127.0.0.1',
+   '{"cauHoi":"Số nhân viên theo từng phòng ban","phamVi":"TOAN_CONG_TY","ketQua":"KET_QUA","soDong":5}',
+   NOW() - INTERVAL 2 DAY),
+  (3, 'AI_TEXT_TO_SQL', '127.0.0.1',
+   '{"cauHoi":"Lương tháng trước của nhân viên phòng tôi","phamVi":"PHONG_BAN","ketQua":"TU_CHOI","soDong":0,"lyDo":"Bạn không có quyền truy vấn dữ liệu lương/hợp đồng"}',
+   NOW() - INTERVAL 1 DAY);
