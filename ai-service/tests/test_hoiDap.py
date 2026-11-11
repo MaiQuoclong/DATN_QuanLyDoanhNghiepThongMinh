@@ -21,8 +21,8 @@ def llmGia(monkeypatch):
     """Ghi lại lời gọi LLM; traLoi đặt được từng test, loi = LoiLlm để giả lập LLM hỏng."""
     trangThai = {"traLoi": "Bạn được nghỉ 03 ngày [1].", "loi": None, "loiGoi": []}
 
-    def goiLlmGia(heThong, tinNhan, soTokenToiDa=2048, mucNoLuc="low"):
-        trangThai["loiGoi"].append({"heThong": heThong, "tinNhan": tinNhan})
+    def goiLlmGia(heThong, tinNhan, soTokenToiDa=2048, mucNoLuc="low", thoiGianCho=None):
+        trangThai["loiGoi"].append({"heThong": heThong, "tinNhan": tinNhan, "thoiGianCho": thoiGianCho})
         if trangThai["loi"]:
             raise trangThai["loi"]
         return trangThai["traLoi"]

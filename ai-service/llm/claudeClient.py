@@ -29,10 +29,18 @@ def daCauHinhLlm() -> bool:
     return bool(layCauHinh().anthropicApiKey)
 
 
-def goiLlm(heThong: str, tinNhan: list[dict], soTokenToiDa: int = 2048, mucNoLuc: str = "low") -> str:
-    """Gọi LLM và trả văn bản. tinNhan theo định dạng Messages API [{role, content}]."""
+def goiLlm(
+    heThong: str, tinNhan: list[dict], soTokenToiDa: int = 2048, mucNoLuc: str = "low", thoiGianCho: float | None = None
+) -> str:
+    """Gọi LLM và trả văn bản. tinNhan theo định dạng Messages API [{role, content}].
+
+    thoiGianCho (giây): rút ngắn thời gian chờ cho riêng lần gọi này (VD theo hạn chót của Express);
+    None = LLM_TIMEOUT_GIAY."""
+    client = _layClient()
+    if thoiGianCho is not None:
+        client = client.with_options(timeout=thoiGianCho)
     try:
-        phanHoi = _layClient().messages.create(
+        phanHoi = client.messages.create(
             model=layCauHinh().moHinhLlm,
             max_tokens=soTokenToiDa,
             system=heThong,

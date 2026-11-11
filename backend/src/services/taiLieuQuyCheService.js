@@ -26,6 +26,13 @@ function giaiDuongDanTep(duongDanTep) {
   return tuyetDoi;
 }
 
+// Tài liệu còn trong CSDL gửi ai-service để dọn vector mồ côi: theo id và theo cặp {id, maTaiLieu}
+// (id tự tăng có thể bị cấp lại cho tài liệu khác sau khoiTaoCsdl trong khi kho Chroma vẫn giữ vector cũ)
+async function layDanhSachHienCo() {
+  const taiLieuHienCo = await taiLieuQuyCheRepository.layTatCaIdVaMa();
+  return { taiLieuIdsHienCo: taiLieuHienCo.map((t) => t.id), taiLieuHienCo };
+}
+
 const THU_MUC_TEP_MAU = 'mau/';
 function laTepMau(duongDanTep) {
   return duongDanTep.replaceAll('\\', '/').startsWith(THU_MUC_TEP_MAU);
@@ -102,7 +109,7 @@ async function goiLapChiMuc(nguoiDung, taiLieu, diaChiIP) {
       maTaiLieu: taiLieu.maTaiLieu,
       tieuDe: taiLieu.tieuDe,
       duongDanTep: taiLieu.duongDanTep.replaceAll('\\', '/'),
-      taiLieuIdsHienCo: await taiLieuQuyCheRepository.layTatCaId(),
+      ...(await layDanhSachHienCo()),
     },
     thoiGianCho: THOI_GIAN_CHO_LAP_CHI_MUC,
   });
@@ -121,7 +128,9 @@ async function lapChiMuc(nguoiDung, id, diaChiIP) {
   return { id, ...(await goiLapChiMuc(nguoiDung, taiLieu, diaChiIP)) };
 }
 
-// HR tải lên: ghi tệp tên uuid → INSERT; INSERT lỗi (VD trùng mã khi hai người tải đồng thời) thì xóa tệp vừa ghi
+// HR tải lên: ghi tệp tạm `<uuid>.<duoi>.tmp` → INSERT → đổi tên thành tệp thật.
+// INSERT lỗi (VD trùng mã khi hai người tải đồng thời) thì xóa tệp tạm; tiến trình chết giữa chừng chỉ để lại
+// tệp `.tmp` (nhận biết được, không bản ghi nào trỏ tới), không còn tệp uuid mồ côi trông như tệp thật.
 async function taiLen(nguoiDung, { maTaiLieu, tieuDe }, tep, diaChiIP) {
   if (!nguoiDung.nhanVienId) {
     throw new LoiUngDung(403, 'Tài khoản chưa gắn hồ sơ nhân viên nên không thể tải lên tài liệu');
@@ -132,14 +141,23 @@ async function taiLen(nguoiDung, { maTaiLieu, tieuDe }, tep, diaChiIP) {
   const duongDanTep = `${crypto.randomUUID()}${tep.duoiTep}`;
   const tuyetDoi = giaiDuongDanTep(duongDanTep);
   await fs.mkdir(path.dirname(tuyetDoi), { recursive: true });
-  await fs.writeFile(tuyetDoi, tep.buffer, { flag: 'wx' });
+  const tepTam = `${tuyetDoi}.tmp`;
+  await fs.writeFile(tepTam, tep.buffer, { flag: 'wx' });
 
   let id;
   try {
     id = await taiLieuQuyCheRepository.them({ maTaiLieu, tieuDe, duongDanTep, nguoiTaiLenId: nguoiDung.nhanVienId });
   } catch (loi) {
-    await fs.rm(tuyetDoi, { force: true });
+    await fs.rm(tepTam, { force: true });
     if (loi.code === 'ER_DUP_ENTRY') throw new LoiUngDung(409, `Mã tài liệu ${maTaiLieu} đã tồn tại`);
+    throw loi;
+  }
+  try {
+    await fs.rename(tepTam, tuyetDoi);
+  } catch (loi) {
+    // Không đổi tên được thì bản ghi trỏ tới tệp không có: gỡ bản ghi + tệp tạm để HR tải lại được
+    await taiLieuQuyCheRepository.xoa(id);
+    await fs.rm(tepTam, { force: true });
     throw loi;
   }
   await ghiNhatKy(nguoiDung.nguoiDungId, 'TAI_LEN_TAI_LIEU', diaChiIP, `${maTaiLieu} (id ${id})`);
@@ -156,6 +174,12 @@ async function taiLen(nguoiDung, { maTaiLieu, tieuDe }, tep, diaChiIP) {
     if (!(loi instanceof LoiUngDung)) console.error(`[taiLieuQuyChe] Lập chỉ mục ${maTaiLieu} lỗi: ${loi.message}`);
     const lyDo = loi instanceof LoiUngDung ? loi.message : 'lỗi hệ thống';
     canhBao = `Đã lưu tài liệu nhưng chưa lập được chỉ mục cho Trợ lý AI: ${lyDo}`;
+    // Best-effort: xóa vector cũ có thể còn cùng id (id cấp lại sau khoiTaoCsdl) để không trích dẫn nhầm
+    try {
+      await aiClientService.goiAiService(`/noiBo/rag/taiLieu/${id}`, { method: 'DELETE' });
+    } catch (loiXoa) {
+      console.error(`[taiLieuQuyChe] Chưa xóa được chỉ mục cũ của id ${id}: ${loiXoa.message}`);
+    }
   }
   return { ...(await dinhDangTaiLieu(taiLieu)), soDoanChiMuc: chiMuc ? chiMuc.soDoan : null, canhBao };
 }

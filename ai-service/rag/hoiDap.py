@@ -66,10 +66,17 @@ def _taoNguon(doan: dict, soThuTu: int) -> dict:
     }
 
 
-def truyHoi(cauHoi: str, taiLieuIdsHienCo: list[int] | None) -> list[dict]:
-    """Các đoạn đạt ngưỡng, bỏ đoạn của tài liệu không còn trong CSDL (vector mồ côi chưa dọn)."""
+def truyHoi(
+    cauHoi: str, taiLieuIdsHienCo: list[int] | None, taiLieuHienCo: dict[int, str] | None = None
+) -> list[dict]:
+    """Các đoạn đạt ngưỡng, bỏ đoạn của tài liệu không còn trong CSDL (vector mồ côi chưa dọn).
+
+    taiLieuHienCo {id: maTaiLieu}: khớp cả mã, vì sau `khoiTaoCsdl` id tự tăng có thể cấp lại cho tài liệu
+    khác trong khi vector của tài liệu cũ cùng id vẫn còn trong Chroma → không trích dẫn nhầm tài liệu cũ."""
     ketQua = khoVector.timKiem(nhung.nhungCauHoi(cauHoi), SO_DOAN_TRUY_HOI)
-    if taiLieuIdsHienCo is not None:
+    if taiLieuHienCo is not None:
+        ketQua = [k for k in ketQua if taiLieuHienCo.get(k["taiLieuId"]) == k["maTaiLieu"]]
+    elif taiLieuIdsHienCo is not None:
         hopLe = set(taiLieuIdsHienCo)
         ketQua = [k for k in ketQua if k["taiLieuId"] in hopLe]
     nguong = layCauHinh().nguongDiemRag
@@ -135,12 +142,33 @@ def _kiemTraHanChot(hanChot: int | None) -> None:
         raise LoiQuaHanChot("Quá hạn chờ của backend")
 
 
+# Để dành sau khi LLM trả lời: hậu kiểm + ghi lịch sử phải xong trước hạn chót
+DU_PHONG_SAU_LLM_GIAY = 1.0
+
+
+def _thoiGianChoLlm(hanChot: int | None) -> float | None:
+    """Thời gian chờ LLM (giây) không vượt phần còn lại tới hạn chót; None = dùng mặc định.
+
+    Trả 0 khi còn dưới 1 giây: bỏ qua LLM, trả lời dự phòng ngay (không trả tiền gọi LLM rồi bỏ kết quả)."""
+    if hanChot is None:
+        return None
+    conLai = (hanChot - time.time() * 1000) / 1000 - DU_PHONG_SAU_LLM_GIAY
+    if conLai < 1:
+        return 0
+    return min(layCauHinh().thoiGianChoLlm, conLai)
+
+
 def hoiDap(
-    phienId: int, dauPhien: str, cauHoi: str, taiLieuIdsHienCo: list[int] | None = None, hanChot: int | None = None
+    phienId: int,
+    dauPhien: str,
+    cauHoi: str,
+    taiLieuIdsHienCo: list[int] | None = None,
+    hanChot: int | None = None,
+    taiLieuHienCo: dict[int, str] | None = None,
 ) -> dict:
     """hanChot (epoch ms, Express gửi): quá hạn thì bỏ, để màn hình (đã báo lỗi, gỡ câu hỏi) khớp lịch sử lưu."""
     cauHoi = cauHoi.strip()
-    doanTruyHoi = truyHoi(cauHoi, taiLieuIdsHienCo)
+    doanTruyHoi = truyHoi(cauHoi, taiLieuIdsHienCo, taiLieuHienCo)
     _kiemTraHanChot(hanChot)
 
     if not doanTruyHoi:
@@ -151,7 +179,10 @@ def hoiDap(
             {"role": "user", "content": f"<tai_lieu>\n{nguCanh}\n</tai_lieu>\n\nCâu hỏi: {cauHoi}"}
         ]
         try:
-            traLoiLlm = goiLlm(HE_THONG, tinNhan, soTokenToiDa=1024)
+            thoiGianCho = _thoiGianChoLlm(hanChot)
+            if thoiGianCho == 0:
+                raise LoiLlm("Không còn đủ thời gian chờ LLM")
+            traLoiLlm = goiLlm(HE_THONG, tinNhan, soTokenToiDa=1024, thoiGianCho=thoiGianCho)
             cheDo = "LLM"
             traLoi, nguon = hauKiemTrichDan(traLoiLlm, doanTruyHoi)
         except LoiLlm:

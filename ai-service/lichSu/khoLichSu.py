@@ -14,6 +14,7 @@ from pathlib import Path
 
 from cauHinh import layCauHinh
 
+
 class LoiLichSu(Exception):
     """Không đọc/ghi được SQLite lịch sử."""
 
