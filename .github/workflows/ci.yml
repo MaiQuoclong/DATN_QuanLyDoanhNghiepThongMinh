@@ -114,7 +114,7 @@ jobs:
           {
             echo "CREATE USER 'aiReadonly'@'%' IDENTIFIED BY '${CSDL_MAT_KHAU_TEST}';"
             mysql -h 127.0.0.1 -P 3306 -u root -N -e "SHOW GRANTS FOR 'aiReadonly'@'127.0.0.1'" \
-              | grep -v '^GRANT USAGE' | sed "s/'aiReadonly'@'127.0.0.1'/'aiReadonly'@'%'/; s/\$/;/"
+              | grep -v '^GRANT USAGE' | sed -E "s/@[\`']127\.0\.0\.1[\`']/@'%'/; s/\$/;/"
           } > /tmp/capQuyenCi.sql
           mysql -h 127.0.0.1 -P 3306 -u root < /tmp/capQuyenCi.sql
           mysql -h 127.0.0.1 -P 3306 -u aiReadonly -p"${CSDL_MAT_KHAU_TEST}" -e "SELECT COUNT(*) FROM quanlydoanhnghiepthongminh.phongban"
