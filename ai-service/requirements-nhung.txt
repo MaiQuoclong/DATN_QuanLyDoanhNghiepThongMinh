@@ -1,0 +1,3 @@
+# Model embedding thật (kéo theo torch, nặng): chỉ cài trên máy chạy demo, CI/test dùng MO_HINH_NHUNG=gia
+-r requirements.txt
+sentence-transformers==6.2.0
