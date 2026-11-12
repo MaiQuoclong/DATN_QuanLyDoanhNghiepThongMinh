@@ -261,8 +261,17 @@ def xuLy(
         )
     except LoiLlm:
         ragHoiDap._kiemTraHanChot(hanChot)
-        luot = khoLichSu.themLuotHoiDap(phienId, dauPhien, cauHoi, TRA_LOI_DU_PHONG, [], {"loaiPhanHoi": "TRA_LOI"})
-        return _ketQua(phienId, TRA_LOI_DU_PHONG, "DU_PHONG", "TRA_LOI", luot)
+        traLoi, nguon = TRA_LOI_DU_PHONG, []
+        if dangDo is None:
+            # Câu khớp từ khóa tạo đơn có thể chỉ là câu hỏi quy chế ("đơn nghỉ phép > 5 ngày ai duyệt?"):
+            # truy hồi không cần LLM, trả nguyên văn quy chế kèm nguồn rồi mới gợi ý tạo đơn bằng form.
+            doanTruyHoi = ragHoiDap.truyHoi(cauHoi, taiLieuIdsHienCo, taiLieuHienCo)
+            ragHoiDap._kiemTraHanChot(hanChot)
+            if doanTruyHoi:
+                trich, nguon = ragHoiDap._traLoiDuPhong(doanTruyHoi)
+                traLoi = f"{trich}\n\nNếu bạn muốn tạo đơn: {TRA_LOI_DU_PHONG}"
+        luot = khoLichSu.themLuotHoiDap(phienId, dauPhien, cauHoi, traLoi, nguon, {"loaiPhanHoi": "TRA_LOI"})
+        return _ketQua(phienId, traLoi, "DU_PHONG", "TRA_LOI", luot, nguon)
 
     if ketQuaLlm is None and dangDo and dangDo["nguon"] == "HOI_LAI":
         # Đang hỏi lại mà LLM không gọi tool (câu trả lời mơ hồ): giữ tham số đã gom, hỏi lại phần còn thiếu

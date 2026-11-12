@@ -9,7 +9,7 @@ Duyệt: 2026-11-11. Không đổi `database/schema.sql`.
 | Env/CI | Được sửa `backend/.env.example`, `ai-service/.env.example`, `.github/workflows/ci.yml` (job ai-service có MariaDB 10.4 + test tích hợp `@pytest.mark.csdl`) |
 | Q2 | ai-service chạy SQL (PyMySQL, `aiReadonly`, `SET SESSION TRANSACTION READ ONLY`, `SET STATEMENT max_statement_time=5 FOR …` — MariaDB 10.4 không có `MAX_EXECUTION_TIME`), `connect_timeout=3`, `read_timeout=8`, `fetchmany(201)` |
 | Q3 | Không mở `nguoidung`, `nguoidungvaitro`, `vaitro`, `nhatkyhethong`, `phientrochuyenai`, `tailieuquyche` cho LLM, không GRANT |
-| Q4 | Trang riêng `/baoCaoAi` (menu chỉ `giamDoc`, `HR`, `quanLy`) |
+| Q4 | Tab "Trợ lý AI → Báo cáo dữ liệu" `/troLyAi/baoCao` (menu chỉ `giamDoc`, `HR`, `quanLy`) |
 | Q5 | `SELECT *` của `quanLy` mở rộng thành cột được phép (bỏ `soTaiKhoanNganHang`, `tenNganHang`, `nguoiDungId`) |
 | Q6 | Hiện SQL đã chạy, thu gọn |
 

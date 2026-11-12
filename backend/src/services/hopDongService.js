@@ -132,7 +132,8 @@ async function layCuaToi(nguoiDung) {
 async function layChiTiet(nguoiDung, id) {
   const hopDong = await layHopDongHoacLoi(id);
   if (hopDong.nhanVienId !== nguoiDung.nhanVienId && !xemToanCongTy(nguoiDung.vaiTro)) {
-    throw new LoiUngDung(403, 'Bạn không có quyền xem hợp đồng này');
+    // Ngoài phạm vi trả 404 (cùng quy ước nhanVien, lương, KPI) để không lộ id hợp đồng nào tồn tại
+    throw new LoiUngDung(404, 'Không tìm thấy hợp đồng');
   }
   return { ...hopDong, lichSu: await hopDongRepository.layLichSu(id) };
 }

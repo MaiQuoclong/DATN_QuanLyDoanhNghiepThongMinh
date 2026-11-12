@@ -223,12 +223,12 @@ describe('Phân quyền 5 vai trò', () => {
 
   test.each([
     ['nhanvien', 6, 200],
-    ['nhanvien', 7, 403],
-    ['nhanvien', 1, 403],
+    ['nhanvien', 7, 404],
+    ['nhanvien', 1, 404],
     ['admin', 5, 200],
-    ['admin', 6, 403],
+    ['admin', 6, 404],
     ['quanly', 3, 200],
-    ['quanly', 6, 403],
+    ['quanly', 6, 404],
     ['giamdoc', 6, 200],
     ['hr', 1, 200],
   ])('%s xem chi tiết hợp đồng %i -> %i', async (ten, id, ma) => {
@@ -238,7 +238,7 @@ describe('Phân quyền 5 vai trò', () => {
       expect(res.body).toMatchObject({ success: true, code: 200, data: { id } });
       expect(Array.isArray(res.body.data.lichSu)).toBe(true);
     } else {
-      expect(res.body).toMatchObject({ success: false, code: 403, data: null });
+      expect(res.body).toMatchObject({ success: false, code: 404, data: null });
     }
   });
 

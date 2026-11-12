@@ -169,6 +169,26 @@ def test_loiLlmTraDuPhong(llm, rag):
     assert len(khoLichSu.layTinNhan(1, DAU)) == 2
 
 
+def test_loiLlmCauHoiQuyCheVanTrichNguyenVan(llm, rag, monkeypatch):
+    # "Đơn nghỉ phép dài hơn 5 ngày do ai duyệt?" khớp từ khóa tạo đơn; LLM lỗi vẫn phải trả quy chế kèm nguồn
+    doan = {"taiLieuId": 2, "maTaiLieu": "QC-NGHIPHEP", "tieuDe": "Quy chế nghỉ phép", "dieu": 5, "khoan": 2,
+            "tenDieu": "Thẩm quyền duyệt", "noiDung": "Đơn trên 5 ngày do Giám đốc duyệt.", "diem": 0.9}
+    monkeypatch.setattr(trichXuat.ragHoiDap, "truyHoi", lambda *a, **k: [doan])
+    llm["ketQua"] = LoiLlm("hỏng")
+    kq = xuLy("Đơn nghỉ phép dài hơn 5 ngày do ai duyệt?")
+    assert not rag
+    assert kq["cheDo"] == "DU_PHONG" and kq["loaiPhanHoi"] == "TRA_LOI"
+    assert "Đơn trên 5 ngày do Giám đốc duyệt." in kq["traLoi"] and trichXuat.TRA_LOI_DU_PHONG in kq["traLoi"]
+    assert kq["nguonTrichDan"][0]["maTaiLieu"] == "QC-NGHIPHEP" and kq["nguonTrichDan"][0]["dieu"] == 5
+
+
+def test_loiLlmKhongTimThayQuyCheChiGoiYForm(llm, rag, monkeypatch):
+    monkeypatch.setattr(trichXuat.ragHoiDap, "truyHoi", lambda *a, **k: [])
+    llm["ketQua"] = LoiLlm("hỏng")
+    kq = xuLy("xin nghỉ phép thứ Sáu tuần sau")
+    assert kq["traLoi"] == trichXuat.TRA_LOI_DU_PHONG and kq["nguonTrichDan"] == []
+
+
 def test_quaHanChotKhongGoiLlmKhongGhiLichSu(client, llm, rag):
     client.headers.update({"X-Khoa-Noi-Bo": "khoa-noi-bo-dung-cho-test-dai-toi-thieu-32-ky-tu"})
     res = client.post("/noiBo/troLy/xuLy", json={"phienId": 1, "dauPhien": DAU, "nguoiDungId": 5,
