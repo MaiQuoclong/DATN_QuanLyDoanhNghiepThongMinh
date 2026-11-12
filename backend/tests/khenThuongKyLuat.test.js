@@ -27,6 +27,11 @@ const goi = (phuongThuc, duongDan, tk) => {
   const r = request(app)[phuongThuc](`/api/v1${duongDan}`);
   return tk ? r.set('Authorization', `Bearer ${tk}`) : r;
 };
+// Ký như frontend: lấy ngayCapNhat của bản đang xem rồi gửi kèm
+async function kyDaXem(id, tk, body = {}) {
+  const xem = await goi('get', `/deXuatKhenThuongKyLuat/${id}`, tk);
+  return goi('post', `/deXuatKhenThuongKyLuat/${id}/ky`, tk).send({ ...body, ngayCapNhat: xem.body.data?.ngayCapNhat });
+}
 async function layNhatKy(hanhDong) {
   const [d] = await pool.execute('SELECT nguoiDungId, chiTiet FROM nhatkyhethong WHERE id > ? AND hanhDong = ? ORDER BY id', [
     mocNhatKy,
@@ -270,7 +275,7 @@ describe('Đề xuất - HR từ chối và lập quyết định', () => {
   test('lập quyết định từ đề xuất qua trinhKy -> ky 201: số QĐ tự sinh, đề xuất DA_DUYET', async () => {
     const dx = await taoDeXuat();
     expect((await trinhKy(dx.id)).status).toBe(200);
-    const res = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/ky`, token.giamdoc).send({ ghiChuXuLy: 'Đồng ý' });
+    const res = await kyDaXem(dx.id, token.giamdoc, { ghiChuXuLy: 'Đồng ý' });
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ success: true, code: 201 });
     const qd = res.body.data.quyetDinh;
@@ -296,7 +301,7 @@ describe('Đề xuất - HR từ chối và lập quyết định', () => {
     expect((await trinhKy(dx.id)).status).toBe(200);
     const [[seed]] = await pool.query('SELECT soQuyetDinh FROM quyetdinhkhenthuongkyluat WHERE id = 1');
     const truoc = await demQuyetDinh();
-    const res = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/ky`, token.giamdoc).send({ soQuyetDinh: seed.soQuyetDinh });
+    const res = await kyDaXem(dx.id, token.giamdoc, { soQuyetDinh: seed.soQuyetDinh });
     expect(res.status).toBe(409);
     expect(await demQuyetDinh()).toBe(truoc);
     expect((await layDeXuatDb(dx.id)).trangThai).toBe('CHO_KY');
@@ -406,7 +411,7 @@ describe('Giám đốc ký / trả lại / từ chối', () => {
 
   test('đúng Giám đốc ký 201: ngày ban hành hôm nay, người ký = mình, DA_DUYET + quyetDinhId, nhật ký KY_QUYET_DINH_KTKL', async () => {
     const dx = await taoChoKy();
-    const res = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/ky`, token.giamdoc).send({});
+    const res = await kyDaXem(dx.id, token.giamdoc);
     expect(res.status).toBe(201);
     expect(res.body.message).toBe('Đã ký và ban hành quyết định');
     const qd = res.body.data.quyetDinh;
@@ -430,7 +435,7 @@ describe('Giám đốc ký / trả lại / từ chối', () => {
     expect((await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/ky`, token.hr).send({})).status).toBe(403);
     expect((await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/ky`, token.quanly).send({})).status).toBe(403);
     expect(await demQuyetDinh()).toBe(truoc);
-    expect((await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/ky`, token.giamdoc2).send({})).status).toBe(201);
+    expect((await kyDaXem(dx.id, token.giamdoc2)).status).toBe(201);
   });
 
   test('ký đề xuất chưa trình (CHO_DUYET) 409', async () => {
@@ -445,6 +450,14 @@ describe('Giám đốc ký / trả lại / từ chối', () => {
     const lech = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/ky`, token.giamdoc).send({ ngayCapNhat: '2000-01-01T00:00:00.000Z' });
     expect(lech.status).toBe(409);
     expect((await layDeXuatDb(dx.id)).trangThai).toBe('CHO_KY');
+    // Gọi API trực tiếp không kèm phiên bản đã xem -> 400, không ký, không tạo quyết định
+    const truoc = await demQuyetDinh();
+    for (const body of [{}, { ngayCapNhat: '' }, { ngayCapNhat: null }]) {
+      const thieu = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/ky`, token.giamdoc).send(body);
+      expect(thieu.body).toMatchObject({ success: false, code: 400, data: null });
+    }
+    expect(await demQuyetDinh()).toBe(truoc);
+    expect((await layDeXuatDb(dx.id)).trangThai).toBe('CHO_KY');
     const dung = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/ky`, token.giamdoc).send({ ngayCapNhat: xem.body.data.ngayCapNhat });
     expect([dung.status, dung.body.message]).toEqual([201, 'Đã ký và ban hành quyết định']);
   });
@@ -455,7 +468,7 @@ describe('Giám đốc ký / trả lại / từ chối', () => {
     const truoc = await demQuyetDinh();
     await pool.execute("UPDATE nhanvien SET trangThaiLamViec = 'DA_NGHI_VIEC' WHERE id = ?", [NV_NHANVIEN]);
     try {
-      expect((await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/ky`, token.giamdoc).send({})).status).toBe(409);
+      expect((await kyDaXem(dx.id, token.giamdoc)).status).toBe(409);
       expect(await demQuyetDinh()).toBe(truoc);
       expect((await layDeXuatDb(dx.id)).trangThai).toBe('CHO_KY');
     } finally {
@@ -472,7 +485,7 @@ describe('Giám đốc ký / trả lại / từ chối', () => {
     expect(bl.insertId).toBeGreaterThan(0);
     const dx = await taoChoKy();
     const truoc = await demQuyetDinh();
-    const res = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/ky`, token.giamdoc).send({});
+    const res = await kyDaXem(dx.id, token.giamdoc);
     expect(res.status).toBe(409);
     expect(res.body.message).toContain('ký từ ngày 01 tháng sau');
     expect(await demQuyetDinh()).toBe(truoc);
@@ -491,7 +504,7 @@ describe('Giám đốc ký / trả lại / từ chối', () => {
       [bl.insertId, NV_NHANVIEN],
     );
     const dx = await taoChoKy();
-    const res = await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/ky`, token.giamdoc).send({});
+    const res = await kyDaXem(dx.id, token.giamdoc);
     expect(res.status).toBe(201);
     expect(res.body.data.canhBao).toEqual(expect.stringContaining('NV0005'));
     const [[p]] = await pool.execute('SELECT thuongKPI FROM phieuluongnhanvien WHERE bangTongHopLuongId = ? AND nhanVienId = ?', [
@@ -895,7 +908,7 @@ describe('Kiểm tra lại điều kiện tại thời điểm xử lý', () => 
       await pool.execute('UPDATE nguoidung SET trangThai = ? WHERE id = ?', [nk.trangThai, nk.id]);
     }
     expect((await trinhKy(dx.id, NV_GIAMDOC2)).status).toBe(200);
-    expect((await goi('post', `/deXuatKhenThuongKyLuat/${dx.id}/ky`, token.giamdoc2).send({})).status).toBe(201);
+    expect((await kyDaXem(dx.id, token.giamdoc2)).status).toBe(201);
   });
 
   test('quanLy sửa đề xuất khi nhân viên đã chuyển ra khỏi phòng mình -> bị chặn, không đổi dữ liệu', async () => {

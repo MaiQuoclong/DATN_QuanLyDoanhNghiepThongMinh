@@ -263,8 +263,12 @@ async function kyDeXuat(nguoiDung, id, body, diaChiIP) {
   const banDaXem = body?.ngayCapNhat; // ngayCapNhat của đề xuất lúc Giám đốc mở xem
   return chayTransaction(async (ketNoi) => {
     const dx = await khoaDeXuatChoKy(nguoiDung, id, ketNoi);
-    // HR có thể trình lại (đổi nội dung) sau khi Giám đốc mở xem: không cho ký nội dung chưa xem
-    if (banDaXem !== undefined && String(banDaXem) !== String(dx.ngayCapNhat)) {
+    // HR có thể trình lại (đổi nội dung) sau khi Giám đốc mở xem: không cho ký nội dung chưa xem.
+    // Bắt buộc gửi phiên bản đã xem (kiểm tra sau quyền/trạng thái để giữ đúng mã 403/404/409)
+    if (banDaXem === undefined || banDaXem === null || banDaXem === '') {
+      throw new LoiUngDung(400, 'Thiếu phiên bản đề xuất đã xem (ngayCapNhat), vui lòng tải lại trước khi ký');
+    }
+    if (String(banDaXem) !== String(dx.ngayCapNhat)) {
       throw new LoiUngDung(409, 'Đề xuất vừa được HR chỉnh sửa, vui lòng tải lại và xem nội dung trước khi ký');
     }
     const nv = await kiemTraNhanVienConLamViec(dx.nhanVienId, ketNoi);

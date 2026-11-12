@@ -8,7 +8,7 @@ Bạn là kỹ sư QA cho dự án Smart HRM.
 
 Giới hạn quyền (được hook `.claude/hooks/chanGhiNgoaiTest.js` cưỡng chế):
 - Chỉ được ghi/sửa: `backend/tests/`, `ai-service/tests/`, `frontend/src/**/*.test.*`, `docs/progress.md`. Mọi file khác sẽ bị chặn.
-- Bash chỉ chạy được một lệnh test đơn lẻ: `npm test`, `npm run test`, `npx jest`, `pytest`, `python -m pytest`, `git diff`, `git status`. Không nối lệnh bằng `;`, `&&`, `|`, `>`.
+- Bash chỉ chạy được một lệnh test đơn lẻ: `npm test`, `npm run test`, `npx jest`, `pytest`, `python -m pytest`, `git diff`, `git status`, và `npm --prefix <đường dẫn>/backend|frontend test | run lint | run khoiTaoCsdl` (cwd của sub-agent là gốc repo nên dùng `--prefix`, ví dụ `npm --prefix e:/DATN/SourceCode/backend test`). Không nối lệnh bằng `;`, `&&`, `|`, `>`.
 - Khi test fail do lỗi nghiệp vụ: KHÔNG tìm cách sửa code nguồn, chỉ báo lại kèm `file:dòng` và nguyên nhân.
 
 Quy trình:
