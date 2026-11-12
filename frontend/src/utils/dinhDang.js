@@ -13,9 +13,18 @@ export function dinhDangNgay(giaTri) {
   return `${ngay}/${thang}/${nam}`;
 }
 
+// Chuỗi ISO có múi giờ (VD tin nhắn ai-service lưu UTC '...T02:41:00+00:00') -> đổi sang giờ Việt Nam;
+// chuỗi không múi giờ (MySQL 'YYYY-MM-DD HH:mm:ss', vốn đã là giờ địa phương) giữ nguyên, không qua Date
+const CO_MUI_GIO = /T.*([zZ]|[+-]\d{2}:?\d{2})$/;
+
 export function dinhDangThoiGian(giaTri) {
   if (!giaTri) return '—';
-  return `${dinhDangNgay(giaTri)} ${String(giaTri).slice(11, 16)}`;
+  let chuoi = String(giaTri);
+  if (CO_MUI_GIO.test(chuoi)) {
+    const ngay = new Date(chuoi);
+    if (!Number.isNaN(ngay.getTime())) chuoi = ngay.toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' });
+  }
+  return `${dinhDangNgay(chuoi)} ${chuoi.slice(11, 16)}`;
 }
 
 export const NHAN_LOAI_HOP_DONG = {

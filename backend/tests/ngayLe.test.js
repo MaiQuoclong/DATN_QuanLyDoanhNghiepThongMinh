@@ -49,6 +49,23 @@ describe('Unit utils/ngayLe - nghỉ bù (Điều 111 khoản 3, Điều 112)', 
     expect(daKhaiBaoNgayLe(2026)).toBe(true);
   });
 
+  test('năm 2027: Tết Đinh Mùi 4/2–10/2 (T7/CN 6–7/2 không tính), Giỗ Tổ 16/4, 1/5 bù 3/5, Quốc khánh 2–3/9', () => {
+    expect(dsNgayLe(2027)).toEqual([
+      '2027-01-01',
+      '2027-02-04',
+      '2027-02-05',
+      '2027-02-08',
+      '2027-02-09',
+      '2027-02-10',
+      '2027-04-16',
+      '2027-04-30',
+      '2027-05-03', // 01/5 thứ 7 -> nghỉ bù thứ 2
+      '2027-09-02',
+      '2027-09-03',
+    ]);
+    expect(daKhaiBaoNgayLe(2027)).toBe(true);
+  });
+
   test('năm 2028: 01/01 thứ 7 bù 03/01; 30/4 Chủ nhật bù 02/5 (vì 01/5 đã là lễ); 02/9 thứ 7 bù 04/9', () => {
     const ds = dsNgayLe(2028);
     expect(ds).toEqual(['2028-01-03', '2028-05-01', '2028-05-02', '2028-09-04']);
