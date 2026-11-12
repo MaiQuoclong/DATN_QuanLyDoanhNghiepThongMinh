@@ -57,8 +57,20 @@ process.stdin.on('end', () => {
       const lenh = (thamSo.command || '').trim();
       // Chặn nối lệnh/chuyển hướng (; & | > ` $() để không lách qua lệnh test
       const coNoiLenh = /[;&|>`]|\$\(/.test(lenh);
-      const hopLe = !coNoiLenh && /^(npm test|npm run test|npx jest|pytest|python -m pytest|git (diff|status))\b/.test(lenh);
-      if (!hopLe) chan('qa-tester chỉ được chạy lệnh test (npm test, npx jest, pytest).');
+      // cwd của sub-agent luôn là gốc repo (không có package.json) nên cho phép chỉ định thư mục bằng --prefix,
+      // giới hạn đúng backend/frontend và đúng các script test, lint, dựng lại DB (không cho script tùy ý)
+      const lenhNpmPrefix =
+        /^npm --prefix ("?)([a-zA-Z]:)?[\w./\\-]*?(backend|frontend)[\\/]?\1 (test|run (test|lint|khoiTaoCsdl))$/;
+      const hopLe =
+        !coNoiLenh &&
+        (/^(npm test|npm run test|npx jest|pytest|python -m pytest|git (diff|status))\b/.test(lenh) ||
+          (lenhNpmPrefix.test(lenh) && !lenh.includes('..')));
+      if (!hopLe) {
+        chan(
+          'qa-tester chỉ được chạy lệnh test (npm test, npx jest, pytest) hoặc ' +
+            'npm --prefix <backend|frontend> test | run lint | run khoiTaoCsdl.',
+        );
+      }
     }
   }
 
