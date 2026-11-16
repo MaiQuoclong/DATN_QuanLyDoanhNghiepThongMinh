@@ -384,6 +384,19 @@ describe('Quản lý phòng ban (HR)', () => {
     expect(await demNhatKy('NGUNG_PHONG_BAN', 4)).toBe(1);
   });
 
+  test('phạm vi quanLy bỏ phòng ban NGUNG_HOAT_DONG dù dữ liệu còn sót truongBoPhanId', async () => {
+    const { layPhongBanQuanLy } = require('../src/repositories/phongBanRepository');
+    const pb = await taoPhongBan();
+    const con = await taoPhongBan({ phongBanChaId: pb.id });
+    await pool.execute('UPDATE phongban SET truongBoPhanId = 6 WHERE id = ?', [pb.id]);
+    expect(await layPhongBanQuanLy(6)).toEqual(expect.arrayContaining([pb.id, con.id]));
+    // Ghi thẳng DB (không qua API) để mô phỏng dữ liệu sót trưởng bộ phận ở phòng đã ngừng
+    await pool.execute("UPDATE phongban SET trangThai = 'NGUNG_HOAT_DONG' WHERE id = ?", [pb.id]);
+    const phamVi = await layPhongBanQuanLy(6);
+    expect(phamVi).not.toContain(pb.id);
+    expect(phamVi).not.toContain(con.id);
+  });
+
   test('kích hoạt lại phòng ban ghi KICH_HOAT_PHONG_BAN; khi cha đang ngừng trả 409', async () => {
     const cha = await taoPhongBan();
     const con = await taoPhongBan({ phongBanChaId: cha.id });
