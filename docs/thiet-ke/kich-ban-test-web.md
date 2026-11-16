@@ -31,7 +31,7 @@ Frontend **không có** `.env.example`: Vite proxy `/api` sang `http://localhost
 | `CSDL_CONG` / `CSDL_NGUOI_DUNG` / `CSDL_MAT_KHAU` | Theo MariaDB của bạn (root, mật khẩu XAMPP thường trống) |
 | `JWT_BI_MAT` | Chuỗi ≥ 32 ký tự. Giữ giá trị mẫu thì server từ chối khởi động |
 | `AI_SERVICE_URL` | `http://localhost:8000` |
-| `AI_CSDL_MAT_KHAU` | Mật khẩu user `aiReadonly`, ≥ 12 ký tự, ví dụ `ChiDoc@2026Hrm`. Để trống thì Báo cáo AI không chạy |
+| `AI_CSDL_MAT_KHAU` | Mật khẩu user `aiReadonly`, ≥ 12 ký tự, `<tu-dat-mat-khau>` (tự đặt, trùng `CSDL_MAT_KHAU` của ai-service). Để trống thì Báo cáo AI không chạy |
 | `AI_SERVICE_KEY` | Chuỗi hex 64 ký tự vừa sinh |
 | `AI_TIMEOUT_MS` | `30000` |
 | `THU_MUC_TAI_LIEU` | Để trống (mặc định `backend/uploads/quyChe`) |
