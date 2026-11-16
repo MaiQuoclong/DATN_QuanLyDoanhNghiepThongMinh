@@ -159,12 +159,12 @@ Tháng (hiện tại − 2) đã chốt công, chưa có bảng lương; tháng 
 | # | Tài khoản | Thao tác | Dữ liệu | Mong đợi |
 |---|---|---|---|---|
 | 1 | `hr` | **Lương → Bảng lương** → **Lập bảng lương** | Tháng hiện tại − 2 | `BLyyyy-mm` BAN_NHAP. Thưởng/phạt: khen NV0005 2.000.000, kỷ luật NV0010 500.000, khen NV0007 1.500.000. Thưởng KPI kỳ tháng: NV0005 Xuất sắc, NV0009 Khá, NV0010 Yếu |
-| 2 | `hr` | Lập bảng tháng chưa chốt công (tháng hiện tại) | – | 400 |
+| 2 | `hr` | Lập bảng tháng hiện tại; rồi lập bảng tháng trước (hiện tại − 1, seed chưa chốt công) | – | 409 "Chỉ lập bảng lương cho tháng đã kết thúc"; 409 "Tháng ... chưa chốt công" |
 | 3 | `hr` | Lập trùng tháng bước 1 | – | 409 |
 | 4 | `hr` | **Tính lại** → **Gửi duyệt** | – | Chờ duyệt, ẩn Xóa/Tính lại |
 | 5 | `giamdoc` | Mở bảng → **Trả lại** (lý do) | – | Về nháp; HR gửi duyệt lại |
 | 6 | `giamdoc` | **Duyệt** | – | DA_DUYET, nhật ký `DUYET_BANG_LUONG` |
-| 7 | `nhanvien` | **Lương** (Phiếu lương) → chọn năm | – | Phiếu tháng −3 và −2, chỉ của mình |
+| 7 | `nhanvien` | **Lương** (Phiếu lương) → chọn năm | – | Phiếu tháng −3 và −2, chỉ của mình (nếu hai tháng khác năm — test vào tháng 1–3 — thì chọn từng năm) |
 | 8 | `giamdoc` | **Báo cáo quỹ lương**, **Xuất Excel** | – | Có số liệu, tải được file |
 
 ### F6. KPI (đánh giá → nghiệm thu → thưởng vào phiếu lương nháp)
@@ -188,7 +188,7 @@ Tháng (hiện tại − 2) đã chốt công, chưa có bảng lương; tháng 
 | 5 | `giamdoc` | Đề xuất #5 (CHO_KY, khen NV0006, 800.000) → **Ký quyết định** | Số QĐ, ghi chú | "Đã ký quyết định"; tab **Quyết định** có QĐ mới; nhật ký `KY_QUYET_DINH_KTKL` |
 | 6 | `giamdoc` | Đề xuất #1 → **Trả lại** (lý do) | – | Về "Chờ HR xử lý" kèm ghi chú |
 | 7 | `giamdoc2` | Xem đề xuất trình cho `giamdoc` | – | Không có nút ký **[CẦN XÁC MINH]** |
-| 8 | – | Sau bước 5 | – | Cộng vào phiếu lương **nháp** của tháng ban hành nếu tháng đó đã có bảng BAN_NHAP; kiểm chứng qua F5 bước 1 (QĐ seed tháng −2) **[CẦN XÁC MINH]** |
+| 8 | `hr` → `giamdoc` | Làm trước bước 6 của F5 (bảng tháng −2 còn BAN_NHAP): HR sửa tay 1 phiếu (khác NV0006); `giamdoc` vào tab **Quyết định** → **Tạo quyết định**: khen NV0006 300.000, **ngày ban hành trong tháng −2** | – | Chỉ phiếu NV0006 tháng −2 tăng 300.000; phiếu HR sửa tay giữ nguyên. (QĐ seed tháng −2 được tính ngay khi lập bảng ở F5 bước 1, không qua đường cộng vào phiếu nháp) |
 | 9 | `nhanvien` | Khen thưởng - Kỷ luật (Quyết định) | – | Chỉ QĐ của mình, không có tab Đề xuất |
 
 ### F8. AI – hỏi đáp quy chế (RAG có trích dẫn)
