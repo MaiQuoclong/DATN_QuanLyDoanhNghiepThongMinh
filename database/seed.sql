@@ -408,7 +408,7 @@ INSERT INTO nhatkyhethong (nguoiDungId, hanhDong, diaChiIP, chiTiet, thoiGianTao
   (4, 'CHOT_CONG_THANG', '127.0.0.1', DATE_FORMAT(@dauThangLuong, '%Y-%m'), TIMESTAMP(@cuoiThangLuong + INTERVAL 2 DAY, '09:00:00')),
   (4, 'LAP_BANG_LUONG', '127.0.0.1', CONCAT('BL', DATE_FORMAT(@dauThangLuong, '%Y-%m'), ': dữ liệu mẫu'), TIMESTAMP(@cuoiThangLuong + INTERVAL 3 DAY, '09:00:00')),
   (4, 'GUI_DUYET_BANG_LUONG', '127.0.0.1', CONCAT('BL', DATE_FORMAT(@dauThangLuong, '%Y-%m')), TIMESTAMP(@cuoiThangLuong + INTERVAL 3 DAY, '15:00:00')),
-  (2, 'DUYET_BANG_LUONG', '127.0.0.1', DATE_FORMAT(@dauThangLuong, '%Y-%m'), TIMESTAMP(@cuoiThangLuong + INTERVAL 4 DAY, '10:00:00'));
+  (2, 'DUYET_BANG_LUONG', '127.0.0.1', CONCAT('BL', DATE_FORMAT(@dauThangLuong, '%Y-%m')), TIMESTAMP(@cuoiThangLuong + INTERVAL 4 DAY, '10:00:00'));
 
 INSERT INTO bangtonghopluong (id, maBangLuong, thang, nam, tongChiPhiLuong, trangThai, nguoiLapId, nguoiDuyetId, ngayTao) VALUES
   (1, CONCAT('BL', DATE_FORMAT(@dauThangLuong, '%Y-%m')), MONTH(@dauThangLuong), YEAR(@dauThangLuong), 0, 'DA_DUYET', 4, 2,

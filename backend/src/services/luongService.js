@@ -245,7 +245,7 @@ async function xoaBang(nguoiDung, id, diaChiIP) {
     const bang = await khoaBangTonTai(id, ketNoi);
     chanKhacTrangThai(bang, 'BAN_NHAP', 'Chỉ xóa được bảng lương đang ở bản nháp');
     await luongRepository.xoaBang(id, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'XOA_BANG_LUONG', diaChiIP ?? null, maThang(bang.thang, bang.nam), ketNoi);
+    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'XOA_BANG_LUONG', diaChiIP ?? null, bang.maBangLuong, ketNoi);
   });
 }
 
@@ -267,7 +267,7 @@ async function duyetBang(nguoiDung, id, diaChiIP) {
     chanKhacTrangThai(bang, 'CHO_DUYET', 'Chỉ duyệt được bảng lương đang chờ duyệt');
     await chanNguoiLapDuyet(nguoiDung, bang, ketNoi, 'duyệt');
     await luongRepository.capNhatTrangThaiBang(id, 'DA_DUYET', nguoiDung.nhanVienId, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'DUYET_BANG_LUONG', diaChiIP ?? null, maThang(bang.thang, bang.nam), ketNoi);
+    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'DUYET_BANG_LUONG', diaChiIP ?? null, bang.maBangLuong, ketNoi);
   });
   return themChiTietBang(await luongRepository.layBangTheoId(id));
 }
@@ -284,7 +284,7 @@ async function traLaiBang(nguoiDung, id, lyDo, diaChiIP) {
       nguoiDung.nguoiDungId,
       'TRA_LAI_BANG_LUONG',
       diaChiIP ?? null,
-      `${maThang(bang.thang, bang.nam)}: ${lyDo.trim()}`.slice(0, 1000),
+      `${bang.maBangLuong}: ${lyDo.trim()}`.slice(0, 1000),
       ketNoi,
     );
   });
