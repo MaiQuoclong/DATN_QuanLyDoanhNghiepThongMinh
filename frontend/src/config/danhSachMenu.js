@@ -72,6 +72,7 @@ const danhSachMenu = [
   {
     duongDan: '/khenThuongKyLuat',
     ten: 'Khen thưởng - Kỷ luật',
+    tenNgan: 'KT - KL',
     bieuTuong: Award,
     vaiTro: TAT_CA,
     tab: [
