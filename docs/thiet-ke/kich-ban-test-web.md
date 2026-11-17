@@ -66,6 +66,13 @@ python -m venv .venv
 | 2 – backend | `cd e:\DATN\SourceCode\backend; npm run dev` | http://localhost:5000/api/v1/sucKhoe trả `success: true` |
 | 3 – frontend | `cd e:\DATN\SourceCode\frontend; npm run dev` | Mở http://localhost:5173 |
 
+> **Mẹo khởi động nhanh 3 cửa sổ bằng 1 lệnh PowerShell (trước khi demo):**
+> ```powershell
+> Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd e:\DATN\SourceCode\ai-service; .\.venv\Scripts\python main.py"
+> Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd e:\DATN\SourceCode\backend; npm run dev"
+> Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd e:\DATN\SourceCode\frontend; npm run dev"
+> ```
+
 ### 0.5 Lập chỉ mục quy chế (bắt buộc trước khi test RAG)
 - Cách 1 (cửa sổ thứ 4): `cd e:\DATN\SourceCode\backend; npm run lapChiMuc` → mong đợi `✓ QC-NOIQUY`, `✓ QC-NGHIPHEP`, `✓ QC-LUONG`, `Xong: 3/3`.
 - Cách 2 (web): đăng nhập `hr` → **Trợ lý AI → Tài liệu quy chế** → nút **Lập chỉ mục** từng dòng.
