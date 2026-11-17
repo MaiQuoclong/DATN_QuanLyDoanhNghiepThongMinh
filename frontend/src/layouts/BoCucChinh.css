@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 0 16px;
+  padding: 0 20px;
   background: var(--mauThanhTren);
   color: #fff;
 }
@@ -19,73 +19,79 @@
 .thuongHieu {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 260px;
+  gap: 12px;
   flex-shrink: 0;
 }
 
 .logo {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   background: var(--mauNhan);
   color: var(--mauThanhTren);
+  font-size: 15px;
   font-weight: 800;
 }
 
 .tenHeThong {
+  font-size: 15px;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .vachNgan {
   width: 1px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.2);
+  height: 20px;
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .tenModule {
+  font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
 }
 
 .tabModule {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   margin: 0 auto;
 }
 
 .tabPill {
-  padding: 6px 12px;
-  border-radius: 7px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
 }
 
 .tabPill:hover {
+  background: rgba(255, 255, 255, 0.06);
   color: #fff;
 }
 
 .tabPill.dangChon {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.16);
   color: #fff;
+  font-weight: 600;
 }
 
 .tienIch {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-left: auto;
 }
 
 .nutTienIch {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
   border: 0;
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
@@ -107,13 +113,13 @@
 }
 
 .anhDaiDien {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.3);
   background: var(--mauChinh);
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -121,7 +127,7 @@
 .menuTaiKhoan {
   position: absolute;
   right: 0;
-  top: 42px;
+  top: 46px;
   width: 240px;
   padding: 6px;
   color: var(--mauChu);
@@ -182,19 +188,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 12px 0;
+  gap: 8px;
+  padding: 14px 0;
   background: var(--mauThe);
   border-right: 1px solid var(--mauVien);
 }
 
 .mucIcon {
   position: relative;
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 64px;
+  height: 54px;
+  border-radius: 10px;
   color: var(--mauChuPhu);
 }
 
@@ -206,11 +215,24 @@
 .mucIcon.dangChon {
   background: var(--mauChinhNhat);
   color: var(--mauChinh);
+  font-weight: 600;
+}
+
+.nhanMuc {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mucIcon.dangChon .nhanMuc {
+  font-weight: 600;
 }
 
 .chuGoiY {
   position: absolute;
-  left: 48px;
+  left: 72px;
   padding: 4px 8px;
   border-radius: 6px;
   background: var(--mauThanhTren);
@@ -231,7 +253,7 @@
   padding: calc(var(--caoThanhTren) + 24px) 28px 28px calc(var(--rongThanhIcon) + 28px);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
   .thuongHieu {
     width: auto;
   }
@@ -248,12 +270,22 @@
   .thanhIcon {
     top: auto;
     width: 100%;
-    height: 56px;
+    height: 60px;
     flex-direction: row;
     justify-content: space-around;
-    padding: 0 8px;
+    padding: 0 6px;
+    gap: 2px;
     border-right: 0;
     border-top: 1px solid var(--mauVien);
+  }
+  .mucIcon {
+    width: auto;
+    min-width: 44px;
+    height: 46px;
+    padding: 0 4px;
+  }
+  .nhanMuc {
+    font-size: 10px;
   }
   .chuGoiY {
     display: none;
@@ -262,6 +294,6 @@
     display: none;
   }
   .noiDung {
-    padding: calc(var(--caoThanhTren) + 16px) 16px 72px;
+    padding: calc(var(--caoThanhTren) + 16px) 16px 76px;
   }
 }

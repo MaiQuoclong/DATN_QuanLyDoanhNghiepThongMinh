@@ -42,7 +42,7 @@ function BoCucChinh() {
       <header className="thanhTren">
         <div className="thuongHieu">
           <span className="logo">S</span>
-          <span className="tenHeThong">Quản Lý Doanh Nghiệp</span>
+          <span className="tenHeThong">Quản Lý Doanh Nghiệp Thông Minh Tích Hợp AI Agent</span>
           <span className="vachNgan" />
           <span className="tenModule">{moduleHienTai?.ten}</span>
         </div>
@@ -65,13 +65,13 @@ function BoCucChinh() {
         <div className="tienIch">
           {/* Chưa có chức năng: tạm disabled, gắn onClick khi làm các module sau */}
           <button type="button" className="nutTienIch vang" title="Tạo mới (sắp có)" disabled>
-            <Plus size={16} />
+            <Plus size={18} />
           </button>
           <button type="button" className="nutTienIch" title="Tìm kiếm (sắp có)" disabled>
-            <Search size={16} />
+            <Search size={18} />
           </button>
           <button type="button" className="nutTienIch" title="Thông báo (sắp có)" disabled>
-            <Bell size={16} />
+            <Bell size={18} />
           </button>
           <div className="vungTaiKhoan" ref={vungMenu}>
             <button type="button" className="anhDaiDien" title={tenHienThi} onClick={() => setMoMenuTaiKhoan((mo) => !mo)}>
@@ -103,7 +103,7 @@ function BoCucChinh() {
       </header>
 
       <aside className="thanhIcon">
-        {menuDuocXem.map(({ duongDan, ten, bieuTuong: BieuTuong }) => (
+        {menuDuocXem.map(({ duongDan, ten, tenNgan, bieuTuong: BieuTuong }) => (
           <NavLink
             key={duongDan}
             to={duongDan}
@@ -111,7 +111,8 @@ function BoCucChinh() {
             title={ten}
             className={({ isActive }) => (isActive ? 'mucIcon dangChon' : 'mucIcon')}
           >
-            <BieuTuong size={19} />
+            <BieuTuong size={21} />
+            <span className="nhanMuc">{tenNgan ?? ten}</span>
             <span className="chuGoiY">{ten}</span>
           </NavLink>
         ))}
