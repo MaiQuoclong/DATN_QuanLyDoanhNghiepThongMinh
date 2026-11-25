@@ -77,7 +77,7 @@ def xuLyTroLy(yeuCau: YeuCauXuLy):
             nguoiDungId=yeuCau.nguoiDungId,
             cauHoi=yeuCau.cauHoi,
             ngayHienTai=yeuCau.ngayHienTai,
-            loaiNghiPhep=[l.model_dump() for l in yeuCau.loaiNghiPhep],
+            loaiNghiPhep=[loai.model_dump() for loai in yeuCau.loaiNghiPhep],
             quyPhep=yeuCau.quyPhep.model_dump() if yeuCau.quyPhep else None,
             taiLieuIdsHienCo=yeuCau.taiLieuIdsHienCo,
             taiLieuHienCo=_maTheoId(yeuCau.taiLieuHienCo),

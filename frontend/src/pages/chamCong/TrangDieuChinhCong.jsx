@@ -177,7 +177,13 @@ function DanhSachYeuCau({ cheDo }) {
   const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangXem, setDangXem] = useState(null);
   const [dangTao, setDangTao] = useState(false);
-  useMoKhiCoThamSo(useCallback(() => setDangTao(true), []));
+  const [mauDon, setMauDon] = useState(null);
+  useMoKhiCoThamSo(
+    useCallback((trangThaiDieuHuong) => {
+      setMauDon(trangThaiDieuHuong?.mauDon ?? null);
+      setDangTao(true);
+    }, []),
+  );
 
   const tai = useCallback(() => {
     goiApi
@@ -208,7 +214,13 @@ function DanhSachYeuCau({ cheDo }) {
           </div>
         </div>
         {!laDuyet && (
-          <NutBam bieuTuong={Plus} onClick={() => setDangTao(true)}>
+          <NutBam
+            bieuTuong={Plus}
+            onClick={() => {
+              setMauDon(null);
+              setDangTao(true);
+            }}
+          >
             Gửi yêu cầu
           </NutBam>
         )}
@@ -263,6 +275,7 @@ function DanhSachYeuCau({ cheDo }) {
       )}
       {dangTao && (
         <HopThoaiDieuChinhCong
+          mauDon={mauDon}
           onDong={() => setDangTao(false)}
           onDaGui={() => {
             setDangTao(false);

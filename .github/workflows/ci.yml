@@ -124,4 +124,6 @@ jobs:
           cache: pip
           cache-dependency-path: ai-service/requirements.txt
       - run: pip install -r requirements.txt
+      - name: Lint Python (ruff)
+        run: pip install ruff==0.8.4 && ruff check .
       - run: python -m pytest -q

@@ -86,9 +86,16 @@ function TheXemTruocDon({ banNhap, onXacNhan, onHuy }) {
             </NutBam>
           </>
         )}
-        <Link className="lienKetXemTruoc" to={laNghiPhep ? '/nghiPhep' : '/chamCong/dieuChinh'}>
-          {['DA_TAO', 'KHONG_RO'].includes(trangThai) ? 'Xem đơn của tôi' : 'Tự tạo bằng form'}
-        </Link>
+        {['DA_TAO', 'KHONG_RO'].includes(trangThai) ? (
+          <Link className="lienKetXemTruoc" to={laNghiPhep ? '/nghiPhep' : '/chamCong/dieuChinh'}>
+            Xem đơn của tôi
+          </Link>
+        ) : (
+          // Mở form tạo đơn (?tao=1) và điền sẵn tham số AI đã soạn để người dùng tự sửa rồi gửi
+          <Link className="lienKetXemTruoc" to={laNghiPhep ? '/nghiPhep?tao=1' : '/chamCong/dieuChinh?tao=1'} state={{ mauDon: thamSo }}>
+            Tự tạo bằng form
+          </Link>
+        )}
       </div>
     </div>
   );

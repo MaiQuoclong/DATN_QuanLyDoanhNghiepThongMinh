@@ -1,0 +1,4 @@
+# Lint Python cho ai-service (CI job pytest chạy `ruff check .`). Bộ luật mặc định của ruff (E4, E7, E9, F).
+target-version = "py311"
+line-length = 140
+extend-exclude = [".venv", "duLieu"]

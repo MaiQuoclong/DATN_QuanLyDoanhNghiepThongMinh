@@ -53,7 +53,7 @@ CONG_CU_THEO_LOAI = {v: k for k, v in LOAI_THEO_CONG_CU.items()}
 def _heThong(ngayHienTai: str, cacLoai: list[dict]) -> str:
     homNay = date.fromisoformat(ngayHienTai)
     dauTuanSau = homNay + timedelta(days=7 - homNay.weekday())
-    dongLoai = "\n".join(f"- {l['maLoai']}: {l['tenLoai']}" for l in cacLoai) or "- (chưa có loại nào)"
+    dongLoai = "\n".join(f"- {loai['maLoai']}: {loai['tenLoai']}" for loai in cacLoai) or "- (chưa có loại nào)"
     return f"""Bạn là Trợ lý AI của hệ thống nhân sự Smart HRM, giúp người đang chat SOẠN đơn cho CHÍNH HỌ.
 
 Hôm nay: {THU[homNay.weekday()]}, {homNay.isoformat()} (múi giờ Asia/Ho_Chi_Minh).
@@ -241,7 +241,7 @@ def xuLy(
 
     ragHoiDap._kiemTraHanChot(hanChot)
     homNay = date.fromisoformat(ngayHienTai)
-    cacLoai = {l["maLoai"]: l["tenLoai"] for l in loaiNghiPhep}
+    cacLoai = {loai["maLoai"]: loai["tenLoai"] for loai in loaiNghiPhep}
     tinNhan = _lichSuChoLlm(phienId, dauPhien)
     noiDung = f"Câu của người dùng: {cauHoi}"
     if dangDo:

@@ -13,8 +13,14 @@ function TrangDonCuaToi() {
   const [quy, setQuy] = useState(null);
   const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangTao, setDangTao] = useState(false);
+  const [mauDon, setMauDon] = useState(null);
   const [lamMoi, setLamMoi] = useState(0);
-  useMoKhiCoThamSo(useCallback(() => setDangTao(true), []));
+  useMoKhiCoThamSo(
+    useCallback((trangThaiDieuHuong) => {
+      setMauDon(trangThaiDieuHuong?.mauDon ?? null);
+      setDangTao(true);
+    }, []),
+  );
 
   const taiQuy = useCallback(() => {
     goiApi
@@ -35,7 +41,13 @@ function TrangDonCuaToi() {
           <h1 className="tieuDeTrang">Đơn nghỉ phép của tôi</h1>
           <div className="chuPhu">Đơn được gửi tới trưởng bộ phận theo chuỗi duyệt; nghỉ dài ngày chuyển Ban Giám đốc</div>
         </div>
-        <NutBam bieuTuong={Plus} onClick={() => setDangTao(true)}>
+        <NutBam
+          bieuTuong={Plus}
+          onClick={() => {
+            setMauDon(null);
+            setDangTao(true);
+          }}
+        >
           Tạo đơn
         </NutBam>
       </div>
@@ -69,6 +81,7 @@ function TrangDonCuaToi() {
       {dangTao && (
         <HopThoaiTaoDon
           quy={quy}
+          mauDon={mauDon}
           onDong={() => setDangTao(false)}
           onDaGui={(kq) => {
             setDangTao(false);
