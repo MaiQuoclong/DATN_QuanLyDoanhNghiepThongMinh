@@ -73,6 +73,11 @@ async function layDanhSachDeXuat(nguoiDung, boLoc, phanTrang) {
   return { items, phanTrang: { trang: phanTrang.trang, kichThuoc: phanTrang.kichThuoc, tongSo } };
 }
 
+// Đếm bằng COUNT, cùng phạm vi với layDanhSachDeXuat (boLoc nội bộ, không nhận từ request)
+function demDeXuat(nguoiDung, boLoc) {
+  return ktklRepository.demDeXuat({ ...boLoc, ...boLocDeXuatTheoQuyen(nguoiDung) });
+}
+
 function duocXemDeXuat(nguoiDung, deXuat) {
   return laHR(nguoiDung) || laGiamDoc(nguoiDung) || deXuat.nguoiDeXuatId === nguoiDung.nhanVienId;
 }
@@ -477,6 +482,7 @@ async function taoQuyetDinh(nguoiDung, body, diaChiIP) {
 
 module.exports = {
   layDanhSachDeXuat,
+  demDeXuat,
   layChiTietDeXuat,
   taoDeXuat,
   suaDeXuat,

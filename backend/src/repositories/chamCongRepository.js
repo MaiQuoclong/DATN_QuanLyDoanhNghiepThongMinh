@@ -241,14 +241,18 @@ async function capNhatKetQuaDuyet(id, { trangThai, nguoiDuyetId, lyDoTuChoi, ban
   );
 }
 
-// boLoc.nhanVienId: chỉ yêu cầu của một người (Của tôi); phamViPhongBanIds: null = toàn công ty
-async function layDanhSachYeuCau({ nhanVienId, phamViPhongBanIds, phongBanId, tuKhoa, trangThai, tuNgay, denNgay, viTri, soLuong }) {
-  if (phamViPhongBanIds && phamViPhongBanIds.length === 0) return { items: [], tongSo: 0 };
+// boLoc.nhanVienId: chỉ yêu cầu của một người (Của tôi); boQuaNhanVienId: loại yêu cầu của một người
+// (chuông đếm việc được duyệt, không tính của chính mình); phamViPhongBanIds: null = toàn công ty
+function dieuKienYeuCau({ nhanVienId, boQuaNhanVienId, phamViPhongBanIds, phongBanId, tuKhoa, trangThai, tuNgay, denNgay }) {
   const dieuKien = [];
   const thamSo = [];
   if (nhanVienId) {
     dieuKien.push('yc.nhanVienId = ?');
     thamSo.push(nhanVienId);
+  }
+  if (boQuaNhanVienId) {
+    dieuKien.push('yc.nhanVienId <> ?');
+    thamSo.push(boQuaNhanVienId);
   }
   themDieuKienPhamVi(dieuKien, thamSo, { phamViPhongBanIds, phongBanId, tuKhoa });
   if (trangThai) {
@@ -259,7 +263,20 @@ async function layDanhSachYeuCau({ nhanVienId, phamViPhongBanIds, phongBanId, tu
     dieuKien.push('yc.ngayCanDieuChinh BETWEEN ? AND ?');
     thamSo.push(tuNgay, denNgay);
   }
-  const where = dieuKien.length ? `WHERE ${dieuKien.join(' AND ')}` : '';
+  return { where: dieuKien.length ? `WHERE ${dieuKien.join(' AND ')}` : '', thamSo };
+}
+
+// Chỉ COUNT (chuông / trang Tổng quan), cùng điều kiện với layDanhSachYeuCau
+async function demYeuCau(boLoc) {
+  if (boLoc.phamViPhongBanIds && boLoc.phamViPhongBanIds.length === 0) return 0;
+  const { where, thamSo } = dieuKienYeuCau(boLoc);
+  const [[dem]] = await pool.query(`SELECT COUNT(*) AS tongSo ${BANG_NOI_YEU_CAU} ${where}`, thamSo);
+  return Number(dem.tongSo);
+}
+
+async function layDanhSachYeuCau({ viTri, soLuong, ...boLoc }) {
+  if (boLoc.phamViPhongBanIds && boLoc.phamViPhongBanIds.length === 0) return { items: [], tongSo: 0 };
+  const { where, thamSo } = dieuKienYeuCau(boLoc);
   const [[dem]] = await pool.query(`SELECT COUNT(*) AS tongSo ${BANG_NOI_YEU_CAU} ${where}`, thamSo);
   const [items] = await pool.query(
     `SELECT ${COT_YEU_CAU} ${BANG_NOI_YEU_CAU} ${where}
@@ -289,4 +306,5 @@ module.exports = {
   themYeuCau,
   capNhatKetQuaDuyet,
   layDanhSachYeuCau,
+  demYeuCau,
 };

@@ -66,9 +66,13 @@ const NOI_DE_XUAT = `FROM dexuatkhenthuongkyluat dx
 
 const chuanHoaDeXuat = (d) => d && { ...d, soTienDeXuat: Number(d.soTienDeXuat ?? 0) };
 
-function dieuKienDeXuat({ trangThai, loaiDeXuat, nguoiDeXuatId, nguoiXuLyId, tuKhoa }) {
+function dieuKienDeXuat({ trangThai, loaiDeXuat, nguoiDeXuatId, nguoiXuLyId, boQuaNhanVienId, tuKhoa }) {
   const dieuKien = [];
   const thamSo = [];
+  if (boQuaNhanVienId) {
+    dieuKien.push('dx.nhanVienId <> ?');
+    thamSo.push(boQuaNhanVienId);
+  }
   if (trangThai) {
     dieuKien.push('dx.trangThai = ?');
     thamSo.push(trangThai);
@@ -102,6 +106,12 @@ async function layDanhSachDeXuat(boLoc, { viTri, soLuong }) {
   );
   const [[dem]] = await pool.query(`SELECT COUNT(*) AS tongSo ${NOI_DE_XUAT} ${where}`, thamSo);
   return { items: dong.map(chuanHoaDeXuat), tongSo: Number(dem.tongSo) };
+}
+
+async function demDeXuat(boLoc) {
+  const { where, thamSo } = dieuKienDeXuat(boLoc);
+  const [[dem]] = await pool.query(`SELECT COUNT(*) AS tongSo ${NOI_DE_XUAT} ${where}`, thamSo);
+  return Number(dem.tongSo);
 }
 
 async function layDeXuatTheoId(id, ketNoi = pool) {
@@ -252,6 +262,7 @@ module.exports = {
   layDanhSachNguoiKy,
   khoaBangLuongTheoThang,
   layDanhSachDeXuat,
+  demDeXuat,
   layDeXuatTheoId,
   khoaDeXuat,
   themDeXuat,

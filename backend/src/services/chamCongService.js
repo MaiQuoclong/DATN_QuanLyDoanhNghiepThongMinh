@@ -298,6 +298,12 @@ async function layDanhSachYeuCau(nguoiDung, boLoc) {
   return layDanhSachYeuCauTheoBoLoc({ ...boLoc, phamViPhongBanIds }, (yc) => themQuyenDuyet(nguoiDung, yc));
 }
 
+// Đếm yêu cầu CHO_DUYET người dùng duyệt được (cùng phạm vi + quy tắc duocDuyet: không phải của mình) bằng COUNT
+async function demYeuCauChoDuyet(nguoiDung) {
+  const phamViPhongBanIds = await layPhamVi(nguoiDung);
+  return chamCongRepository.demYeuCau({ trangThai: 'CHO_DUYET', boQuaNhanVienId: nguoiDung.nhanVienId, phamViPhongBanIds });
+}
+
 async function layDanhSachYeuCauTheoBoLoc({ thang, trang, kichThuoc, ...boLoc }, chuyenDoi) {
   const khoang = thang ? khoangNgayCuaThang(thang) : {};
   const { items, tongSo } = await chamCongRepository.layDanhSachYeuCau({
@@ -414,6 +420,7 @@ module.exports = {
   taoYeuCau,
   layYeuCauCuaToi,
   layDanhSachYeuCau,
+  demYeuCauChoDuyet,
   duyetYeuCau,
   tuChoiYeuCau,
 };

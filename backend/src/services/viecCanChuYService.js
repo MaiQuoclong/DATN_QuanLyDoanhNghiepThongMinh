@@ -14,14 +14,9 @@ const TRANG_DAU = { trang: 1, kichThuoc: SO_BAN_GHI_TOI_DA };
 const coVaiTro = (nguoiDung, ...vaiTro) => vaiTro.some((v) => nguoiDung.vaiTro.includes(v));
 const coHoSo = (nguoiDung) => Boolean(nguoiDung.nhanVienId);
 
-async function demDeXuatKhongVeMinh(nd, boLoc) {
-  const { items } = await khenThuongKyLuatService.layDanhSachDeXuat(nd, boLoc, {
-    viTri: 0,
-    soLuong: SO_BAN_GHI_TOI_DA,
-    trang: 1,
-    kichThuoc: SO_BAN_GHI_TOI_DA,
-  });
-  return items.filter((d) => d.nhanVienId !== nd.nhanVienId).length;
+// Kết quả đếm: số, hoặc { soLuong, vuotTran } khi đếm qua danh sách bị chặn ở SO_BAN_GHI_TOI_DA
+function demQuaDanhSach({ items, phanTrang }, loc) {
+  return { soLuong: items.filter(loc).length, vuotTran: phanTrang.tongSo > SO_BAN_GHI_TOI_DA };
 }
 
 // Mỗi nguồn: điều kiện áp dụng + hàm đếm. Một nguồn lỗi không làm hỏng cả chuông.
@@ -32,8 +27,9 @@ const NGUON = [
     duongDan: '/nghiPhep/duyetDon',
     apDung: (nd) => coHoSo(nd) && coVaiTro(nd, 'giamDoc', 'quanLy'),
     dem: async (nd) => {
-      const { items } = await nghiPhepService.layDanhSachDon(nd, { trangThai: 'CHO_DUYET', ...TRANG_DAU });
-      return items.filter((d) => d.duocDuyet).length;
+      // Quyền duyệt phụ thuộc chuỗi phòng ban (xacDinhNguoiDuyet) -> đếm qua danh sách, không COUNT SQL
+      const ds = await nghiPhepService.layDanhSachDon(nd, { trangThai: 'CHO_DUYET', ...TRANG_DAU });
+      return demQuaDanhSach(ds, (d) => d.duocDuyet);
     },
   },
   {
@@ -41,10 +37,7 @@ const NGUON = [
     tieuDe: 'Yêu cầu điều chỉnh công chờ duyệt',
     duongDan: '/chamCong/dieuChinh',
     apDung: (nd) => coHoSo(nd) && coVaiTro(nd, 'giamDoc', 'quanLy', 'HR'),
-    dem: async (nd) => {
-      const { items } = await chamCongService.layDanhSachYeuCau(nd, { trangThai: 'CHO_DUYET', ...TRANG_DAU });
-      return items.filter((yc) => yc.duocDuyet).length;
-    },
+    dem: (nd) => chamCongService.demYeuCauChoDuyet(nd),
   },
   {
     loai: 'DE_XUAT_CHO_XU_LY',
@@ -52,7 +45,7 @@ const NGUON = [
     duongDan: '/khenThuongKyLuat/deXuat',
     // HR không xử lý đề xuất về chính mình (khoaDeXuatChoXuLy trả 403); tài khoản chưa có hồ sơ không xử lý được
     apDung: (nd) => coHoSo(nd) && coVaiTro(nd, 'HR'),
-    dem: (nd) => demDeXuatKhongVeMinh(nd, { trangThai: 'CHO_DUYET' }),
+    dem: (nd) => khenThuongKyLuatService.demDeXuat(nd, { trangThai: 'CHO_DUYET', boQuaNhanVienId: nd.nhanVienId }),
   },
   {
     loai: 'DE_XUAT_CHO_KY',
@@ -60,7 +53,7 @@ const NGUON = [
     duongDan: '/khenThuongKyLuat/deXuat',
     apDung: (nd) => coHoSo(nd) && coVaiTro(nd, 'giamDoc'),
     // Chỉ đề xuất HR trình cho chính Giám đốc này (nguoiXuLyId); không tự ký quyết định về mình
-    dem: (nd) => demDeXuatKhongVeMinh(nd, { trangThai: 'CHO_KY', nguoiXuLyId: nd.nhanVienId }),
+    dem: (nd) => khenThuongKyLuatService.demDeXuat(nd, { trangThai: 'CHO_KY', nguoiXuLyId: nd.nhanVienId, boQuaNhanVienId: nd.nhanVienId }),
   },
   {
     loai: 'KPI_CAN_TU_CHAM',
@@ -78,8 +71,8 @@ const NGUON = [
     duongDan: '/kpi/danhGia',
     apDung: (nd) => coHoSo(nd) && coVaiTro(nd, 'giamDoc', 'quanLy'),
     dem: async (nd) => {
-      const { items } = await kpiService.layDanhSachPhieu(nd, { trangThai: 'CHO_DUYET', ...TRANG_DAU });
-      return items.filter((p) => p.duocNghiemThu).length;
+      const ds = await kpiService.layDanhSachPhieu(nd, { trangThai: 'CHO_DUYET', ...TRANG_DAU });
+      return demQuaDanhSach(ds, (p) => p.duocNghiemThu);
     },
   },
   {
@@ -96,21 +89,36 @@ const NGUON = [
   },
 ];
 
+// theoLoai: mọi nguồn áp dụng cho vai trò (0 nếu không có việc, null nếu nguồn lỗi) -> trang Tổng quan
+// đọc cùng nguồn với chuông nên số luôn khớp; items chỉ gồm loại có việc (> 0).
 async function layViecCanChuY(nguoiDung) {
   const nguonApDung = NGUON.filter((n) => n.apDung(nguoiDung));
   const ketQua = await Promise.allSettled(nguonApDung.map((n) => n.dem(nguoiDung)));
   const items = [];
   const nguonLoi = [];
+  const vuotTran = [];
+  const theoLoai = {};
   ketQua.forEach((kq, i) => {
     const { loai, tieuDe, duongDan } = nguonApDung[i];
     if (kq.status === 'rejected') {
       nguonLoi.push(loai);
+      theoLoai[loai] = null;
       console.error(`[viecCanChuY] Lỗi nguồn ${loai}:`, kq.reason?.message ?? kq.reason);
-    } else if (kq.value > 0) {
-      items.push({ loai, tieuDe, soLuong: kq.value, duongDan });
+      return;
     }
+    const soLuong = typeof kq.value === 'number' ? kq.value : kq.value.soLuong;
+    if (typeof kq.value === 'object' && kq.value.vuotTran) vuotTran.push(loai);
+    theoLoai[loai] = soLuong;
+    if (soLuong > 0) items.push({ loai, tieuDe, soLuong, duongDan });
   });
-  return { tongSo: items.reduce((tong, m) => tong + m.soLuong, 0), items, nguonLoi };
+  return {
+    tongSo: items.reduce((tong, m) => tong + m.soLuong, 0),
+    items,
+    nguonLoi,
+    theoLoai,
+    vuotTran,
+    soNgayCanhBaoHopDong: SO_NGAY_CANH_BAO_HOP_DONG,
+  };
 }
 
-module.exports = { layViecCanChuY, SO_NGAY_CANH_BAO_HOP_DONG };
+module.exports = { layViecCanChuY, SO_NGAY_CANH_BAO_HOP_DONG, SO_BAN_GHI_TOI_DA };
