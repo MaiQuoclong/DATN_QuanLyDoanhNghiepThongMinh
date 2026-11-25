@@ -119,6 +119,8 @@ Bản ghi `quyetdinhkhenthuongkyluat` luôn là quyết định đã ký. HR l�
 | Phòng ban: quân số, đi muộn, đơn chờ duyệt, KPI | | | PM | | |
 | Cá nhân: công, phép còn lại, lương gần nhất, KPI | ✓ | ✓ | ✓ | ✓ | ✓ |
 
+Thẻ "việc cần xử lý" (đơn nghỉ phép, điều chỉnh công, KPI nghiệm thu, hợp đồng sắp hết hạn, đề xuất KTKL chờ xử lý/chờ ký) lấy số từ `GET /api/v1/viecCanChuY` (`theoLoai`), cùng nguồn với chuông nên luôn khớp; thẻ chỉ hiện với vai trò có nguồn đó. Thẻ quanLy "Đề xuất KTKL đã gửi" là thẻ thông tin, không tính vào chuông.
+
 ## 11. AI Agent
 | Chức năng | Admin | giamDoc | quanLy | HR | nhanVien |
 |---|---|---|---|---|---|
