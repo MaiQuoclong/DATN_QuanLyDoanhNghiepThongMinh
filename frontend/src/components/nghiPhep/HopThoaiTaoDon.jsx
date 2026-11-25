@@ -6,18 +6,32 @@ import { demNgayLamViec } from '../../utils/dinhDang';
 import useNgayLe from '../../hooks/useNgayLe';
 
 // Tạo đơn nghỉ phép của chính mình (CHO_DUYET). Số ngày xem trước bỏ T7/CN; backend tính lại và kiểm tra quỹ.
-function HopThoaiTaoDon({ quy, onDong, onDaGui }) {
+// mauDon: tham số do Trợ lý AI soạn ({ maLoaiNghiPhep, ngayBatDau, ngayKetThuc, nuaNgay, lyDo }) để điền sẵn
+function HopThoaiTaoDon({ quy, mauDon = null, onDong, onDaGui }) {
   const [dsLoai, setDsLoai] = useState([]);
-  const [giaTri, setGiaTri] = useState({ loaiNghiPhepId: '', ngayBatDau: '', ngayKetThuc: '', nuaNgay: false, lyDo: '' });
+  const [giaTri, setGiaTri] = useState({
+    loaiNghiPhepId: '',
+    ngayBatDau: mauDon?.ngayBatDau ?? '',
+    ngayKetThuc: mauDon?.ngayKetThuc ?? mauDon?.ngayBatDau ?? '',
+    nuaNgay: Boolean(mauDon?.nuaNgay),
+    lyDo: mauDon?.lyDo ?? '',
+  });
   const [loi, setLoi] = useState('');
   const [dangGui, setDangGui] = useState(false);
 
   useEffect(() => {
     goiApi
       .get('/loaiNghiPhep', { params: { trangThai: 'DANG_AP_DUNG' } })
-      .then((kq) => setDsLoai(kq.data))
+      .then((kq) => {
+        setDsLoai(kq.data);
+        // AI trả mã loại (PHEP_NAM...), form chọn theo id
+        if (!mauDon?.maLoaiNghiPhep) return;
+        const loaiMau = kq.data.find((l) => l.maLoai === mauDon.maLoaiNghiPhep);
+        if (loaiMau) setGiaTri((cu) => (cu.loaiNghiPhepId ? cu : { ...cu, loaiNghiPhepId: String(loaiMau.id) }));
+        else setLoi('Loại nghỉ Trợ lý AI gợi ý hiện không áp dụng, vui lòng chọn lại');
+      })
       .catch((e) => setLoi(e.message));
-  }, []);
+  }, [mauDon]);
 
   const doi = (ten) => (e) => {
     const moi = e.target.type === 'checkbox' ? e.target.checked : e.target.value;

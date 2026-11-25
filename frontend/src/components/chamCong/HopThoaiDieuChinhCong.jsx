@@ -9,7 +9,8 @@ const TRUONG = [
 ];
 
 // Gửi yêu cầu điều chỉnh công của chính mình (trạng thái CHO_DUYET)
-function HopThoaiDieuChinhCong({ ngay, onDong, onDaGui }) {
+// mauDon: tham số Trợ lý AI đã soạn ({ ngayCanDieuChinh, gioVaoDeXuat, gioRaDeXuat, lyDoGiaiTrinh }) để điền sẵn
+function HopThoaiDieuChinhCong({ ngay, mauDon = null, onDong, onDaGui }) {
   const gui = async (giaTri) => {
     const kq = await goiApi.post('/dieuChinhCong', {
       ngayCanDieuChinh: giaTri.ngayCanDieuChinh,
@@ -23,7 +24,12 @@ function HopThoaiDieuChinhCong({ ngay, onDong, onDaGui }) {
     <HopThoaiBieuMau
       tieuDe="Yêu cầu điều chỉnh công"
       truong={TRUONG}
-      giaTriBanDau={{ ngayCanDieuChinh: ngay ?? '' }}
+      giaTriBanDau={{
+        ngayCanDieuChinh: mauDon?.ngayCanDieuChinh ?? ngay ?? '',
+        gioVaoDeXuat: mauDon?.gioVaoDeXuat ?? '',
+        gioRaDeXuat: mauDon?.gioRaDeXuat ?? '',
+        lyDoGiaiTrinh: mauDon?.lyDoGiaiTrinh ?? '',
+      }}
       nhanNutGui="Gửi yêu cầu"
       moTa="Yêu cầu được gửi tới trưởng bộ phận hoặc HR duyệt. Tháng đã chốt công không thể điều chỉnh."
       onGui={gui}
