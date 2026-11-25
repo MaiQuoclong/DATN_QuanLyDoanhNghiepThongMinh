@@ -2,6 +2,7 @@ const request = require('supertest');
 const app = require('../src/app');
 const { pool } = require('../src/config/ketNoiCsdl');
 const hopDongService = require('../src/services/hopDongService');
+const nghiPhepService = require('../src/services/nghiPhepService');
 
 // Chuông "Việc cần chú ý": so sánh số đếm trước/sau khi tự chèn dữ liệu (không phụ thuộc số liệu seed).
 // Mọi bản ghi tự tạo đều có id > ảnh chụp MAX(id) và bị xóa trong afterEach.
@@ -201,6 +202,70 @@ describe('GET /api/v1/viecCanChuY', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.nguonLoi).toEqual(['HOP_DONG_SAP_HET_HAN']);
     expect(res.body.data.items.map((m) => m.loai)).not.toContain('HOP_DONG_SAP_HET_HAN');
+  });
+});
+
+describe('theoLoai / vuotTran (dùng chung cho trang Tổng quan)', () => {
+  const KHOA_THEO_VAI_TRO = {
+    admin: ['KPI_CAN_TU_CHAM'], // Admin seed có hồ sơ nhân viên
+    nhanvien: ['KPI_CAN_TU_CHAM'],
+    quanly: ['DON_NGHI_CHO_DUYET', 'DIEU_CHINH_CONG_CHO_DUYET', 'KPI_CAN_TU_CHAM', 'KPI_CAN_NGHIEM_THU'],
+    hr: ['DIEU_CHINH_CONG_CHO_DUYET', 'DE_XUAT_CHO_XU_LY', 'KPI_CAN_TU_CHAM', 'HOP_DONG_SAP_HET_HAN'],
+    giamdoc: [
+      'DON_NGHI_CHO_DUYET',
+      'DIEU_CHINH_CONG_CHO_DUYET',
+      'DE_XUAT_CHO_KY',
+      'KPI_CAN_TU_CHAM',
+      'KPI_CAN_NGHIEM_THU',
+      'HOP_DONG_SAP_HET_HAN',
+    ],
+  };
+
+  test.each(Object.keys(KHOA_THEO_VAI_TRO))('%s: theoLoai đúng các nguồn áp dụng, khớp items và tongSo', async (tk) => {
+    const { theoLoai, items, tongSo, vuotTran } = (await goi(token[tk])).body.data;
+    expect(Object.keys(theoLoai).sort()).toEqual([...KHOA_THEO_VAI_TRO[tk]].sort());
+    expect(vuotTran).toEqual([]);
+    for (const m of items) expect(theoLoai[m.loai]).toBe(m.soLuong);
+    // Loại có 0 việc vẫn có trong theoLoai nhưng không có trong items
+    const coViec = Object.entries(theoLoai).filter(([, so]) => so > 0);
+    expect(coViec.length).toBe(items.length);
+    expect(tongSo).toBe(coViec.reduce((t, [, so]) => t + so, 0));
+  });
+
+  test('loại 0 việc: có trong theoLoai với giá trị 0, không có trong items', async () => {
+    jest.spyOn(hopDongService, 'laySapHetHan').mockResolvedValue([]);
+    const { theoLoai, items } = (await goi(token.hr)).body.data;
+    expect(theoLoai.HOP_DONG_SAP_HET_HAN).toBe(0);
+    expect(items.map((m) => m.loai)).not.toContain('HOP_DONG_SAP_HET_HAN');
+  });
+
+  test('nguồn lỗi: theoLoai = null', async () => {
+    jest.spyOn(hopDongService, 'laySapHetHan').mockRejectedValue(new Error('mất kết nối'));
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    const { theoLoai, nguonLoi } = (await goi(token.giamdoc)).body.data;
+    expect(theoLoai.HOP_DONG_SAP_HET_HAN).toBeNull();
+    expect(nguonLoi).toEqual(['HOP_DONG_SAP_HET_HAN']);
+  });
+
+  test('đếm qua danh sách vượt trần: ghi vào vuotTran', async () => {
+    jest.spyOn(nghiPhepService, 'layDanhSachDon').mockResolvedValue({
+      items: [{ duocDuyet: true }, { duocDuyet: false }],
+      phanTrang: { trang: 1, kichThuoc: 1000, tongSo: 1001 },
+    });
+    const { theoLoai, vuotTran } = (await goi(token.quanly)).body.data;
+    expect(theoLoai.DON_NGHI_CHO_DUYET).toBe(1);
+    expect(vuotTran).toEqual(['DON_NGHI_CHO_DUYET']);
+  });
+
+  test('COUNT điều chỉnh công / đề xuất khớp theoLoai sau khi chèn (bỏ của chính mình)', async () => {
+    const truoc = (await goi(token.hr)).body.data.theoLoai;
+    await taoDieuChinh(NV_NHANVIEN);
+    await taoDieuChinh(NV_HR);
+    await taoDeXuat('CHO_DUYET');
+    await taoDeXuat('CHO_DUYET', null, NV_HR);
+    const sau = (await goi(token.hr)).body.data.theoLoai;
+    expect(sau.DIEU_CHINH_CONG_CHO_DUYET).toBe(truoc.DIEU_CHINH_CONG_CHO_DUYET + 1);
+    expect(sau.DE_XUAT_CHO_XU_LY).toBe(truoc.DE_XUAT_CHO_XU_LY + 1);
   });
 });
 
