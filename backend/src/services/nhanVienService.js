@@ -7,6 +7,7 @@ const hopDongRepository = require('../repositories/hopDongRepository');
 const { themNhatKy, layHanhDongGanNhat } = require('../repositories/nhatKyRepository');
 const { taoMatKhauTam, bamMatKhau } = require('../utils/matKhauTam');
 const { TRANG_THAI_LAM_VIEC } = require('../utils/trangThai');
+const { taoNoiDungCsv } = require('../utils/xuatCsv');
 
 const TUOI_LAO_DONG_TOI_THIEU = 15; // Bộ luật Lao động 2019: người lao động từ đủ 15 tuổi
 const TUOI_TOI_DA = 80; // chặn ngày sinh nhập nhầm (vd. 1800-01-01)
@@ -371,8 +372,78 @@ async function dieuChuyen(nguoiDung, id, { chucDanhPhongBanId, lyDo }, diaChiIP)
   });
 }
 
+// ===================== Xuất Excel danh sách nhân viên =====================
+const SO_DONG_XUAT_TOI_DA = 5000;
+const NHAN_GIOI_TINH = { NAM: 'Nam', NU: 'Nữ', KHAC: 'Khác' };
+const NHAN_TRANG_THAI = { THU_VIEC: 'Thử việc', CHINH_THUC: 'Chính thức', TAM_NGHI: 'Tạm nghỉ', DA_NGHI_VIEC: 'Đã nghỉ việc' };
+const TIEU_DE_CO_BAN = [
+  'Mã NV',
+  'Họ và tên',
+  'Giới tính',
+  'Ngày sinh',
+  'Số điện thoại',
+  'Địa chỉ',
+  'Mã phòng ban',
+  'Phòng ban',
+  'Chức danh',
+  'Ngày vào làm',
+  'Trạng thái',
+];
+const TIEU_DE_NGAN_HANG = ['Số tài khoản ngân hàng', 'Ngân hàng'];
+const SO_KY_TU_TU_KHOA_NHAT_KY = 100;
+
+// 'YYYY-MM-DD' (dateStrings) -> 'DD/MM/YYYY'
+const dinhDangNgay = (ngay) => (ngay ? String(ngay).slice(0, 10).split('-').reverse().join('/') : '');
+const haiSo = (n) => String(n).padStart(2, '0');
+
+// HR/giamDoc toàn công ty, kèm cột ngân hàng; quanLy phòng mình phụ trách + phòng con, ẩn ngân hàng (quy tắc 6).
+// Xuất dữ liệu cá nhân hàng loạt -> luôn ghi nhật ký để truy vết.
+async function xuatExcel(nguoiDung, boLoc, diaChiIP) {
+  const kemNganHang = xemToanCongTy(nguoiDung.vaiTro);
+  const phamViPhongBanIds = kemNganHang ? null : await phongBanRepository.layPhongBanQuanLy(nguoiDung.nhanVienId ?? 0);
+  const dong = await nhanVienRepository.layDanhSachXuat({ ...boLoc, phamViPhongBanIds, kemNganHang, gioiHan: SO_DONG_XUAT_TOI_DA + 1 });
+  if (dong.length > SO_DONG_XUAT_TOI_DA) {
+    throw new LoiUngDung(400, `Kết quả vượt ${SO_DONG_XUAT_TOI_DA} nhân viên, vui lòng thu hẹp bộ lọc`);
+  }
+  const tieuDe = kemNganHang ? [...TIEU_DE_CO_BAN, ...TIEU_DE_NGAN_HANG] : TIEU_DE_CO_BAN;
+  const cacDong = dong.map((nv) => {
+    const coBan = [
+      nv.maNhanVien,
+      nv.hoVaTen,
+      NHAN_GIOI_TINH[nv.gioiTinh] ?? nv.gioiTinh,
+      dinhDangNgay(nv.ngaySinh),
+      nv.soDienThoai,
+      nv.diaChi,
+      nv.maPhongBan,
+      nv.tenPhongBan,
+      nv.tenChucDanh,
+      dinhDangNgay(nv.ngayVaoLam),
+      NHAN_TRANG_THAI[nv.trangThaiLamViec] ?? nv.trangThaiLamViec,
+    ];
+    return kemNganHang ? [...coBan, nv.soTaiKhoanNganHang, nv.tenNganHang] : coBan;
+  });
+
+  const moTaLoc = [
+    boLoc.tuKhoa && `tuKhoa=${boLoc.tuKhoa.slice(0, SO_KY_TU_TU_KHOA_NHAT_KY)}`,
+    boLoc.phongBanId && `phongBanId=${boLoc.phongBanId}`,
+    boLoc.trangThaiLamViec?.length && `trangThai=${boLoc.trangThaiLamViec.join(',')}`,
+  ].filter(Boolean);
+  await themNhatKy(
+    nguoiDung.nguoiDungId,
+    'XUAT_EXCEL_NHAN_VIEN',
+    diaChiIP,
+    `${dong.length} dòng; lọc: ${moTaLoc.join('; ') || 'không'}; kèm ngân hàng: ${kemNganHang ? 'có' : 'không'}`,
+  );
+
+  const luc = new Date();
+  const ngayGio = `${luc.getFullYear()}${haiSo(luc.getMonth() + 1)}${haiSo(luc.getDate())}_${haiSo(luc.getHours())}${haiSo(luc.getMinutes())}`;
+  return { tenFile: `DanhSachNhanVien_${ngayGio}.csv`, noiDung: taoNoiDungCsv(tieuDe, cacDong), soDong: dong.length };
+}
+
 module.exports = {
   TRANG_THAI_LAM_VIEC,
+  SO_DONG_XUAT_TOI_DA,
+  xuatExcel,
   layDanhSach,
   layChiTiet,
   layHoSoCuaToi,

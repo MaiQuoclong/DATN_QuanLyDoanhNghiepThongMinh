@@ -45,6 +45,8 @@ function batBuoc(luat, cacTruong) {
 }
 
 router.get('/', phanQuyen(['HR', 'giamDoc', 'quanLy']), batLoiBatDongBo(nhanVienController.layDanhSachNhanVien));
+// Đặt trước /:id để 'xuatExcel' không bị hiểu là mã nhân viên
+router.get('/xuatExcel', phanQuyen(['HR', 'giamDoc', 'quanLy']), batLoiBatDongBo(nhanVienController.xuatExcelNhanVien));
 
 router.post(
   '/',
