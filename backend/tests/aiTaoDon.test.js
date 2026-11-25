@@ -7,11 +7,22 @@ const LoiUngDung = require('../src/utils/LoiUngDung');
 const { gioiHanHoiDap, gioiHanXacNhan } = require('../src/routes/troLyAiRoutes');
 
 // 5.5 AI tạo đơn qua chat. ai-service luôn mock bằng kho bản nháp trong bộ nhớ (chuyển trạng thái nguyên tử
-// như SQLite thật). Dữ liệu đơn dùng 12/2024 (sau ngày vào làm NV0005, ngoài quỹ seed năm hiện tại ±1), quỹ 2024 tự cấp; điều chỉnh công dùng
-// tháng 2025-01 (chưa chốt, sau ngày vào làm của NV0001..NV0005). Mọi bản ghi thêm được dọn theo mốc MAX(id).
+// như SQLite thật). Dữ liệu đơn dùng tháng 12 của (năm hiện tại − 2): sau ngày vào làm NV0005, ngoài quỹ seed năm hiện tại ±1,
+// quỹ năm đó tự cấp; điều chỉnh công dùng tháng 01 của năm kế tiếp (chưa chốt). Ngày luôn là thứ Hai đầu tiên của tháng
+// (ngày làm việc) nên test không phụ thuộc năm chạy. Mọi bản ghi thêm được dọn theo mốc MAX(id).
 const MAT_KHAU = 'MatKhau@123';
 const NGUOI_DUNG = { admin: 1, giamdoc: 2, quanly: 3, hr: 4, nhanvien: 5 }; // nguoiDungId = nhanVienId trong seed
-const NAM = 2024;
+const NAM = new Date().getFullYear() - 2;
+// Thứ Hai đầu tiên của tháng (YYYY-MM-DD), cộng thêm soNgay nếu cần ngày kế tiếp
+function thuHaiDauTien(nam, thang, soNgay = 0) {
+  const ngay = new Date(Date.UTC(nam, thang - 1, 1));
+  ngay.setUTCDate(1 + ((8 - ngay.getUTCDay()) % 7) + soNgay);
+  return ngay.toISOString().slice(0, 10);
+}
+const NGAY_NGHI = thuHaiDauTien(NAM, 12);
+const NGAY_NGHI_KE = thuHaiDauTien(NAM, 12, 1);
+// Thứ Hai thứ hai của tháng 1 (8–14/1): tránh Tết Dương lịch và ngày nghỉ bù
+const NGAY_DIEU_CHINH = thuHaiDauTien(NAM + 1, 1, 7);
 const token = {};
 let anhChup;
 let goiAi;
@@ -24,8 +35,8 @@ const goi = (phuongThuc, duongDan, tk) => {
   return tk ? r.set('Authorization', `Bearer ${tk}`) : r;
 };
 
-const NGHI = { maLoaiNghiPhep: 'PHEP_NAM', ngayBatDau: '2024-12-02', ngayKetThuc: '2024-12-02', nuaNgay: false, lyDo: 'Việc gia đình' };
-const DIEU_CHINH = { ngayCanDieuChinh: '2025-01-06', gioVaoDeXuat: '08:00', gioRaDeXuat: '17:00', lyDoGiaiTrinh: 'Quên chấm công' };
+const NGHI = { maLoaiNghiPhep: 'PHEP_NAM', ngayBatDau: NGAY_NGHI, ngayKetThuc: NGAY_NGHI, nuaNgay: false, lyDo: 'Việc gia đình' };
+const DIEU_CHINH = { ngayCanDieuChinh: NGAY_DIEU_CHINH, gioVaoDeXuat: '08:00', gioRaDeXuat: '17:00', lyDoGiaiTrinh: 'Quên chấm công' };
 
 function trangThaiHienTai(bn) {
   return bn.trangThai === 'CHO_XAC_NHAN' && bn.hetHan <= Date.now() ? 'HET_HAN' : bn.trangThai;
@@ -163,7 +174,7 @@ describe('hoiDap mở rộng tạo đơn', () => {
   test('XEM_TRUOC_DON trả bản nháp kèm tenLoai và soNgayNghi', async () => {
     phanHoiXuLy = () => ({
       loaiPhanHoi: 'XEM_TRUOC_DON',
-      banNhap: { loai: 'NGHI_PHEP', thamSo: { ...NGHI, ngayKetThuc: '2024-12-03' } },
+      banNhap: { loai: 'NGHI_PHEP', thamSo: { ...NGHI, ngayKetThuc: NGAY_NGHI_KE } },
     });
     const res = await goi('post', '/troLyAi/hoiDap', token.nhanvien).send({ cauHoi: 'xin nghỉ phép' });
     expect(res.status).toBe(200);
@@ -273,7 +284,7 @@ describe('Xác nhận bản nháp', () => {
 
   test('vượt quỹ phép → message giống form, bản nháp LOI, không tạo đơn', async () => {
     await capQuy(5, 1);
-    const thamSo = { ...NGHI, ngayKetThuc: '2024-12-03' };
+    const thamSo = { ...NGHI, ngayKetThuc: NGAY_NGHI_KE };
     const form = await goi('post', '/donNghiPhep', token.nhanvien).send({
       loaiNghiPhepId: 1,
       ngayBatDau: thamSo.ngayBatDau,
@@ -318,8 +329,8 @@ describe('Xác nhận bản nháp', () => {
   });
 
   test.each([
-    ['ngày sai định dạng', { ngayCanDieuChinh: '06/01/2025' }],
-    ['ngày không tồn tại', { ngayCanDieuChinh: '2025-02-30' }],
+    ['ngày sai định dạng', { ngayCanDieuChinh: NGAY_DIEU_CHINH.split('-').reverse().join('/') }],
+    ['ngày không tồn tại', { ngayCanDieuChinh: `${NAM + 1}-02-30` }],
     ['giờ sai', { gioVaoDeXuat: '25:00' }],
     ['giờ dạng chữ', { gioRaDeXuat: 'năm giờ' }],
     ['lý do quá ngắn', { lyDoGiaiTrinh: 'ab' }],
