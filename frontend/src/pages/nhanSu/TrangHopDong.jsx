@@ -46,6 +46,7 @@ function HopDongToanCongTy({ laHR }) {
   const [sapHetHan, setSapHetHan] = useState([]);
   const [loi, setLoi] = useState('');
   const [dangXem, setDangXem] = useState(null);
+  const [canhBaoTao, setCanhBaoTao] = useState('');
   const [dangLap, setDangLap] = useState(false);
 
   const tai = useCallback(() => {
@@ -140,13 +141,24 @@ function HopDongToanCongTy({ laHR }) {
       />
       <PhanTrang phanTrang={ketQua?.phanTrang} onDoiTrang={setTrang} />
 
-      {dangXem && <HopThoaiChiTietHopDong hopDongId={dangXem} onDong={() => setDangXem(null)} onThayDoi={tai} />}
+      {dangXem && (
+        <HopThoaiChiTietHopDong
+          hopDongId={dangXem}
+          canhBaoBanDau={canhBaoTao}
+          onDong={() => {
+            setDangXem(null);
+            setCanhBaoTao('');
+          }}
+          onThayDoi={tai}
+        />
+      )}
       {dangLap && (
         <HopThoaiLapHopDong
           onDong={() => setDangLap(false)}
           onDaTao={(hd) => {
             setDangLap(false);
             tai();
+            setCanhBaoTao(hd.canhBao ?? '');
             setDangXem(hd.id);
           }}
         />

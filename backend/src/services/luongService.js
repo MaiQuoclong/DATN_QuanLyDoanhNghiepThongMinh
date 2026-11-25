@@ -4,6 +4,7 @@ const luongRepository = require('../repositories/luongRepository');
 const chamCongRepository = require('../repositories/chamCongRepository');
 const nhatKyRepository = require('../repositories/nhatKyRepository');
 const { khoangNgayCuaThang, thangHienTai } = require('../utils/ngayThang');
+const { taoNoiDungCsv } = require('../utils/xuatCsv');
 const {
   demNgayCongChuan,
   tinhNgayCong,
@@ -68,6 +69,8 @@ function themChiTietBang(bang) {
 // ===================== Sinh phiếu từ dữ liệu chấm công / nghỉ phép / hợp đồng =====================
 
 // Tạo toàn bộ phiếu của bảng trong cùng transaction rồi cập nhật tổng chi phí lương (= tổng thu nhập trước khấu trừ)
+// Nơi gọi phải khóa hợp đồng (khoaHopDongTheoThang) TRƯỚC mọi câu đọc thường của transaction: REPEATABLE READ chốt
+// snapshot ở câu đọc thường đầu tiên, khóa sau đó vẫn đọc hợp đồng cũ.
 async function sinhPhieu(bangId, thang, ketNoi) {
   const { tuNgay, denNgay } = khoangNgayCuaThang(thang);
   const ngayCongChuan = demNgayCongChuan(thang);
@@ -115,6 +118,11 @@ async function capNhatLaiTong(bang, ketNoi) {
   const cacPhieu = await luongRepository.layTatCaPhieuCuaBang(bang.id, ketNoi);
   const tong = cacPhieu.reduce((s, p) => s + tinhChiTietPhieu(p, ngayCongChuan).tongThuNhap, 0);
   await luongRepository.capNhatTongChiPhi(bang.id, tong, ketNoi);
+}
+
+async function khoaHopDongTheoThang(thang, ketNoi) {
+  const { tuNgay, denNgay } = khoangNgayCuaThang(thang);
+  await luongRepository.khoaHopDongTrongThang(tuNgay, denNgay, ketNoi);
 }
 
 async function chanThangChuaChot(thang, ketNoi) {
@@ -168,6 +176,7 @@ async function lapBang(nguoiDung, thang, diaChiIP) {
   const [nam, soThang] = thang.split('-').map(Number);
   const maBangLuong = `BL${nam}-${String(soThang).padStart(2, '0')}`;
   const id = await chayTransaction(async (ketNoi) => {
+    await khoaHopDongTheoThang(thang, ketNoi); // trước mọi câu đọc thường (xem sinhPhieu)
     await chanThangChuaChot(thang, ketNoi);
     let bangId;
     try {
@@ -195,6 +204,7 @@ async function tinhLaiBang(nguoiDung, id, diaChiIP) {
   await chayTransaction(async (ketNoi) => {
     const bang = await khoaBangTonTai(id, ketNoi);
     chanKhacTrangThai(bang, 'BAN_NHAP', 'Chỉ tính lại được bảng lương đang ở bản nháp');
+    await khoaHopDongTheoThang(maThang(bang.thang, bang.nam), ketNoi); // khoaBang là FOR UPDATE nên chưa chốt snapshot
     await chanThangChuaChot(maThang(bang.thang, bang.nam), ketNoi);
     await luongRepository.xoaPhieuTheoBang(id, ketNoi);
     const soPhieu = await sinhPhieu(id, maThang(bang.thang, bang.nam), ketNoi);
@@ -245,14 +255,68 @@ async function xoaBang(nguoiDung, id, diaChiIP) {
     const bang = await khoaBangTonTai(id, ketNoi);
     chanKhacTrangThai(bang, 'BAN_NHAP', 'Chỉ xóa được bảng lương đang ở bản nháp');
     await luongRepository.xoaBang(id, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'XOA_BANG_LUONG', diaChiIP ?? null, maThang(bang.thang, bang.nam), ketNoi);
+    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'XOA_BANG_LUONG', diaChiIP ?? null, bang.maBangLuong, ketNoi);
   });
+}
+
+// Hợp đồng bị sửa sau lần tính bảng gần nhất (vd. HR khác tăng lương, chấm dứt, gia hạn) -> chặn gửi duyệt cho tới khi
+// bấm "Tính lại", để giamDoc không bao giờ duyệt bảng tính từ hợp đồng cũ. Chỉ tính nhân viên đang có phiếu trong bảng
+// hoặc nay đủ điều kiện tính lương tháng đó.
+async function chanBangCuHonHopDong(bang, ketNoi) {
+  const { tuNgay, denNgay } = khoangNgayCuaThang(maThang(bang.thang, bang.nam));
+  await luongRepository.khoaHopDongTrongThang(tuNgay, denNgay, ketNoi);
+  const moc = await luongRepository.layMocTinhBangGanNhat(bang, ketNoi);
+  const thayDoi = await luongRepository.layThayDoiHopDongSauMoc(moc, tuNgay, denNgay, ketNoi);
+  if (!thayDoi.length) return;
+  const coPhieu = await luongRepository.layNhanVienCoPhieu(bang.id, ketNoi);
+  const duDieuKien = new Set((await luongRepository.layNhanVienTinhLuong(tuNgay, denNgay, ketNoi)).map((n) => n.nhanVienId));
+  const anhHuong = [...new Set(thayDoi.filter((t) => coPhieu.has(t.nhanVienId) || duDieuKien.has(t.nhanVienId)).map((t) => t.maNhanVien))];
+  if (anhHuong.length) {
+    throw new LoiUngDung(
+      409,
+      `Hợp đồng của nhân viên ${anhHuong.join(', ')} đã thay đổi sau lần tính bảng, vui lòng bấm "Tính lại" trước khi gửi duyệt`,
+    );
+  }
+}
+
+// Cảnh báo cho HR sau khi đổi hợp đồng: các bảng lương của tháng trong khoảng ảnh hưởng [tuNgay, denNgay] (denNgay null =
+// không giới hạn) mà nhân viên có phiếu hoặc nay đủ điều kiện tính lương. Gọi trong transaction hợp đồng (chỉ đọc,
+// không khóa bảng lương -> không tạo vòng khóa với lập/tính lại bảng). Không có bảng nào -> null.
+async function canhBaoBangLuongAnhHuong(nhanVienId, tuNgay, denNgay, ketNoi) {
+  if (denNgay && denNgay < tuNgay) return null;
+  const nhap = [];
+  const choDuyet = [];
+  const daDuyet = [];
+  const cacBang = await luongRepository.layBangGiaoKhoang(tuNgay, denNgay, ketNoi);
+  const coPhieu = await luongRepository.layBangCoPhieuCuaNhanVien(
+    nhanVienId,
+    cacBang.map((b) => b.id),
+    ketNoi,
+  );
+  for (const bang of cacBang) {
+    const thang = khoangNgayCuaThang(maThang(bang.thang, bang.nam));
+    // Chưa có phiếu thì mới cần xét nay có đủ điều kiện tính lương không
+    const lienQuan =
+      coPhieu.has(bang.id) || (await luongRepository.layNhanVienTinhLuong(thang.tuNgay, thang.denNgay, ketNoi, nhanVienId)).length > 0;
+    if (!lienQuan) continue;
+    if (bang.trangThai === 'BAN_NHAP') nhap.push(bang.maBangLuong);
+    else if (bang.trangThai === 'CHO_DUYET') choDuyet.push(bang.maBangLuong);
+    else daDuyet.push(bang.maBangLuong);
+  }
+  const cau = [];
+  if (nhap.length) cau.push(`Bảng lương nháp ${nhap.join(', ')} bị ảnh hưởng, hãy vào Bảng lương bấm "Tính lại" trước khi gửi duyệt`);
+  if (choDuyet.length) {
+    cau.push(`Bảng lương ${choDuyet.join(', ')} đang chờ duyệt không tự cập nhật, cần giám đốc trả lại để tính lại`);
+  }
+  if (daDuyet.length) cau.push(`Bảng lương ${daDuyet.join(', ')} đã duyệt không tự cập nhật, cần điều chỉnh ở kỳ lương sau`);
+  return cau.length ? cau.join('. ') : null;
 }
 
 async function guiDuyet(nguoiDung, id, diaChiIP) {
   await chayTransaction(async (ketNoi) => {
     const bang = await khoaBangTonTai(id, ketNoi);
     chanKhacTrangThai(bang, 'BAN_NHAP', 'Chỉ gửi duyệt được bảng lương đang ở bản nháp');
+    await chanBangCuHonHopDong(bang, ketNoi);
     await luongRepository.capNhatTrangThaiBang(id, 'CHO_DUYET', null, ketNoi);
     await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'GUI_DUYET_BANG_LUONG', diaChiIP ?? null, bang.maBangLuong, ketNoi);
   });
@@ -267,7 +331,7 @@ async function duyetBang(nguoiDung, id, diaChiIP) {
     chanKhacTrangThai(bang, 'CHO_DUYET', 'Chỉ duyệt được bảng lương đang chờ duyệt');
     await chanNguoiLapDuyet(nguoiDung, bang, ketNoi, 'duyệt');
     await luongRepository.capNhatTrangThaiBang(id, 'DA_DUYET', nguoiDung.nhanVienId, ketNoi);
-    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'DUYET_BANG_LUONG', diaChiIP ?? null, maThang(bang.thang, bang.nam), ketNoi);
+    await nhatKyRepository.themNhatKy(nguoiDung.nguoiDungId, 'DUYET_BANG_LUONG', diaChiIP ?? null, bang.maBangLuong, ketNoi);
   });
   return themChiTietBang(await luongRepository.layBangTheoId(id));
 }
@@ -284,7 +348,7 @@ async function traLaiBang(nguoiDung, id, lyDo, diaChiIP) {
       nguoiDung.nguoiDungId,
       'TRA_LAI_BANG_LUONG',
       diaChiIP ?? null,
-      `${maThang(bang.thang, bang.nam)}: ${lyDo.trim()}`.slice(0, 1000),
+      `${bang.maBangLuong}: ${lyDo.trim()}`.slice(0, 1000),
       ketNoi,
     );
   });
@@ -414,13 +478,6 @@ async function layBaoCaoQuyLuong(nam) {
   };
 }
 
-// CSV UTF-8 có BOM để Excel mở đúng tiếng Việt; ô chữ bắt đầu bằng = + - @ | % được thêm ' để chặn chèn công thức
-function oCsv(giaTri) {
-  let s = String(giaTri ?? '');
-  if (/^[=+\-@|%\t\r]/.test(s) && typeof giaTri !== 'number') s = `'${s}`;
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
 async function xuatExcel(id) {
   const bang = await luongRepository.layBangTheoId(id);
   if (!bang) throw new LoiUngDung(404, 'Không tìm thấy bảng lương');
@@ -467,8 +524,7 @@ async function xuatExcel(id) {
       p.thucLinh,
     ];
   });
-  const noiDung = [tieuDe, ...dong].map((d) => d.map(oCsv).join(',')).join('\r\n');
-  return { tenFile: `${bang.maBangLuong}_${thangNam}.csv`, noiDung: `\uFEFF${noiDung}\r\n` }; // BOM để Excel nhận đúng UTF-8
+  return { tenFile: `${bang.maBangLuong}_${thangNam}.csv`, noiDung: taoNoiDungCsv(tieuDe, dong) };
 }
 
 module.exports = {
@@ -477,6 +533,7 @@ module.exports = {
   lapBang,
   tinhLaiBang,
   congThuongPhatVaoPhieuNhap,
+  canhBaoBangLuongAnhHuong,
   xoaBang,
   guiDuyet,
   duyetBang,

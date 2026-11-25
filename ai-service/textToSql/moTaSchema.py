@@ -12,6 +12,19 @@ PHONG_BAN = "PHONG_BAN"  # quanLy: giới hạn phòng ban mình làm trưởng 
 COT_NHAN_VIEN_CAM = {"nguoiDungId", "soTaiKhoanNganHang", "tenNganHang"}
 # Cột cấm ở mọi bảng, mọi vai trò
 COT_CAM_TOAN_CUC = {"matKhauMaHoa", "soTaiKhoanNganHang", "tenNganHang"}
+# Cột tham chiếu nhanvien.id của "người xử lý" (duyệt, đánh giá, đề xuất, ký, trưởng phòng...):
+# với quanLy, id ngoài phạm vi phòng ban bị thay bằng NULL ngay trong truy vấn con thay bảng
+COT_THAM_CHIEU_NGUOI = {
+    "nguoiDuyetId",
+    "nguoiDanhGiaId",
+    "nguoiDeXuatId",
+    "nguoiXuLyId",
+    "nguoiKyDuyetId",
+    "truongBoPhanId",
+    "nguoiLapId",
+    "nguoiThucHienId",
+    "nguoiTaiLenId",
+}
 
 # bảng -> (mô tả, {cột: mô tả})
 BANG: dict[str, tuple[str, dict[str, str]]] = {

@@ -469,13 +469,13 @@ describe('Luồng duyệt bảng lương', () => {
     expect(tl.body.data.trangThai).toBe('BAN_NHAP');
     const nk = await layNhatKy('TRA_LAI_BANG_LUONG');
     expect(nk).toHaveLength(1);
-    expect(nk[0].chiTiet).toContain(lyDo);
+    expect(nk[0].chiTiet).toBe(`${bang.maBangLuong}: ${lyDo}`);
     expect((await guiDuyet(bang.id)).status).toBe(200);
     const dy = await goi('post', `/bangLuong/${bang.id}/duyet`, token.giamdoc);
     expect(dy.status).toBe(200);
     expect(dy.body.data).toMatchObject({ trangThai: 'DA_DUYET', nguoiDuyetId: 2 });
     expect((await layBangDb(bang.id)).nguoiDuyetId).toBe(2);
-    expect(await layNhatKy('DUYET_BANG_LUONG')).toHaveLength(1);
+    expect(await layNhatKy('DUYET_BANG_LUONG')).toEqual([{ nguoiDungId: 2, chiTiet: bang.maBangLuong }]);
     // Đã duyệt: mọi thao tác HR/giamDoc đều 409
     for (const [pt, dd, tk] of [
       ['post', 'tinhLai', token.hr],
@@ -545,7 +545,8 @@ describe('Luồng duyệt bảng lương', () => {
     expect(await layBangDb(bang.id)).toBeUndefined();
     const [[d]] = await pool.execute('SELECT COUNT(*) AS n FROM phieuluongnhanvien WHERE bangTongHopLuongId = ?', [bang.id]);
     expect(Number(d.n)).toBe(0);
-    expect(await layNhatKy('XOA_BANG_LUONG')).toHaveLength(1);
+    expect(await layNhatKy('XOA_BANG_LUONG')).toEqual([{ nguoiDungId: 4, chiTiet: bang.maBangLuong }]);
+    expect(bang.maBangLuong).toBe('BL2020-06');
     expect((await goi('delete', `/bangLuong/${bang.id}`, token.hr)).status).toBe(404);
   });
 });

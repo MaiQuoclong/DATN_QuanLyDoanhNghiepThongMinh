@@ -45,11 +45,14 @@ const COT_LICH_SU = [
 ];
 
 // Chi tiết hợp đồng + lịch sử; HR (không phải hợp đồng của mình) có thêm gia hạn / điều chỉnh / chấm dứt.
-// onThayDoi: báo nơi gọi tải lại danh sách sau khi thao tác thành công
-export function HopThoaiChiTietHopDong({ hopDongId, onDong, onThayDoi }) {
+// onThayDoi: báo nơi gọi tải lại danh sách sau khi thao tác thành công.
+// canhBaoBanDau: cảnh báo bảng lương trả về khi vừa lập hợp đồng (mở chi tiết ngay sau khi tạo)
+export function HopThoaiChiTietHopDong({ hopDongId, onDong, onThayDoi, canhBaoBanDau = '' }) {
   const { nguoiDung } = useXacThuc();
   const [hopDong, setHopDong] = useState(null);
   const [loi, setLoi] = useState('');
+  // Bảng lương nháp/đã duyệt bị ảnh hưởng bởi thao tác vừa làm (backend trả data.canhBao)
+  const [canhBao, setCanhBao] = useState(canhBaoBanDau);
   const [thaoTac, setThaoTac] = useState(null);
 
   const tai = useCallback(() => {
@@ -64,6 +67,7 @@ export function HopThoaiChiTietHopDong({ hopDongId, onDong, onThayDoi }) {
   const thucHien = (duongDan) => async (giaTri) => {
     const kq = await goiApi.post(`/hopDong/${hopDongId}/${duongDan}`, giaTri);
     setHopDong(kq.data);
+    setCanhBao(kq.data.canhBao ?? '');
     setThaoTac(null);
     onThayDoi?.();
   };
@@ -72,6 +76,7 @@ export function HopThoaiChiTietHopDong({ hopDongId, onDong, onThayDoi }) {
     <>
       <HopThoai tieuDe={hopDong ? `Hợp đồng ${hopDong.maHopDong}` : 'Hợp đồng'} onDong={onDong} rong={860}>
         {loi && <div className="thongBao loi">{loi}</div>}
+        {canhBao && <div className="thongBao canhBao">{canhBao}</div>}
         {!hopDong && !loi && <div className="chuPhu">Đang tải...</div>}
         {hopDong && (
           <>

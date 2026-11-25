@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus } from 'lucide-react';
+import { Download, UserPlus } from 'lucide-react';
+import { taiTepTuApi, tenTepTheoNgay } from '../../utils/taiTepBlob';
 import goiApi from '../../services/goiApi';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
+import useMoKhiCoThamSo from '../../hooks/useMoKhiCoThamSo';
+import useThongBao from '../../hooks/useThongBao';
 import BangDuLieu from '../../components/BangDuLieu';
 import ThanhLoc from '../../components/ThanhLoc';
 import PhanTrang from '../../components/PhanTrang';
@@ -74,11 +77,28 @@ function TrangDanhSachNhanVien() {
     return () => clearTimeout(hen);
   }, [tai]);
 
-  const moThem = async () => {
+  const moThem = useCallback(async () => {
     try {
       setViTri(await layLuaChonViTri());
     } catch (e) {
       setLoi(e.message);
+    }
+  }, []);
+  useMoKhiCoThamSo(moThem, laHR);
+
+  // Xuất đúng bộ lọc đang chọn (không gửi trang/kích thước: backend xuất toàn bộ, tối đa 5000 dòng)
+  const [dangXuat, setDangXuat] = useState(false);
+  // Lỗi xuất tách khỏi lỗi tải danh sách: lần tải danh sách thành công không xóa mất thông báo này
+  const { loi: loiXuat, baoLoi: baoLoiXuat } = useThongBao();
+  const xuatExcel = async () => {
+    setDangXuat(true);
+    try {
+      await taiTepTuApi('/nhanVien/xuatExcel', locThamSo({ tuKhoa, ...loc }), tenTepTheoNgay('DanhSachNhanVien'));
+      baoLoiXuat('');
+    } catch (e) {
+      baoLoiXuat(e.message);
+    } finally {
+      setDangXuat(false);
     }
   };
 
@@ -97,11 +117,23 @@ function TrangDanhSachNhanVien() {
             {' · '}Tổng {ketQua?.phanTrang.tongSo ?? 0} người
           </div>
         </div>
-        {laHR && (
-          <NutBam bieuTuong={UserPlus} onClick={moThem}>
-            Thêm nhân viên
+        <div className="hangNutPhai">
+          {/* HR, giamDoc, quanLy (phạm vi phòng mình) đều xuất được; backend ẩn cột ngân hàng với quanLy */}
+          <NutBam
+            bienThe="phu"
+            bieuTuong={Download}
+            onClick={xuatExcel}
+            disabled={dangXuat}
+            title="Tải tệp CSV (mở bằng Excel) theo bộ lọc đang chọn"
+          >
+            {dangXuat ? 'Đang xuất...' : 'Xuất Excel'}
           </NutBam>
-        )}
+          {laHR && (
+            <NutBam bieuTuong={UserPlus} onClick={moThem}>
+              Thêm nhân viên
+            </NutBam>
+          )}
+        </div>
       </div>
 
       <ThanhLoc
@@ -120,6 +152,7 @@ function TrangDanhSachNhanVien() {
         phanPhai={<span />}
       />
       {loi && <div className="thongBao loi">{loi}</div>}
+      {loiXuat && <div className="thongBao loi">{loiXuat}</div>}
       <BangDuLieu
         cot={COT}
         duLieu={ketQua?.items ?? []}

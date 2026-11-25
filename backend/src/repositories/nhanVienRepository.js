@@ -23,12 +23,12 @@ const COT_CAP_NHAT = [
   'chucDanhPhongBanId',
 ];
 
-// boLoc.phamViPhongBanIds: null = toàn công ty, mảng = chỉ các phòng ban đó (quanLy)
-async function layDanhSach({ tuKhoa, phongBanId, trangThaiLamViec, boQuaIds, phamViPhongBanIds, viTri, soLuong }) {
+// boLoc.phamViPhongBanIds: null = toàn công ty, mảng = chỉ các phòng ban đó (quanLy).
+// Dùng chung cho danh sách và xuất Excel để hai nơi luôn lọc giống nhau.
+function dungDieuKienLoc({ tuKhoa, phongBanId, trangThaiLamViec, boQuaIds, phamViPhongBanIds }) {
   const dieuKien = [];
   const thamSo = [];
   if (phamViPhongBanIds) {
-    if (phamViPhongBanIds.length === 0) return { items: [], tongSo: 0 };
     dieuKien.push(`cdpb.phongBanId IN (${phamViPhongBanIds.map(() => '?').join(', ')})`);
     thamSo.push(...phamViPhongBanIds);
   }
@@ -50,8 +50,13 @@ async function layDanhSach({ tuKhoa, phongBanId, trangThaiLamViec, boQuaIds, pha
     dieuKien.push(`nv.id NOT IN (${boQuaIds.map(() => '?').join(', ')})`);
     thamSo.push(...boQuaIds);
   }
-  const where = dieuKien.length ? `WHERE ${dieuKien.join(' AND ')}` : '';
+  return { where: dieuKien.length ? `WHERE ${dieuKien.join(' AND ')}` : '', thamSo };
+}
 
+async function layDanhSach(boLoc) {
+  if (boLoc.phamViPhongBanIds?.length === 0) return { items: [], tongSo: 0 };
+  const { where, thamSo } = dungDieuKienLoc(boLoc);
+  const { soLuong, viTri } = boLoc;
   const [[dem]] = await pool.query(`SELECT COUNT(*) AS tongSo ${BANG_NOI} ${where}`, thamSo);
   const [items] = await pool.query(`SELECT ${COT_DANH_SACH} ${BANG_NOI} ${where} ORDER BY nv.maNhanVien LIMIT ? OFFSET ?`, [
     ...thamSo,
@@ -59,6 +64,19 @@ async function layDanhSach({ tuKhoa, phongBanId, trangThaiLamViec, boQuaIds, pha
     viTri,
   ]);
   return { items, tongSo: Number(dem.tongSo) };
+}
+
+// Xuất Excel: không phân trang, tối đa gioiHan dòng (service truyền trần + 1 để biết có vượt trần không).
+// Cột ngân hàng chỉ SELECT khi kemNganHang (HR/giamDoc); không JOIN nguoidung (không xuất cột tài khoản).
+async function layDanhSachXuat({ kemNganHang, gioiHan, ...boLoc }) {
+  if (boLoc.phamViPhongBanIds?.length === 0) return [];
+  const { where, thamSo } = dungDieuKienLoc(boLoc);
+  const cotNganHang = kemNganHang ? ', nv.soTaiKhoanNganHang, nv.tenNganHang' : '';
+  const [dong] = await pool.query(`SELECT ${COT_DANH_SACH}, nv.diaChi${cotNganHang} ${BANG_NOI} ${where} ORDER BY nv.maNhanVien LIMIT ?`, [
+    ...thamSo,
+    gioiHan,
+  ]);
+  return dong;
 }
 
 // Hồ sơ đầy đủ (kèm ngân hàng, tài khoản); service quyết định cột nào được trả ra theo quyền
@@ -137,4 +155,4 @@ async function capNhat(id, truong, ketNoi = pool) {
   ]);
 }
 
-module.exports = { layDanhSach, layTheoId, laySoMaLonNhat, demTheoViTri, khoaNhanVien, them, capNhat };
+module.exports = { layDanhSach, layDanhSachXuat, layTheoId, laySoMaLonNhat, demTheoViTri, khoaNhanVien, them, capNhat };

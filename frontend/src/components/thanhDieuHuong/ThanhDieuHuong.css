@@ -1,0 +1,159 @@
+/* Tiện ích thanh trên cùng: Tạo nhanh, Tìm nhanh, Chuông việc cần chú ý */
+.vungPopover {
+  position: relative;
+}
+
+.popoverTienIch {
+  position: absolute;
+  right: 0;
+  top: 46px;
+  z-index: 60;
+  width: 260px;
+  padding: 6px;
+  color: var(--mauChu);
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.12);
+}
+
+.popoverChuong {
+  width: 320px;
+}
+
+.tieuDePopover {
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--mauVien);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mauChuPhu);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mucPopover {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--mauChu);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mucPopover:hover,
+.mucPopover.dangChon {
+  background: var(--mauChinhNhat);
+  color: var(--mauChinh);
+}
+
+.tenViec {
+  flex: 1;
+}
+
+.soViec {
+  min-width: 24px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--mauLoiNhat);
+  color: var(--mauLoi);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.rongPopover,
+.loiPopover {
+  padding: 14px 10px;
+  font-size: 13px;
+  color: var(--mauChuPhu);
+  text-align: center;
+}
+
+.loiPopover {
+  color: var(--mauLoi);
+}
+
+.nutTienIch {
+  position: relative;
+}
+
+.huyHieuChuong {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--mauLoi);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* ---------- Hộp Tìm nhanh ---------- */
+.lopPhuTimNhanh {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  padding: 12vh 16px 16px;
+  background: rgba(17, 24, 39, 0.35);
+}
+
+.hopTimNhanh {
+  width: 100%;
+  max-width: 560px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  color: var(--mauChu);
+  box-shadow: 0 16px 40px rgba(17, 24, 39, 0.2);
+}
+
+.oTimNhanh {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--mauVien);
+  color: var(--mauChuPhu);
+}
+
+.oTimNhanh input {
+  flex: 1;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--mauChu);
+  font-size: 15px;
+}
+
+.oTimNhanh kbd {
+  padding: 2px 6px;
+  border: 1px solid var(--mauVien);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.ketQuaTimNhanh {
+  padding: 6px;
+  overflow-y: auto;
+}
+
+.nhomKetQua {
+  font-weight: 600;
+}
+
+.phimEnter {
+  margin-left: auto;
+}

@@ -6,7 +6,7 @@ const { pool } = require('../config/ketNoiCsdl');
 async function layPhongBanQuanLy(nhanVienId, ketNoi = pool) {
   const [dong] = await ketNoi.execute(
     `WITH RECURSIVE cay AS (
-        SELECT id FROM phongban WHERE truongBoPhanId = ?
+        SELECT id FROM phongban WHERE truongBoPhanId = ? AND trangThai = 'DANG_HOAT_DONG'
         UNION
         SELECT pb.id FROM phongban pb JOIN cay ON pb.phongBanChaId = cay.id
      )

@@ -1,9 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Plus, Search, Bell, KeyRound, LogOut } from 'lucide-react';
+import { Search, KeyRound, LogOut } from 'lucide-react';
 import { useXacThuc } from '../context/NguCanhXacThuc';
 import danhSachMenu, { coQuyen, layTabDuocXem, NHAN_VAI_TRO } from '../config/danhSachMenu';
+import useBamNgoai from '../hooks/useBamNgoai';
+import useViecCanChuY from '../hooks/useViecCanChuY';
+import MenuTaoNhanh from '../components/thanhDieuHuong/MenuTaoNhanh';
+import HopTimNhanh from '../components/thanhDieuHuong/HopTimNhanh';
+import ChuongViecCanChuY from '../components/thanhDieuHuong/ChuongViecCanChuY';
 import './BoCucChinh.css';
+
+// Phím / mở Tìm nhanh chỉ khi không đang gõ trong ô nhập (để không chặn ký tự '/')
+function dangNhapLieu(phanTu) {
+  return Boolean(phanTu && (['INPUT', 'TEXTAREA', 'SELECT'].includes(phanTu.tagName) || phanTu.isContentEditable));
+}
 
 function layChuCaiDau(hoVaTen = '') {
   const tu = hoVaTen.trim().split(/\s+/);
@@ -15,8 +25,16 @@ function BoCucChinh() {
   const { nguoiDung, dangXuat } = useXacThuc();
   const { pathname } = useLocation();
   const dieuHuong = useNavigate();
-  const [moMenuTaiKhoan, setMoMenuTaiKhoan] = useState(false);
   const vungMenu = useRef(null);
+  // Mỗi lúc chỉ một popover ('tao' | 'tim' | 'chuong' | 'taiKhoan'); gắn với pathname nên đổi trang là tự đóng
+  const [popover, setPopover] = useState({ ten: null, duongDan: pathname });
+  const popoverDangMo = popover.duongDan === pathname ? popover.ten : null;
+  const doiPopover = useMemo(() => {
+    const tao = (ten) => (mo) => setPopover({ ten: mo ? ten : null, duongDan: pathname });
+    return { tao: tao('tao'), tim: tao('tim'), chuong: tao('chuong'), taiKhoan: tao('taiKhoan') };
+  }, [pathname]);
+  const dongTim = useCallback(() => doiPopover.tim(false), [doiPopover]);
+  const viec = useViecCanChuY(pathname);
 
   const menuDuocXem = danhSachMenu.filter((m) => coQuyen(nguoiDung.vaiTro, m.vaiTro));
   const moduleHienTai =
@@ -24,13 +42,22 @@ function BoCucChinh() {
   const tabDuocXem = moduleHienTai ? layTabDuocXem(moduleHienTai, nguoiDung.vaiTro) : [];
   const tenHienThi = nguoiDung.hoVaTen ?? nguoiDung.tenDangNhap;
 
+  const dongTaiKhoan = useCallback(() => doiPopover.taiKhoan(false), [doiPopover]);
+  useBamNgoai(vungMenu, popoverDangMo === 'taiKhoan', dongTaiKhoan);
+
+  // Phím tắt mở Tìm nhanh: Ctrl+K / Cmd+K (mọi lúc) hoặc '/' (khi không gõ trong ô nhập)
   useEffect(() => {
-    const dongKhiBamNgoai = (e) => {
-      if (vungMenu.current && !vungMenu.current.contains(e.target)) setMoMenuTaiKhoan(false);
+    const khiPhim = (e) => {
+      const ctrlK = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k';
+      const gach = e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey && !dangNhapLieu(document.activeElement);
+      if (ctrlK || gach) {
+        e.preventDefault();
+        doiPopover.tim(true);
+      }
     };
-    document.addEventListener('mousedown', dongKhiBamNgoai);
-    return () => document.removeEventListener('mousedown', dongKhiBamNgoai);
-  }, []);
+    document.addEventListener('keydown', khiPhim);
+    return () => document.removeEventListener('keydown', khiPhim);
+  }, [doiPopover]);
 
   const xuLyDangXuat = async () => {
     await dangXuat();
@@ -42,7 +69,7 @@ function BoCucChinh() {
       <header className="thanhTren">
         <div className="thuongHieu">
           <span className="logo">S</span>
-          <span className="tenHeThong">Quản Lý Doanh Nghiệp</span>
+          <span className="tenHeThong">Quản Lý Doanh Nghiệp Thông Minh Tích Hợp AI Agent</span>
           <span className="vachNgan" />
           <span className="tenModule">{moduleHienTai?.ten}</span>
         </div>
@@ -63,21 +90,21 @@ function BoCucChinh() {
         )}
 
         <div className="tienIch">
-          {/* Chưa có chức năng: tạm disabled, gắn onClick khi làm các module sau */}
-          <button type="button" className="nutTienIch vang" title="Tạo mới (sắp có)" disabled>
-            <Plus size={16} />
+          <MenuTaoNhanh dangMo={popoverDangMo === 'tao'} onDoi={doiPopover.tao} />
+          <button type="button" className="nutTienIch" title="Tìm nhanh chức năng (/ hoặc Ctrl+K)" onClick={() => doiPopover.tim(true)}>
+            <Search size={18} />
           </button>
-          <button type="button" className="nutTienIch" title="Tìm kiếm (sắp có)" disabled>
-            <Search size={16} />
-          </button>
-          <button type="button" className="nutTienIch" title="Thông báo (sắp có)" disabled>
-            <Bell size={16} />
-          </button>
+          <ChuongViecCanChuY dangMo={popoverDangMo === 'chuong'} onDoi={doiPopover.chuong} viec={viec} />
           <div className="vungTaiKhoan" ref={vungMenu}>
-            <button type="button" className="anhDaiDien" title={tenHienThi} onClick={() => setMoMenuTaiKhoan((mo) => !mo)}>
+            <button
+              type="button"
+              className="anhDaiDien"
+              title={tenHienThi}
+              onClick={() => doiPopover.taiKhoan(popoverDangMo !== 'taiKhoan')}
+            >
               {layChuCaiDau(tenHienThi)}
             </button>
-            {moMenuTaiKhoan && (
+            {popoverDangMo === 'taiKhoan' && (
               <div className="menuTaiKhoan the">
                 <div className="thongTinTaiKhoan">
                   <strong>{tenHienThi}</strong>
@@ -87,7 +114,7 @@ function BoCucChinh() {
                 <button
                   type="button"
                   onClick={() => {
-                    setMoMenuTaiKhoan(false);
+                    doiPopover.taiKhoan(false);
                     dieuHuong('/doiMatKhau');
                   }}
                 >
@@ -103,7 +130,7 @@ function BoCucChinh() {
       </header>
 
       <aside className="thanhIcon">
-        {menuDuocXem.map(({ duongDan, ten, bieuTuong: BieuTuong }) => (
+        {menuDuocXem.map(({ duongDan, ten, tenNgan, bieuTuong: BieuTuong }) => (
           <NavLink
             key={duongDan}
             to={duongDan}
@@ -111,11 +138,14 @@ function BoCucChinh() {
             title={ten}
             className={({ isActive }) => (isActive ? 'mucIcon dangChon' : 'mucIcon')}
           >
-            <BieuTuong size={19} />
+            <BieuTuong size={21} />
+            <span className="nhanMuc">{tenNgan ?? ten}</span>
             <span className="chuGoiY">{ten}</span>
           </NavLink>
         ))}
       </aside>
+
+      {popoverDangMo === 'tim' && <HopTimNhanh onDong={dongTim} />}
 
       <main className="noiDung">
         <Outlet />

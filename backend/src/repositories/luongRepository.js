@@ -266,6 +266,88 @@ async function daThamGiaLapBang(nguoiDungId, maBangLuong, ngayTaoBang, ketNoi) {
   return dong.length > 0;
 }
 
+// ===================== Đồng bộ với hợp đồng =====================
+
+// Khóa đọc (S) các hợp đồng giao với tháng khi lập / tính lại / gửi duyệt bảng: HR sửa hợp đồng cùng lúc phải chờ
+// transaction lương xong (và ngược lại), nên bảng không bị tính từ hợp đồng đang sửa dở.
+// Câu riêng vì khóa ở câu ngoài không chắc khóa được dòng trong truy vấn con tương quan của layNhanVienTinhLuong.
+async function khoaHopDongTrongThang(tuNgay, denNgay, ketNoi) {
+  await ketNoi.execute(
+    `SELECT id FROM hopdonglaodong
+      WHERE trangThai IN ('HIEU_LUC', 'DA_CHAM_DUT') AND ngayBatDau <= ? AND (ngayKetThuc IS NULL OR ngayKetThuc >= ?)
+      LOCK IN SHARE MODE`,
+    [denNgay, tuNgay],
+  );
+}
+
+// Bảng lương (mọi trạng thái) của các tháng giao khoảng [tuNgay, denNgay]; denNgay null = không giới hạn
+async function layBangGiaoKhoang(tuNgay, denNgay, ketNoi) {
+  const thangSo = (ngay) => Number(ngay.slice(0, 4)) * 100 + Number(ngay.slice(5, 7));
+  const [dong] = await ketNoi.execute(
+    `SELECT id, maBangLuong, thang, nam, trangThai FROM bangtonghopluong
+      WHERE nam * 100 + thang >= ? ${denNgay ? 'AND nam * 100 + thang <= ?' : ''}
+      ORDER BY nam, thang`,
+    [thangSo(tuNgay), ...(denNgay ? [thangSo(denNgay)] : [])],
+  );
+  return dong;
+}
+
+// Id các bảng (trong danh sách) mà nhân viên đã có phiếu: một truy vấn cho mọi bảng
+async function layBangCoPhieuCuaNhanVien(nhanVienId, bangIds, ketNoi) {
+  if (!bangIds.length) return new Set();
+  const [dong] = await ketNoi.query(
+    'SELECT bangTongHopLuongId FROM phieuluongnhanvien WHERE nhanVienId = ? AND bangTongHopLuongId IN (?)',
+    [nhanVienId, bangIds],
+  );
+  return new Set(dong.map((d) => d.bangTongHopLuongId));
+}
+
+async function layNhanVienCoPhieu(bangId, ketNoi) {
+  const [dong] = await ketNoi.execute('SELECT nhanVienId FROM phieuluongnhanvien WHERE bangTongHopLuongId = ?', [bangId]);
+  return new Set(dong.map((d) => d.nhanVienId));
+}
+
+// Mốc của lần tính bảng gần nhất (lập / tính lại): id + thời điểm nhật ký; bảng không có nhật ký (seed) -> ngày tạo bảng
+async function layMocTinhBangGanNhat(bang, ketNoi) {
+  const [dong] = await ketNoi.execute(
+    `SELECT id, thoiGianTao FROM nhatkyhethong
+      WHERE hanhDong IN ('LAP_BANG_LUONG', 'TINH_LAI_BANG_LUONG') AND chiTiet LIKE ? AND thoiGianTao >= ?
+      ORDER BY id DESC LIMIT 1`,
+    [`${bang.maBangLuong}:%`, bang.ngayTao],
+  );
+  return dong[0] ? { nhatKyId: dong[0].id, thoiDiem: dong[0].thoiGianTao } : { nhatKyId: 0, thoiDiem: bang.ngayTao };
+}
+
+// Thay đổi hợp đồng ghi SAU lần tính bảng gần nhất và có ảnh hưởng tới lương tháng [tuNgay, denNgay]
+// (cùng quy tắc với hopDongService.khoangAnhHuong). "Sau" quyết định bằng id nhật ký: nhật ký của chính thao tác
+// hợp đồng (cùng hành động, ghi ngay sau lịch sử, có thể lệch sang giây kế) phải có id lớn hơn nhật ký lần tính.
+// ngayGhiNhan >= mốc chỉ để thu hẹp (thay đổi sau lần tính không thể ghi trước thời điểm đó).
+// Điều chỉnh chỉ đổi file đính kèm không tính.
+async function layThayDoiHopDongSauMoc(moc, tuNgay, denNgay, ketNoi) {
+  const [dong] = await ketNoi.execute(
+    `SELECT DISTINCT hd.nhanVienId, nv.maNhanVien, hd.maHopDong
+       FROM lichsuhopdong ls
+       JOIN hopdonglaodong hd ON hd.id = ls.hopDongLaoDongId
+       JOIN nhanvien nv ON nv.id = hd.nhanVienId
+      WHERE ls.ngayGhiNhan >= ? AND EXISTS (
+              SELECT 1 FROM nhatkyhethong nk
+               WHERE nk.id > ? AND nk.thoiGianTao BETWEEN ls.ngayGhiNhan AND ls.ngayGhiNhan + INTERVAL 1 SECOND
+                 AND nk.chiTiet LIKE CONCAT(hd.maHopDong, ' (%')
+                 AND nk.hanhDong = CASE ls.hanhDong WHEN 'TAO_MOI' THEN 'THEM_HOP_DONG' WHEN 'GIA_HAN' THEN 'GIA_HAN_HOP_DONG'
+                                   WHEN 'DIEU_CHINH' THEN 'DIEU_CHINH_HOP_DONG' WHEN 'CHAM_DUT' THEN 'CHAM_DUT_HOP_DONG' END)
+        AND ls.ngayBatDauMoi <= ?
+        AND (
+             (ls.hanhDong IN ('TAO_MOI', 'DIEU_CHINH') AND (ls.ngayKetThucMoi IS NULL OR ls.ngayKetThucMoi >= ?)
+               AND (ls.hanhDong = 'TAO_MOI' OR ls.luongCoBanCu <> ls.luongCoBanMoi OR ls.mucPhuCapCu <> ls.mucPhuCapMoi))
+          OR (ls.hanhDong = 'GIA_HAN' AND ls.ngayKetThucCu < ? AND ls.ngayKetThucMoi >= ?)
+          OR (ls.hanhDong = 'CHAM_DUT' AND ls.ngayKetThucMoi < ? AND (ls.ngayKetThucCu IS NULL OR ls.ngayKetThucCu >= ?))
+        )
+      ORDER BY nv.maNhanVien`,
+    [moc.thoiDiem, moc.nhatKyId, denNgay, tuNgay, tuNgay, tuNgay, tuNgay, tuNgay],
+  );
+  return dong;
+}
+
 // ===================== Báo cáo quỹ lương =====================
 
 async function layPhieuDaDuyetTheoNam(nam) {
@@ -299,4 +381,10 @@ module.exports = {
   layKpiNghiemThuTrongThang,
   layPhieuDaDuyetTheoNam,
   daThamGiaLapBang,
+  khoaHopDongTrongThang,
+  layBangGiaoKhoang,
+  layBangCoPhieuCuaNhanVien,
+  layNhanVienCoPhieu,
+  layMocTinhBangGanNhat,
+  layThayDoiHopDongSauMoc,
 };

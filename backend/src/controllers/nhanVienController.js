@@ -7,17 +7,38 @@ function layIdTuDuongDan(req) {
   return laySoNguyenDuong(req.params.id, undefined, 'Mã nhân viên');
 }
 
-async function layDanhSachNhanVien(req, res) {
-  const { tuKhoa, phongBanId } = req.query;
-  // trangThaiLamViec: một giá trị hoặc nhiều giá trị cách nhau bởi dấu phẩy (THU_VIEC,CHINH_THUC)
-  const chuoiTrangThai = typeof req.query.trangThaiLamViec === 'string' ? req.query.trangThaiLamViec.trim() : '';
+// trangThaiLamViec: một giá trị hoặc nhiều giá trị cách nhau bởi dấu phẩy (THU_VIEC,CHINH_THUC)
+function docTrangThaiLamViec(query) {
+  const chuoiTrangThai = typeof query.trangThaiLamViec === 'string' ? query.trangThaiLamViec.trim() : '';
   const trangThaiLamViec = chuoiTrangThai ? [...new Set(chuoiTrangThai.split(',').map((t) => t.trim()))] : undefined;
   if (
-    (req.query.trangThaiLamViec !== undefined && typeof req.query.trangThaiLamViec !== 'string') ||
+    (query.trangThaiLamViec !== undefined && typeof query.trangThaiLamViec !== 'string') ||
     (trangThaiLamViec ?? []).some((t) => !nhanVienService.TRANG_THAI_LAM_VIEC.includes(t))
   ) {
     throw new LoiUngDung(400, 'Trạng thái làm việc không hợp lệ');
   }
+  return trangThaiLamViec;
+}
+
+// Bộ lọc dùng chung cho danh sách và xuất Excel (hai nơi luôn lọc giống nhau)
+function docBoLocNhanVien(query) {
+  return {
+    tuKhoa: layTuKhoa(query.tuKhoa),
+    phongBanId: laySoNguyenDuong(query.phongBanId, undefined, 'Phòng ban'),
+    trangThaiLamViec: docTrangThaiLamViec(query),
+  };
+}
+
+async function xuatExcelNhanVien(req, res) {
+  const { tenFile, noiDung } = await nhanVienService.xuatExcel(req.nguoiDung, docBoLocNhanVien(req.query), req.ip);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${tenFile}"`);
+  res.setHeader('Cache-Control', 'no-store'); // tệp chứa dữ liệu cá nhân
+  return res.status(200).send(noiDung);
+}
+
+async function layDanhSachNhanVien(req, res) {
+  const boLoc = docBoLocNhanVien(req.query);
   // boQuaIds: id cách nhau bởi dấu phẩy, loại khỏi kết quả (ô chọn nhân viên bỏ người đã chọn) - tối đa 100
   const chuoiBoQua = typeof req.query.boQuaIds === 'string' ? req.query.boQuaIds.trim() : '';
   const boQuaIds = chuoiBoQua ? [...new Set(chuoiBoQua.split(',').map((t) => t.trim()))] : undefined;
@@ -30,9 +51,7 @@ async function layDanhSachNhanVien(req, res) {
   }
   const { trang, kichThuoc } = layPhanTrang(req.query);
   const ketQua = await nhanVienService.layDanhSach(req.nguoiDung, {
-    tuKhoa: layTuKhoa(tuKhoa),
-    phongBanId: laySoNguyenDuong(phongBanId, undefined, 'Phòng ban'),
-    trangThaiLamViec,
+    ...boLoc,
     boQuaIds: boQuaIds?.map(Number),
     trang,
     kichThuoc,
@@ -77,6 +96,7 @@ async function dieuChuyenNhanVien(req, res) {
 }
 
 module.exports = {
+  xuatExcelNhanVien,
   layDanhSachNhanVien,
   layHoSoCuaToi,
   capNhatHoSoCuaToi,

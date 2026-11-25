@@ -4,8 +4,12 @@
 Clean Dashboard kiểu SaaS HR/Finance hiện đại (tham khảo mẫu "tiimi"): nền xám nhạt, thẻ trắng viền mảnh, mật độ dữ liệu cao, nhấn bằng teal đậm và vàng.
 
 ## Bố cục
-- **Thanh trên cùng** (cao 52px, nền tối `--mauThanhTren`): logo + tên module, tab con dạng pill (vd. Lương: Bảng lương | Phiếu lương), bên phải: nút "+" vàng, tìm kiếm, thông báo, avatar (menu đổi mật khẩu / đăng xuất).
-- **Thanh icon trái** (rộng 60px, nền trắng): chỉ icon `lucide-react`, có tooltip; mục đang chọn nền teal nhạt.
+- **Thanh trên cùng** (cao 60px, nền tối `--mauThanhTren`): logo + tên hệ thống ("Quản Lý Doanh Nghiệp Thông Minh Tích Hợp AI Agent") + tên module, tab con dạng pill (vd. Lương: Bảng lương | Phiếu lương), bên phải: nút "+" vàng, tìm kiếm, thông báo, avatar (menu đổi mật khẩu / đăng xuất).
+- **Tiện ích thanh trên** (`components/thanhDieuHuong/`): mỗi lúc chỉ mở một popover (Tạo nhanh / Tìm nhanh / Chuông / Tài khoản); Esc, bấm ra ngoài hoặc đổi trang thì đóng. Popover: thẻ trắng rộng 260px (chuông 320px), tiêu đề nhỏ in hoa xám, mục hover/đang chọn nền `--mauChinhNhat` chữ `--mauChinh`, ↑/↓/Enter.
+  - `MenuTaoNhanh` (nút "+" vàng): thao tác theo vai trò (`config/thaoTacNhanh.js`), mở trang đích kèm `?tao=1` để tự mở hộp thoại tạo (`hooks/useMoKhiCoThamSo`).
+  - `HopTimNhanh` (kính lúp, phím `/` khi không gõ trong ô nhập, `Ctrl/Cmd+K`): lớp phủ mờ, hộp 560px cách đỉnh 12vh, tìm không dấu trên trang/tab được phép (`layMucTimKiem`), tối đa 8 kết quả.
+  - `ChuongViecCanChuY`: huy hiệu đỏ `--mauLoi` (ẩn khi 0, `99+`), danh sách việc kèm số đỏ nhạt; rỗng "Không có việc cần xử lý"; lỗi tải hiện dòng đỏ, giữ số cũ.
+- **Thanh icon trái** (rộng 76px, nền trắng): icon `lucide-react` + nhãn chữ ngắn (`tenNgan ?? ten`) ngay bên dưới icon, kèm tooltip tên đầy đủ; mục đang chọn nền teal nhạt.
 - **Nội dung:** padding 24px, tiêu đề trang 22px đậm, dòng đếm trạng thái ngay dưới (`● Đã duyệt 3 · ● Chờ duyệt 5`), nút hành động bên phải tiêu đề.
 
 ## Màu sắc (`frontend/src/styles/bienMau.css`)

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, Check, Download, FilePlus, RefreshCw, Send, Trash2, Undo2 } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import goiApi from '../../services/goiApi';
+import { taiTepTuApi } from '../../utils/taiTepBlob';
 import useThongBao from '../../hooks/useThongBao';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import BangDuLieu from '../../components/BangDuLieu';
@@ -68,24 +69,9 @@ function ChiTietBang({ bangId, laHR, laGiamDoc, nhanVienIdCuaToi, onQuayLai }) {
 
   const taiExcel = async () => {
     try {
-      const tep = await goiApi.get(`/bangLuong/${bangId}/xuatExcel`, { responseType: 'blob' });
-      const url = URL.createObjectURL(tep);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${bang.maBangLuong}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await taiTepTuApi(`/bangLuong/${bangId}/xuatExcel`, undefined, `${bang.maBangLuong}_${bang.thangNam}.csv`);
     } catch (e) {
-      // responseType blob: body lỗi của backend là Blob JSON -> đọc lại để lấy thông báo tiếng Việt
-      let thongBaoLoi = e.message;
-      if (e instanceof Blob) {
-        try {
-          thongBaoLoi = JSON.parse(await e.text()).message;
-        } catch {
-          /* giữ thông báo mặc định */
-        }
-      }
-      baoLoi(thongBaoLoi ?? 'Không tải được tệp Excel');
+      baoLoi(e.message);
     }
   };
 

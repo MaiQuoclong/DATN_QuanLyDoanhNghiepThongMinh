@@ -66,7 +66,7 @@ const NOI_DE_XUAT = `FROM dexuatkhenthuongkyluat dx
 
 const chuanHoaDeXuat = (d) => d && { ...d, soTienDeXuat: Number(d.soTienDeXuat ?? 0) };
 
-function dieuKienDeXuat({ trangThai, loaiDeXuat, nguoiDeXuatId, tuKhoa }) {
+function dieuKienDeXuat({ trangThai, loaiDeXuat, nguoiDeXuatId, nguoiXuLyId, tuKhoa }) {
   const dieuKien = [];
   const thamSo = [];
   if (trangThai) {
@@ -80,6 +80,10 @@ function dieuKienDeXuat({ trangThai, loaiDeXuat, nguoiDeXuatId, tuKhoa }) {
   if (nguoiDeXuatId) {
     dieuKien.push('dx.nguoiDeXuatId = ?');
     thamSo.push(nguoiDeXuatId);
+  }
+  if (nguoiXuLyId) {
+    dieuKien.push('dx.nguoiXuLyId = ?');
+    thamSo.push(nguoiXuLyId);
   }
   if (tuKhoa) {
     const mau = thoatLike(tuKhoa);
