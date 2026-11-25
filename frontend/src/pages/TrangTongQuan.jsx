@@ -20,6 +20,8 @@ import {
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import goiApi from '../services/goiApi';
 import { useXacThuc } from '../context/NguCanhXacThuc';
+import { useViecCanChuYChung } from '../context/NguCanhViecCanChuY';
+import { layHienThiSoViec } from '../utils/viecCanChuY';
 import { NHAN_VAI_TRO } from '../config/danhSachMenu';
 import { locPhongBanTrongPhamVi } from '../utils/phongBan';
 import ChipTrangThai from '../components/ChipTrangThai';
@@ -40,6 +42,60 @@ const COT_NHAT_KY = [
 ];
 
 // Thẻ chỉ số trực quan: có icon màu sắc, thanh tiến độ (tùy chọn) và có thể bọc Link chuyển trang
+// Thẻ "việc cần xử lý" lấy số từ /viecCanChuY (cùng nguồn với chuông); thứ tự hiển thị trên lưới.
+// vaiTro (khớp apDung ở backend viecCanChuYService) chỉ dùng để giữ chỗ khi chưa có theoLoai; có theoLoai thì backend quyết định.
+const THE_VIEC_CAN_XU_LY = [
+  {
+    loai: 'DON_NGHI_CHO_DUYET',
+    vaiTro: ['giamDoc', 'quanLy'],
+    duongDan: '/nghiPhep/duyetDon',
+    tieuDe: 'Đơn nghỉ phép chờ duyệt',
+    moTa: 'Mở trang Duyệt đơn nghỉ phép',
+    bieuTuong: ClipboardCheck,
+  },
+  {
+    loai: 'DIEU_CHINH_CONG_CHO_DUYET',
+    vaiTro: ['giamDoc', 'quanLy', 'HR'],
+    duongDan: '/chamCong/dieuChinh',
+    tieuDe: 'Điều chỉnh công chờ duyệt',
+    moTa: 'Mở trang Duyệt điều chỉnh công',
+    bieuTuong: Clock,
+  },
+  {
+    loai: 'KPI_CAN_NGHIEM_THU',
+    vaiTro: ['giamDoc', 'quanLy'],
+    duongDan: '/kpi/danhGia',
+    tieuDe: 'Phiếu KPI chờ nghiệm thu',
+    moTa: 'Mở trang Đánh giá KPI',
+    bieuTuong: Target,
+  },
+  {
+    loai: 'HOP_DONG_SAP_HET_HAN',
+    vaiTro: ['HR', 'giamDoc'],
+    duongDan: '/nhanSu/hopDong',
+    tieuDe: 'Hợp đồng sắp/quá hạn',
+    moTa: 'Gia hạn hoặc lập hợp đồng mới',
+    bieuTuong: FileWarning,
+    mauCanhBao: 'do',
+  },
+  {
+    loai: 'DE_XUAT_CHO_XU_LY',
+    vaiTro: ['HR'],
+    duongDan: '/khenThuongKyLuat/deXuat',
+    tieuDe: 'Đề xuất KTKL chờ HR xử lý',
+    moTa: 'Mở trang Đề xuất khen thưởng - kỷ luật',
+    bieuTuong: Award,
+  },
+  {
+    loai: 'DE_XUAT_CHO_KY',
+    vaiTro: ['giamDoc'],
+    duongDan: '/khenThuongKyLuat/deXuat',
+    tieuDe: 'Đề xuất KTKL chờ bạn ký',
+    moTa: 'Mở trang Đề xuất khen thưởng - kỷ luật',
+    bieuTuong: Award,
+  },
+];
+
 function TheChiSo({ tieuDe, giaTri, moTa, bieuTuong: BieuTuong, mauIcon = 'xanh', trangThai, tienDo, duongDan }) {
   const noiDung = (
     <div className="the theChiSo">
@@ -109,10 +165,12 @@ function TrangTongQuan() {
   // Dữ liệu quản lý / toàn công ty
   const [phongBan, setPhongBan] = useState([]);
   const [bangCongQuanLy, setBangCongQuanLy] = useState(null);
-  const [donChoDuyet, setDonChoDuyet] = useState({ tongSo: 0, items: [] });
-  const [dieuChinhCho, setDieuChinhCho] = useState({ tongSo: 0, items: [] });
-  const [soDeXuatCho, setSoDeXuatCho] = useState(null);
-  const [soHopDongSapHet, setSoHopDongSapHet] = useState(null);
+  // Chỉ dùng cho khung danh sách tóm tắt; số trên thẻ lấy từ viecCanChuY
+  const [donChoDuyet, setDonChoDuyet] = useState([]);
+  const [dieuChinhCho, setDieuChinhCho] = useState([]);
+  // Thẻ thông tin của quanLy: đề xuất KTKL mình đã gửi (không phải việc tự xử lý nên không tính vào chuông)
+  const [soDeXuatDaGui, setSoDeXuatDaGui] = useState(null);
+  const viec = useViecCanChuYChung();
   const [baoCaoLuong, setBaoCaoLuong] = useState(null);
 
   // Dữ liệu hệ thống (Admin, giamDoc)
@@ -179,30 +237,18 @@ function TrangTongQuan() {
       .then((kq) => setBangCongQuanLy(kq.data))
       .catch(() => {});
     goiApi
-      .get('/dieuChinhCong', { params: { trangThai: 'CHO_DUYET', trang: 1, kichThuoc: 5 } })
-      .then((kq) => setDieuChinhCho({ tongSo: kq.data?.phanTrang?.tongSo ?? 0, items: kq.data?.items ?? [] }))
+      .get('/dieuChinhCong', { params: { trangThai: 'CHO_DUYET', trang: 1, kichThuoc: 20 } })
+      .then((kq) => setDieuChinhCho((kq.data?.items ?? []).filter((yc) => yc.duocDuyet)))
       .catch(() => {});
 
     if (laGiamDoc || laQuanLy) {
       goiApi
-        .get('/donNghiPhep', { params: { trangThai: 'CHO_DUYET', trang: 1, kichThuoc: 5 } })
-        .then((kq) => setDonChoDuyet({ tongSo: kq.data?.phanTrang?.tongSo ?? 0, items: kq.data?.items ?? [] }))
-        .catch(() => {});
-    }
-
-    if (laGiamDoc || laQuanLy || laHR) {
-      const trangThaiDeXuat = laGiamDoc && !laHR && !laQuanLy ? 'CHO_KY' : 'CHO_DUYET';
-      goiApi
-        .get('/deXuatKhenThuongKyLuat', { params: { trangThai: trangThaiDeXuat, trang: 1, kichThuoc: 1 } })
-        .then((kq) => setSoDeXuatCho(kq.data?.phanTrang?.tongSo ?? 0))
+        .get('/donNghiPhep', { params: { trangThai: 'CHO_DUYET', trang: 1, kichThuoc: 20 } })
+        .then((kq) => setDonChoDuyet((kq.data?.items ?? []).filter((d) => d.duocDuyet)))
         .catch(() => {});
     }
 
     if (laHR || laGiamDoc) {
-      goiApi
-        .get('/hopDong/sapHetHan', { params: { soNgay: 30 } })
-        .then((kq) => setSoHopDongSapHet(kq.data?.items?.length ?? 0))
-        .catch(() => {});
       goiApi
         .get('/bangLuong/baoCao', { params: { nam: namNay } })
         .then(async (kq) => {
@@ -213,6 +259,17 @@ function TrangTongQuan() {
         .catch(() => {});
     }
   }, [xemQuanTri, laGiamDoc, laHR, laQuanLy, nguoiDung]);
+
+  // Thẻ thông tin quanLy: tải lại mỗi lần chuông làm mới (cùng nhịp 60s / đổi trang) để không đứng số.
+  // quanLy chỉ thấy đề xuất do mình tạo (backend lọc theo nguoiDeXuatId).
+  const chiLaQuanLy = laQuanLy && !laHR && !laGiamDoc;
+  useEffect(() => {
+    if (!chiLaQuanLy) return;
+    goiApi
+      .get('/deXuatKhenThuongKyLuat', { params: { trangThai: 'CHO_DUYET', trang: 1, kichThuoc: 1 } })
+      .then((kq) => setSoDeXuatDaGui(kq.data?.phanTrang?.tongSo ?? 0))
+      .catch(() => {});
+  }, [chiLaQuanLy, viec?.theoLoai]);
 
   useEffect(() => {
     if (laAdmin) {
@@ -467,46 +524,36 @@ function TrangTongQuan() {
               trangThai={!bangCongQuanLy ? undefined : tongDiMuon + tongThieuCheckOut ? 'canhBao' : 'thanhCong'}
               duongDan="/chamCong/bangCong"
             />
-            {(laGiamDoc || laQuanLy) && (
+            {THE_VIEC_CAN_XU_LY.map(({ loai, vaiTro: vaiTroThe, tieuDe, moTa, bieuTuong, duongDan, mauCanhBao = 'cam' }) => {
+              const soViec = layHienThiSoViec(viec, loai);
+              if (viec?.theoLoai ? !soViec : (!coHoSo && loai !== 'HOP_DONG_SAP_HET_HAN') || !vaiTroThe.some((v) => vaiTro.includes(v)))
+                return null;
+              const coSo = soViec && !soViec.loi;
+              const tieuDeThe =
+                loai === 'HOP_DONG_SAP_HET_HAN' && viec?.soNgayCanhBaoHopDong ? `${tieuDe} (${viec.soNgayCanhBaoHopDong} ngày)` : tieuDe;
+              return (
+                <TheChiSo
+                  key={loai}
+                  tieuDe={tieuDeThe}
+                  giaTri={coSo ? soViec.hienThi : '—'}
+                  moTa={soViec?.loi || (!soViec && viec?.loi) ? 'Không tải được số liệu' : moTa}
+                  bieuTuong={bieuTuong}
+                  mauIcon={coSo ? (soViec.so ? mauCanhBao : 'la') : 'xanh'}
+                  trangThai={coSo ? (soViec.so ? 'canhBao' : 'thanhCong') : soViec?.loi || viec?.loi ? 'canhBao' : undefined}
+                  duongDan={duongDan}
+                />
+              );
+            })}
+            {soDeXuatDaGui !== null && (
               <TheChiSo
-                tieuDe="Đơn nghỉ phép chờ duyệt"
-                giaTri={donChoDuyet.tongSo}
-                moTa="Mở trang Duyệt đơn nghỉ phép"
-                bieuTuong={ClipboardCheck}
-                mauIcon={donChoDuyet.tongSo ? 'cam' : 'la'}
-                trangThai={donChoDuyet.tongSo ? 'canhBao' : 'thanhCong'}
-                duongDan="/nghiPhep/duyetDon"
+                tieuDe="Đề xuất KTKL đã gửi chờ xử lý"
+                giaTri={soDeXuatDaGui}
+                moTa="Theo dõi (không tính vào chuông)"
+                bieuTuong={Award}
+                mauIcon="xanh"
+                duongDan="/khenThuongKyLuat/deXuat"
               />
             )}
-            <TheChiSo
-              tieuDe="Điều chỉnh công chờ duyệt"
-              giaTri={dieuChinhCho.tongSo}
-              moTa="Mở trang Duyệt điều chỉnh công"
-              bieuTuong={Clock}
-              mauIcon={dieuChinhCho.tongSo ? 'cam' : 'la'}
-              trangThai={dieuChinhCho.tongSo ? 'canhBao' : 'thanhCong'}
-              duongDan="/chamCong/dieuChinh"
-            />
-            {(laHR || laGiamDoc) && (
-              <TheChiSo
-                tieuDe="Hợp đồng sắp/quá hạn (30 ngày)"
-                giaTri={soHopDongSapHet ?? '—'}
-                moTa="Gia hạn hoặc lập hợp đồng mới"
-                bieuTuong={FileWarning}
-                mauIcon={soHopDongSapHet ? 'do' : 'la'}
-                trangThai={soHopDongSapHet ? 'canhBao' : 'thanhCong'}
-                duongDan="/nhanSu/hopDong"
-              />
-            )}
-            <TheChiSo
-              tieuDe={laGiamDoc && !laHR ? 'Đề xuất KTKL chờ ký' : laHR ? 'Đề xuất KTKL chờ HR xử lý' : 'Đề xuất KTKL đã gửi chờ xử lý'}
-              giaTri={soDeXuatCho ?? '—'}
-              moTa="Mở trang Đề xuất khen thưởng - kỷ luật"
-              bieuTuong={Award}
-              mauIcon={soDeXuatCho ? 'cam' : 'xanh'}
-              trangThai={soDeXuatCho ? 'canhBao' : 'thanhCong'}
-              duongDan="/khenThuongKyLuat/deXuat"
-            />
           </div>
 
           {/* Hàng 2 cột cân xứng 50% - 50%: Biểu đồ tròn nhân sự + Biểu đồ Quỹ lương theo phòng (HR/GĐ) hoặc Danh sách chờ duyệt (quanLy) */}
@@ -582,11 +629,11 @@ function TrangTongQuan() {
                     Xử lý ngay →
                   </Link>
                 </div>
-                {donChoDuyet.items.length === 0 && dieuChinhCho.items.length === 0 ? (
+                {donChoDuyet.length === 0 && dieuChinhCho.length === 0 ? (
                   <div className="trongDanhSach">Không có đơn nghỉ phép hoặc điều chỉnh công nào đang chờ duyệt</div>
                 ) : (
                   <div className="danhSachTomTat">
-                    {donChoDuyet.items.slice(0, 3).map((d) => (
+                    {donChoDuyet.slice(0, 3).map((d) => (
                       <Link key={`don-${d.id}`} to="/nghiPhep/duyetDon" className="dongTomTat">
                         <div className="dongTomTatChinh">
                           <strong>
@@ -599,7 +646,7 @@ function TrangTongQuan() {
                         <ChipTrangThai trangThai={d.trangThai} />
                       </Link>
                     ))}
-                    {dieuChinhCho.items.slice(0, 2).map((yc) => (
+                    {dieuChinhCho.slice(0, 2).map((yc) => (
                       <Link key={`dc-${yc.id}`} to="/chamCong/dieuChinh" className="dongTomTat">
                         <div className="dongTomTatChinh">
                           <strong>

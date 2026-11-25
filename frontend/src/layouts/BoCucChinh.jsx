@@ -5,6 +5,7 @@ import { useXacThuc } from '../context/NguCanhXacThuc';
 import danhSachMenu, { coQuyen, layTabDuocXem, NHAN_VAI_TRO } from '../config/danhSachMenu';
 import useBamNgoai from '../hooks/useBamNgoai';
 import useViecCanChuY from '../hooks/useViecCanChuY';
+import { NhaCungCapViecCanChuY } from '../context/NguCanhViecCanChuY';
 import MenuTaoNhanh from '../components/thanhDieuHuong/MenuTaoNhanh';
 import HopTimNhanh from '../components/thanhDieuHuong/HopTimNhanh';
 import ChuongViecCanChuY from '../components/thanhDieuHuong/ChuongViecCanChuY';
@@ -148,7 +149,9 @@ function BoCucChinh() {
       {popoverDangMo === 'tim' && <HopTimNhanh onDong={dongTim} />}
 
       <main className="noiDung">
-        <Outlet />
+        <NhaCungCapViecCanChuY giaTri={viec}>
+          <Outlet />
+        </NhaCungCapViecCanChuY>
       </main>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import goiApi from '../services/goiApi';
 
 const CHU_KY_MS = 60000;
@@ -9,7 +9,7 @@ const KHOANG_CACH_TOI_THIEU_MS = 2000;
 // Chuông "Việc cần chú ý": tải khi mở layout, mỗi 60s (tạm dừng khi tab ẩn), khi quay lại tab và ~1s sau khi đổi trang
 // (để số giảm ngay sau khi duyệt xong). Lỗi mạng: giữ số cũ, bật cờ loi.
 export default function useViecCanChuY(pathname) {
-  const [duLieu, setDuLieu] = useState({ tongSo: 0, items: [], nguonLoi: [] });
+  const [duLieu, setDuLieu] = useState({ tongSo: 0, items: [], nguonLoi: [], theoLoai: null, vuotTran: [] });
   const [loi, setLoi] = useState(false);
   const lanGoi = useRef(0);
   const thoiDiemGoi = useRef(0);
@@ -51,5 +51,6 @@ export default function useViecCanChuY(pathname) {
     return () => clearTimeout(hen);
   }, [pathname, tai]);
 
-  return { ...duLieu, loi, taiLai: tai };
+  // Giữ tham chiếu ổn định: giá trị này đi vào context, tránh render lại mọi trang con khi layout render
+  return useMemo(() => ({ ...duLieu, loi, taiLai: tai }), [duLieu, loi, tai]);
 }
