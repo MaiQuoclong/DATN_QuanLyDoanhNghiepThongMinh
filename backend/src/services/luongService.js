@@ -4,6 +4,7 @@ const luongRepository = require('../repositories/luongRepository');
 const chamCongRepository = require('../repositories/chamCongRepository');
 const nhatKyRepository = require('../repositories/nhatKyRepository');
 const { khoangNgayCuaThang, thangHienTai } = require('../utils/ngayThang');
+const { taoNoiDungCsv } = require('../utils/xuatCsv');
 const {
   demNgayCongChuan,
   tinhNgayCong,
@@ -414,13 +415,6 @@ async function layBaoCaoQuyLuong(nam) {
   };
 }
 
-// CSV UTF-8 có BOM để Excel mở đúng tiếng Việt; ô chữ bắt đầu bằng = + - @ | % được thêm ' để chặn chèn công thức
-function oCsv(giaTri) {
-  let s = String(giaTri ?? '');
-  if (/^[=+\-@|%\t\r]/.test(s) && typeof giaTri !== 'number') s = `'${s}`;
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
 async function xuatExcel(id) {
   const bang = await luongRepository.layBangTheoId(id);
   if (!bang) throw new LoiUngDung(404, 'Không tìm thấy bảng lương');
@@ -467,8 +461,7 @@ async function xuatExcel(id) {
       p.thucLinh,
     ];
   });
-  const noiDung = [tieuDe, ...dong].map((d) => d.map(oCsv).join(',')).join('\r\n');
-  return { tenFile: `${bang.maBangLuong}_${thangNam}.csv`, noiDung: `\uFEFF${noiDung}\r\n` }; // BOM để Excel nhận đúng UTF-8
+  return { tenFile: `${bang.maBangLuong}_${thangNam}.csv`, noiDung: taoNoiDungCsv(tieuDe, dong) };
 }
 
 module.exports = {
