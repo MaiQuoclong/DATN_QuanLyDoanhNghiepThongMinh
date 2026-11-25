@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Check, Plus, X } from 'lucide-react';
 import goiApi from '../../services/goiApi';
 import useThongBao from '../../hooks/useThongBao';
+import useMoKhiCoThamSo from '../../hooks/useMoKhiCoThamSo';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import BangDuLieu from '../../components/BangDuLieu';
 import ChipTrangThai from '../../components/ChipTrangThai';
@@ -176,6 +177,7 @@ function DanhSachYeuCau({ cheDo }) {
   const { loi, thongBao, baoLoi, baoThanhCong } = useThongBao();
   const [dangXem, setDangXem] = useState(null);
   const [dangTao, setDangTao] = useState(false);
+  useMoKhiCoThamSo(useCallback(() => setDangTao(true), []));
 
   const tai = useCallback(() => {
     goiApi

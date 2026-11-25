@@ -124,3 +124,19 @@ export function layTabDuocXem(module, vaiTroNguoiDung) {
 }
 
 export default danhSachMenu;
+
+// Danh sách phẳng các trang (module + tab) người dùng được vào, dùng cho hộp Tìm nhanh
+export function layMucTimKiem(vaiTroNguoiDung) {
+  return danhSachMenu
+    .filter((m) => coQuyen(vaiTroNguoiDung, m.vaiTro))
+    .flatMap((m) => {
+      const tab = layTabDuocXem(m, vaiTroNguoiDung);
+      if (!tab.length) return [{ ten: m.ten, nhom: m.ten, duongDan: m.duongDan, bieuTuong: m.bieuTuong }];
+      return tab.map((t) => ({
+        ten: t.ten,
+        nhom: m.ten,
+        duongDan: t.duongDan ? `${m.duongDan}/${t.duongDan}` : m.duongDan,
+        bieuTuong: m.bieuTuong,
+      }));
+    });
+}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { DatabaseZap, Download, Trash2, Upload } from 'lucide-react';
 import goiApi from '../../services/goiApi';
 import useThongBao from '../../hooks/useThongBao';
+import useMoKhiCoThamSo from '../../hooks/useMoKhiCoThamSo';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
 import BangDuLieu from '../../components/BangDuLieu';
 import ChipTrangThai from '../../components/ChipTrangThai';
@@ -53,6 +54,10 @@ function TrangTaiLieuQuyChe() {
   const [ketQua, setKetQua] = useState(null);
   const [dangTai, setDangTai] = useState(true);
   const [dangThem, setDangThem] = useState(false);
+  useMoKhiCoThamSo(
+    useCallback(() => setDangThem(true), []),
+    laHR,
+  );
   const [dangXoa, setDangXoa] = useState(null);
   const [dangGuiXoa, setDangGuiXoa] = useState(false);
   const [dangLapId, setDangLapId] = useState(null);

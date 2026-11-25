@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { UserPlus } from 'lucide-react';
 import goiApi from '../../services/goiApi';
 import { useXacThuc } from '../../context/NguCanhXacThuc';
+import useMoKhiCoThamSo from '../../hooks/useMoKhiCoThamSo';
 import BangDuLieu from '../../components/BangDuLieu';
 import ThanhLoc from '../../components/ThanhLoc';
 import PhanTrang from '../../components/PhanTrang';
@@ -74,13 +75,14 @@ function TrangDanhSachNhanVien() {
     return () => clearTimeout(hen);
   }, [tai]);
 
-  const moThem = async () => {
+  const moThem = useCallback(async () => {
     try {
       setViTri(await layLuaChonViTri());
     } catch (e) {
       setLoi(e.message);
     }
-  };
+  }, []);
+  useMoKhiCoThamSo(moThem, laHR);
 
   const boLoc = [
     { khoa: 'phongBanId', nhan: 'Phòng ban', luaChon: phongBan.map((pb) => ({ giaTri: pb.id, nhan: pb.tenPhongBan })) },
