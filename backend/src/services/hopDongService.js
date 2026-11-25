@@ -3,6 +3,7 @@ const { chayTransaction } = require('../config/ketNoiCsdl');
 const hopDongRepository = require('../repositories/hopDongRepository');
 const nhanVienRepository = require('../repositories/nhanVienRepository');
 const nhatKyRepository = require('../repositories/nhatKyRepository');
+const luongService = require('./luongService');
 const { LOAI_HOP_DONG } = require('../utils/trangThai');
 
 // Bộ luật Lao động 2019: thử việc tối đa 180 ngày (Điều 25), hợp đồng xác định thời hạn tối đa 36 tháng (Điều 20)
@@ -30,6 +31,10 @@ function congThang(ngay, soThang) {
   const thangMoi = (tongThang % 12) + 1;
   const ngayCuoiThang = new Date(Date.UTC(namMoi, thangMoi, 0)).getUTCDate();
   return `${namMoi}-${String(thangMoi).padStart(2, '0')}-${String(Math.min(ngayTrongThang, ngayCuoiThang)).padStart(2, '0')}`;
+}
+
+function ngayDauThangSau(ngay) {
+  return `${congThang(ngay, 1).slice(0, 7)}-01`;
 }
 
 function xemToanCongTy(vaiTro) {
@@ -113,6 +118,34 @@ async function ghiDauVet(nguoiDung, { hopDongCu, hopDongMoi, hanhDongLichSu, han
   );
 }
 
+// Khoảng ngày lương bị ảnh hưởng bởi một thay đổi hợp đồng (null = không ảnh hưởng). Khớp cách lập bảng chọn hợp đồng
+// (luongRepository.layNhanVienTinhLuong: hợp đồng giao với tháng) và luongRepository.layThayDoiHopDongSauMoc:
+// - tạo mới / điều chỉnh lương-phụ cấp: cả thời hạn hợp đồng (schema không có ngày hiệu lực phụ lục nên áp cả kỳ)
+// - gia hạn: các tháng sau tháng chứa ngày kết thúc cũ, tới ngày kết thúc mới (tháng chứa ngày kết thúc cũ đã có hợp đồng)
+// - chấm dứt: các tháng sau tháng chứa ngày chấm dứt, tới ngày kết thúc cũ (tháng chứa ngày chấm dứt vẫn tính lương như cũ)
+function khoangAnhHuong(hanhDong, cu, moi) {
+  if (hanhDong === 'TAO_MOI') return { tuNgay: moi.ngayBatDau, denNgay: moi.ngayKetThuc };
+  if (hanhDong === 'DIEU_CHINH') {
+    const doiLuong = Number(cu.luongCoBan) !== Number(moi.luongCoBan) || Number(cu.mucPhuCap) !== Number(moi.mucPhuCap);
+    return doiLuong ? { tuNgay: moi.ngayBatDau, denNgay: moi.ngayKetThuc } : null;
+  }
+  if (hanhDong === 'GIA_HAN') return { tuNgay: ngayDauThangSau(cu.ngayKetThuc), denNgay: moi.ngayKetThuc };
+  if (hanhDong === 'CHAM_DUT') return { tuNgay: ngayDauThangSau(moi.ngayKetThuc), denNgay: cu.ngayKetThuc };
+  return null;
+}
+
+async function timCanhBaoLuong(hanhDong, cu, moi, ketNoi) {
+  const khoang = khoangAnhHuong(hanhDong, cu, moi);
+  if (!khoang) return null;
+  return luongService.canhBaoBangLuongAnhHuong(moi.nhanVienId, khoang.tuNgay, khoang.denNgay, ketNoi);
+}
+
+// Chi tiết hợp đồng kèm cảnh báo bảng lương (chỉ thêm trường khi có cảnh báo)
+async function layChiTietKemCanhBao(nguoiDung, id, canhBao) {
+  const hopDong = await layChiTiet(nguoiDung, id);
+  return canhBao ? { ...hopDong, canhBao } : hopDong;
+}
+
 async function layDanhSach(boLoc) {
   const { trang, kichThuoc } = boLoc;
   const { items, tongSo } = await hopDongRepository.layDanhSach({
@@ -164,7 +197,7 @@ async function taoHopDong(nguoiDung, body, diaChiIP) {
     throw new LoiUngDung(400, `Ngày bắt đầu không được sau hôm nay quá ${SO_NGAY_BAT_DAU_TRUOC_TOI_DA} ngày`);
   }
 
-  const id = await taoVoiThuLaiKhiTrungMa(() =>
+  const { id, canhBao } = await taoVoiThuLaiKhiTrungMa(() =>
     chayTransaction(async (ketNoi) => {
       if (!(await nhanVienRepository.khoaNhanVien(nhanVienId, ketNoi))) throw new LoiUngDung(404, 'Không tìm thấy nhân viên');
       const nhanVien = await nhanVienRepository.layTheoId(nhanVienId, ketNoi);
@@ -200,15 +233,15 @@ async function taoHopDong(nguoiDung, body, diaChiIP) {
         diaChiIP,
         ketNoi,
       );
-      return idMoi;
+      return { id: idMoi, canhBao: await timCanhBaoLuong('TAO_MOI', null, hopDong, ketNoi) };
     }),
   );
-  return layChiTiet(nguoiDung, id);
+  return layChiTietKemCanhBao(nguoiDung, id, canhBao);
 }
 
 // Gia hạn: chỉ hợp đồng xác định thời hạn (thử việc không được kéo dài, hết thử việc phải ký hợp đồng mới)
 async function giaHanHopDong(nguoiDung, id, { ngayKetThucMoi, lyDo }, diaChiIP) {
-  await chayTransaction(async (ketNoi) => {
+  const canhBao = await chayTransaction(async (ketNoi) => {
     const hopDong = await khoaVaLayHopDong(nguoiDung, id, ketNoi);
     if (hopDong.trangThai === 'DA_CHAM_DUT') throw new LoiUngDung(409, 'Hợp đồng đã chấm dứt, không thể gia hạn');
     // Hết hạn rồi mới gia hạn sẽ hợp thức hóa ngược khoảng thời gian không có hợp đồng -> phải ký hợp đồng mới
@@ -235,13 +268,14 @@ async function giaHanHopDong(nguoiDung, id, { ngayKetThucMoi, lyDo }, diaChiIP) 
       diaChiIP,
       ketNoi,
     );
+    return timCanhBaoLuong('GIA_HAN', hopDong, { ...hopDong, ngayKetThuc: ngayKetThucMoi }, ketNoi);
   });
-  return layChiTiet(nguoiDung, id);
+  return layChiTietKemCanhBao(nguoiDung, id, canhBao);
 }
 
 // Điều chỉnh lương cơ bản, phụ cấp, file đính kèm của hợp đồng đang hiệu lực (phụ lục hợp đồng)
 async function dieuChinhHopDong(nguoiDung, id, body, diaChiIP) {
-  await chayTransaction(async (ketNoi) => {
+  const canhBao = await chayTransaction(async (ketNoi) => {
     const hopDong = await khoaVaLayHopDong(nguoiDung, id, ketNoi);
     if (hopDong.trangThai !== 'HIEU_LUC') throw new LoiUngDung(409, 'Chỉ điều chỉnh được hợp đồng đang hiệu lực');
 
@@ -279,13 +313,14 @@ async function dieuChinhHopDong(nguoiDung, id, body, diaChiIP) {
       diaChiIP,
       ketNoi,
     );
+    return timCanhBaoLuong('DIEU_CHINH', hopDong, { ...hopDong, ...truong }, ketNoi);
   });
-  return layChiTiet(nguoiDung, id);
+  return layChiTietKemCanhBao(nguoiDung, id, canhBao);
 }
 
 // Chấm dứt: ngày chấm dứt thành ngày kết thúc thực tế của hợp đồng
 async function chamDutHopDong(nguoiDung, id, { ngayChamDut, lyDo }, diaChiIP) {
-  await chayTransaction(async (ketNoi) => {
+  const canhBao = await chayTransaction(async (ketNoi) => {
     const hopDong = await khoaVaLayHopDong(nguoiDung, id, ketNoi);
     if (hopDong.trangThai === 'DA_CHAM_DUT') throw new LoiUngDung(409, 'Hợp đồng đã chấm dứt trước đó');
     if (ngayChamDut < hopDong.ngayBatDau) throw new LoiUngDung(400, 'Ngày chấm dứt không được trước ngày bắt đầu hợp đồng');
@@ -307,8 +342,9 @@ async function chamDutHopDong(nguoiDung, id, { ngayChamDut, lyDo }, diaChiIP) {
       diaChiIP,
       ketNoi,
     );
+    return timCanhBaoLuong('CHAM_DUT', hopDong, { ...hopDong, ngayKetThuc: ngayChamDut }, ketNoi);
   });
-  return layChiTiet(nguoiDung, id);
+  return layChiTietKemCanhBao(nguoiDung, id, canhBao);
 }
 
 module.exports = {

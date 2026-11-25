@@ -154,6 +154,70 @@ def test_nhanVienLuonChiCotDuocCap_toanCongTy():
     assert "WHERE" not in sql  # toàn công ty: không lọc
 
 
+# ------------------------------------------------------------------ che cột tham chiếu người (quanLy)
+COT_NGUOI_THEO_BANG = [
+    ("dondexuatnghiphep", "nguoiDuyetId"),
+    ("yeucaudieuchinhchamcong", "nguoiDuyetId"),
+    ("phieudanhgiakpi", "nguoiDanhGiaId"),
+    ("quyetdinhkhenthuongkyluat", "nguoiKyDuyetId"),
+    ("dexuatkhenthuongkyluat", "nguoiDeXuatId"),
+    ("dexuatkhenthuongkyluat", "nguoiXuLyId"),
+    ("phongban", "truongBoPhanId"),
+]
+
+
+def _mauChe(cot):
+    return f"CASE WHEN {cot} IN (SELECT id FROM nhanvien WHERE chucDanhPhongBanId IN"
+
+
+@pytest.mark.parametrize("bang,cot", COT_NGUOI_THEO_BANG)
+def test_quanLyCheCotNguoi_selectSao(bang, cot):
+    sql = kt(f"SELECT * FROM {bang}", PB)
+    assert _mauChe(cot) in sql and f"ELSE NULL END AS {cot}" in sql
+    assert "phongBanId IN (3, 4)" in sql
+
+
+@pytest.mark.parametrize("bang,cot", COT_NGUOI_THEO_BANG)
+def test_toanCongTyKhongCheCotNguoi(bang, cot):
+    assert "CASE WHEN" not in kt(f"SELECT {cot} FROM {bang}")
+
+
+def test_quanLyCheCotNguoi_biDanhJoinWhereGroupBy():
+    sql = kt(
+        "SELECT n.hoVaTen, COUNT(*) FROM dondexuatnghiphep d JOIN nhanvien n ON n.id = d.nguoiDuyetId "
+        "WHERE d.nguoiDuyetId = 5 GROUP BY d.nguoiDuyetId, n.hoVaTen",
+        PB,
+    )
+    # Tham chiếu d.nguoiDuyetId ở JOIN/WHERE/GROUP BY trỏ vào truy vấn con đã che, bí danh d giữ nguyên
+    assert _mauChe("nguoiDuyetId") in sql and ") AS d" in sql
+    assert "d.nguoiDuyetId = 5" in sql
+
+
+def test_quanLyBangDanhMucKhacKhongBoc():
+    sql = kt("SELECT * FROM chucdanh", PB)
+    assert "CASE WHEN" not in sql and "SELECT * FROM chucdanh" in sql
+
+
+def test_quanLyBangKhongCoCotNguoiGiuSao():
+    sql = kt("SELECT * FROM banghichamcong", PB)
+    assert "SELECT * FROM banghichamcong WHERE nhanVienId IN" in sql
+
+
+def test_cotBangCoCotNguoiKhopSchema():
+    """Truy vấn con liệt kê cột theo moTaSchema.BANG: phải khớp đủ cột của schema.sql (thiếu → mất cột, thừa → lỗi)."""
+    import re
+    from pathlib import Path
+
+    from textToSql.moTaSchema import COT_THAM_CHIEU_NGUOI, cotCuaBang
+
+    schema = (Path(__file__).resolve().parents[2] / "database" / "schema.sql").read_text(encoding="utf-8")
+    for bang in {b for b, _ in COT_NGUOI_THEO_BANG}:
+        khoi = re.search(rf"CREATE TABLE `{bang}` \((.*?)\n\)", schema, re.S).group(1)
+        cotSchema = re.findall(r"^\s+`(\w+)`", khoi, re.M)
+        assert cotCuaBang(bang) == cotSchema, bang
+        assert set(cotSchema) & COT_THAM_CHIEU_NGUOI
+
+
 def test_quanLyLocNhanVienGiuBietDanh():
     sql = kt("SELECT nv.hoVaTen FROM nhanvien AS nv", PB)
     assert "phongBanId IN (3, 4)" in sql and ") AS nv" in sql
@@ -167,8 +231,8 @@ def test_quanLyLocBangCoNhanVienId_trongJoin_cte_truyVanCon():
         PB,
     )
     for bang in ("dondexuatnghiphep", "banghichamcong", "quyngayphep"):
-        assert f"SELECT * FROM {bang} WHERE nhanVienId IN" in sql
-    assert sql.count("phongBanId IN (3, 4)") == 4  # 3 bảng + nhanvien
+        assert f"FROM {bang} WHERE nhanVienId IN" in sql
+    assert sql.count("phongBanId IN (3, 4)") == 5  # 3 bảng + nhanvien + che nguoiDuyetId của đơn nghỉ
 
 
 def test_quanLyLocChiTietKpiQuaPhieu():
@@ -177,7 +241,10 @@ def test_quanLyLocChiTietKpiQuaPhieu():
 
 
 def test_bangDanhMucKhongLoc():
-    assert kt("SELECT tenPhongBan FROM phongban", PB) == "SELECT tenPhongBan FROM phongban LIMIT 200"
+    assert kt("SELECT tenChucDanh FROM chucdanh", PB) == "SELECT tenChucDanh FROM chucdanh LIMIT 200"
+    # phongban vẫn trả mọi phòng (không WHERE), chỉ che truongBoPhanId
+    sql = kt("SELECT tenPhongBan FROM phongban", PB)
+    assert "FROM phongban) AS phongban" in sql and "WHERE truongBoPhanId" not in sql
 
 
 def _bangChuaLoc(sql):

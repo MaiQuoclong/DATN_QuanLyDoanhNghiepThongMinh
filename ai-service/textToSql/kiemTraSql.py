@@ -2,6 +2,8 @@
 
 Nhiều lớp (lớp chính vẫn là quyền DB của aiReadonly): một câu SELECT/UNION, cấm DML/DDL/khóa/biến/hàm nguy hiểm,
 bảng/cột theo danh sách trắng của vai trò, thay bảng nhân sự bằng truy vấn con theo phạm vi, ép LIMIT.
+Với quanLy, cột tham chiếu người (nguoiDuyetId, truongBoPhanId...) ngoài phạm vi bị che thành NULL trong truy vấn con,
+nên SELECT *, bí danh, JOIN, WHERE, GROUP BY trên cột đó đều chỉ thấy id trong phạm vi.
 Chỉ chạy chuỗi SQL sinh lại từ cây cú pháp (bỏ chú thích), không bao giờ chạy chuỗi gốc LLM trả về.
 """
 
@@ -14,6 +16,7 @@ from textToSql.moTaSchema import (
     BANG_CO_NHAN_VIEN_ID,
     COT_CAM_TOAN_CUC,
     COT_NHAN_VIEN_CAM,
+    COT_THAM_CHIEU_NGUOI,
     PHONG_BAN,
     TOAN_CONG_TY,
     bangDuocPhep,
@@ -210,6 +213,19 @@ def _truyVanNhanVienTrongPhamVi(phongBanIds: list[int]) -> str:
     )
 
 
+def _danhSachCotDaChe(tenBang: str, phongBanIds: list[int]) -> str:
+    """Danh sách cột của bảng, cột tham chiếu người ngoài phạm vi phòng ban -> NULL (giữ tên cột)."""
+    trongPhamVi = _truyVanNhanVienTrongPhamVi(phongBanIds)
+    return ", ".join(
+        f"CASE WHEN {cot} IN ({trongPhamVi}) THEN {cot} ELSE NULL END AS {cot}" if cot in COT_THAM_CHIEU_NGUOI else cot
+        for cot in cotCuaBang(tenBang)
+    )
+
+
+def _coCotThamChieuNguoi(tenBang: str) -> bool:
+    return any(cot in COT_THAM_CHIEU_NGUOI for cot in cotCuaBang(tenBang))
+
+
 def _truyVanThayThe(tenBang: str, cheDoPhamVi: str, phongBanIds: list[int]) -> str:
     """Truy vấn con thay cho bảng gốc. nhanvien luôn thay (chỉ cột được GRANT, để `*` không lỗi quyền cột)."""
     if tenBang == "nhanvien":
@@ -222,13 +238,17 @@ def _truyVanThayThe(tenBang: str, cheDoPhamVi: str, phongBanIds: list[int]) -> s
     if cheDoPhamVi != PHONG_BAN:
         return ""
     if tenBang in BANG_CO_NHAN_VIEN_ID:
-        return f"SELECT * FROM {tenBang} WHERE nhanVienId IN ({_truyVanNhanVienTrongPhamVi(phongBanIds)})"
+        cot = _danhSachCotDaChe(tenBang, phongBanIds) if _coCotThamChieuNguoi(tenBang) else "*"
+        return f"SELECT {cot} FROM {tenBang} WHERE nhanVienId IN ({_truyVanNhanVienTrongPhamVi(phongBanIds)})"
     if tenBang == "chitietdanhgiakpi":
         return (
             "SELECT * FROM chitietdanhgiakpi WHERE phieuDanhGiaKPIId IN "
             f"(SELECT id FROM phieudanhgiakpi WHERE nhanVienId IN ({_truyVanNhanVienTrongPhamVi(phongBanIds)}))"
         )
     if tenBang in BANG_DANH_MUC:
+        if _coCotThamChieuNguoi(tenBang):
+            # phongban: giữ mọi phòng nhưng che truongBoPhanId của trưởng phòng ngoài phạm vi
+            return f"SELECT {_danhSachCotDaChe(tenBang, phongBanIds)} FROM {tenBang}"
         return ""  # bảng danh mục: không chứa dữ liệu cá nhân, không lọc
     # Bảng mới thêm vào BANG mà chưa khai báo cách lọc → từ chối (mặc định đóng, không lộ toàn công ty)
     raise LoiSqlKhongHopLe(f"Không được truy vấn bảng {tenBang}")

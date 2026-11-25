@@ -34,6 +34,9 @@ async function layHopDongSapHetHan(req, res) {
   return thanhCong(res, { soNgay, items: danhSach }, 'Lấy danh sách hợp đồng sắp hết hạn thành công');
 }
 
+// Ghép cảnh báo bảng lương bị ảnh hưởng (nếu có) vào thông điệp, data.canhBao vẫn giữ riêng cho giao diện
+const kemCanhBao = (thongDiep, hopDong) => [thongDiep, hopDong.canhBao].filter(Boolean).join('. ');
+
 async function layChiTietHopDong(req, res) {
   const hopDong = await hopDongService.layChiTiet(req.nguoiDung, layIdTuDuongDan(req));
   return thanhCong(res, hopDong, 'Lấy chi tiết hợp đồng thành công');
@@ -41,22 +44,22 @@ async function layChiTietHopDong(req, res) {
 
 async function taoHopDong(req, res) {
   const hopDong = await hopDongService.taoHopDong(req.nguoiDung, req.body, req.ip);
-  return thanhCong(res, hopDong, 'Lập hợp đồng thành công', 201);
+  return thanhCong(res, hopDong, kemCanhBao('Lập hợp đồng thành công', hopDong), 201);
 }
 
 async function giaHanHopDong(req, res) {
   const hopDong = await hopDongService.giaHanHopDong(req.nguoiDung, layIdTuDuongDan(req), req.body, req.ip);
-  return thanhCong(res, hopDong, 'Gia hạn hợp đồng thành công');
+  return thanhCong(res, hopDong, kemCanhBao('Gia hạn hợp đồng thành công', hopDong));
 }
 
 async function dieuChinhHopDong(req, res) {
   const hopDong = await hopDongService.dieuChinhHopDong(req.nguoiDung, layIdTuDuongDan(req), req.body, req.ip);
-  return thanhCong(res, hopDong, 'Điều chỉnh hợp đồng thành công');
+  return thanhCong(res, hopDong, kemCanhBao('Điều chỉnh hợp đồng thành công', hopDong));
 }
 
 async function chamDutHopDong(req, res) {
   const hopDong = await hopDongService.chamDutHopDong(req.nguoiDung, layIdTuDuongDan(req), req.body, req.ip);
-  return thanhCong(res, hopDong, 'Chấm dứt hợp đồng thành công');
+  return thanhCong(res, hopDong, kemCanhBao('Chấm dứt hợp đồng thành công', hopDong));
 }
 
 module.exports = {
