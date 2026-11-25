@@ -27,6 +27,7 @@ function TabHopDong({ nhanVien, laHR, chiCuaToi }) {
   const [danhSach, setDanhSach] = useState(null);
   const [loi, setLoi] = useState('');
   const [dangXem, setDangXem] = useState(null);
+  const [canhBaoTao, setCanhBaoTao] = useState('');
   const [dangLap, setDangLap] = useState(false);
 
   const tai = useCallback(() => {
@@ -49,7 +50,17 @@ function TabHopDong({ nhanVien, laHR, chiCuaToi }) {
       </div>
       {loi && <div className="thongBao loi">{loi}</div>}
       <BangDuLieu cot={COT_HOP_DONG} duLieu={danhSach ?? []} onHanhDong={(d) => setDangXem(d.id)} thongBaoRong="Chưa có hợp đồng" />
-      {dangXem && <HopThoaiChiTietHopDong hopDongId={dangXem} onDong={() => setDangXem(null)} onThayDoi={tai} />}
+      {dangXem && (
+        <HopThoaiChiTietHopDong
+          hopDongId={dangXem}
+          canhBaoBanDau={canhBaoTao}
+          onDong={() => {
+            setDangXem(null);
+            setCanhBaoTao('');
+          }}
+          onThayDoi={tai}
+        />
+      )}
       {dangLap && (
         <HopThoaiLapHopDong
           nhanVien={nhanVien}
@@ -57,6 +68,7 @@ function TabHopDong({ nhanVien, laHR, chiCuaToi }) {
           onDaTao={(hd) => {
             setDangLap(false);
             tai();
+            setCanhBaoTao(hd.canhBao ?? '');
             setDangXem(hd.id);
           }}
         />
